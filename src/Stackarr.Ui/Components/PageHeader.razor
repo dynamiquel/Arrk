@@ -1,0 +1,33 @@
+@* Reusable page header with icon and title *@
+
+<div class="st-page-header">
+    @if (StatusDot != null)
+    {
+        @StatusDot
+    }
+    else if (!string.IsNullOrEmpty(LogoUrl))
+    {
+        <span class="st-page-header-logo-badge">
+            <span class="st-page-header-logo st-brand-mask" style="--st-brand-url:url('@LogoUrl')"></span>
+        </span>
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" Color="Color.Primary" Size="Size.Medium" Class="st-page-header-icon" />
+    }
+    <MudText Typo="Typo.h3" Class="st-page-title">@Title</MudText>
+    @ChildContent
+    @if (Actions != null)
+    {
+        <div class="st-page-actions">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string LogoUrl { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? StatusDot { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

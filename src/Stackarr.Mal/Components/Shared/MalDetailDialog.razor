@@ -1,0 +1,436 @@
+@using Stackarr.Core.Models
+@using Stackarr.Mal.Models
+@using Stackarr.Mal.Services
+@using Stackarr.Tvarr.Components.Pages
+@using Stackarr.Tvarr.Components.Shared
+@using Stackarr.Tvarr.Services
+@using Stackarr.Ui.Components
+@inject MalListService Lists
+@inject MalCatalogService Catalog
+@inject MalMappingDataset Dataset
+@inject ITvCatalog Library
+@inject AuthenticationStateProvider AuthProvider
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        @if (_loading)
+        {
+            <div style="padding:32px;"><LoadingView /></div>
+        }
+        else if (_catalog is null)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.ErrorOutline" Message="Could not load this anime"
+                        Detail="Check the MyAnimeList client configuration and try again." />
+        }
+        else
+        {
+            <MediaDetailHero Title="@HeroTitle"
+                             Year="@HeroYear"
+                             PosterUrl="@HeroPoster"
+                             BackdropUrl="@HeroBackdrop"
+                             Rating="@HeroRating"
+                             RuntimeMinutes="@HeroRuntime"
+                             ExtraMeta="@HeroNetwork"
+                             Tagline="@HeroTagline"
+                             MediaType="@(_catalog.MediaType == "movie" ? "movie" : "tv")"
+                             TmdbId="@HeroTmdbId"
+                             OnClose="() => MudDialog.Cancel()">
+                <Badges>
+                    <StChip Variant="@StatusVariant(_status)">@MalStatuses.Label(_status)</StChip>
+                    @if (_score > 0)
+                    {
+                        <StChip Variant="warning">★ @_score</StChip>
+                    }
+                </Badges>
+                <Links>
+                    <MudButton Href="@($"https://myanimelist.net/anime/{_currentMalId}")" Target="_blank"
+                               Variant="Variant.Outlined" Size="Size.Small" Class="st-hero-link"
+                               StartIcon="@Icons.Material.Filled.OpenInNew">
+                        MAL
+                    </MudButton>
+                </Links>
+                <HeaderActions>
+                    @if (OpenTargetLabel is { Length: > 0 })
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large"
+                                   StartIcon="@(_librarySeries is not null || _libraryMovie is not null
+                                       ? Icons.Material.Filled.PlayCircle
+                                       : Icons.Material.Filled.Explore)"
+                                   OnClick="OpenMediaAsync">
+                            @OpenTargetLabel
+                        </MudButton>
+                    }
+                </HeaderActions>
+            </MediaDetailHero>
+
+            <div class="st-detail-body">
+                @if (!string.IsNullOrWhiteSpace(HeroOverview))
+                {
+                    <MudText Typo="Typo.body2" Class="st-detail-overview">@HeroOverview</MudText>
+                }
+
+                @if (Genres.Count > 0)
+                {
+                    <div class="st-detail-chips">
+                        @foreach (string genre in Genres)
+                        {
+                            <StChip Variant="neutral">@genre</StChip>
+                        }
+                    </div>
+                }
+
+                <MetaGrid>
+                    @if (_catalog.NumEpisodes > 0)
+                    {
+                        <MetaItem Label="Episodes" Value="@_catalog.NumEpisodes.ToString()" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(HeroStatus))
+                    {
+                        <MetaItem Label="Status" Value="@HeroStatus" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_catalog.Studios))
+                    {
+                        <MetaItem Label="Studio" Value="@_catalog.Studios" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_catalog.StartDate))
+                    {
+                        <MetaItem Label="Aired" Value="@AiredLabel" />
+                    }
+                    @if (_catalog is not null && MalCatalogService.SeasonLabel(_catalog) is { } seasonLabel)
+                    {
+                        <MetaItem Label="Season" Value="@seasonLabel" />
+                    }
+                    @if (_catalog.Rank is int rank && rank > 0)
+                    {
+                        <MetaItem Label="MAL rank" Value="@($"#{rank}")" />
+                    }
+                </MetaGrid>
+
+                @if (_relations.Count > 0)
+                {
+                    <div class="mal-relations">
+                        <div class="mal-relations-title">Related</div>
+                        @foreach (IGrouping<string, MalRelatedEntry> group in _relations
+                            .GroupBy(x => string.IsNullOrWhiteSpace(x.RelationTypeFormatted) ? x.RelationType : x.RelationTypeFormatted))
+                        {
+                            <div class="mal-relation-group">
+                                <span class="mal-relation-label">@group.Key</span>
+                                <div class="mal-relation-buttons">
+                                    @foreach (MalRelatedEntry related in group)
+                                    {
+                                        <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="st-hero-link"
+                                                   OnClick="() => LoadAsync(related.Id)">
+                                            @related.Title@(related.NumEpisodes > 0 ? $" · {related.NumEpisodes}" : "")
+                                        </MudButton>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="mal-detail-form">
+                    <MudSelect T="string" @bind-Value="_status" Label="Status" Variant="Variant.Outlined" Dense="true">
+                        @foreach (string status in MalStatuses.All)
+                        {
+                            <MudSelectItem T="string" Value="@status">@MalStatuses.Label(status)</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="int" @bind-Value="_score" Label="Score (0–10)" Variant="Variant.Outlined" Dense="true">
+                        <MudSelectItem T="int" Value="0">Not rated</MudSelectItem>
+                        @foreach (int score in Enumerable.Range(1, 10))
+                        {
+                            <MudSelectItem T="int" Value="@score">@score</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudNumericField T="int" @bind-Value="_watched" Label="Episodes watched"
+                                     Variant="Variant.Outlined" Dense="true" Min="0"
+                                     Max="MaxEpisodes" />
+                </div>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (!_loading && _catalog is not null)
+        {
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="@_saving">
+                Save
+            </MudButton>
+            @if (_hasEntry)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="RemoveAsync" Disabled="@_saving">
+                    Remove
+                </MudButton>
+            }
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public int MalId { get; set; }
+
+    int _userId;
+    int _currentMalId;
+    IReadOnlyList<MalRelatedEntry> _relations = [];
+    bool _loading = true;
+    bool _saving;
+    bool _hasEntry;
+    MalCatalogEntry? _catalog;
+    MalPresentation? _presentation;
+    TvSeries? _librarySeries;
+    TvMovie? _libraryMovie;
+    int _tmdbId;
+    bool _tmdbMovie;
+    string _status = MalStatuses.PlanToWatch;
+    int _score;
+    int _watched;
+
+    string DisplayTitle => _catalog is null
+        ? ""
+        : string.IsNullOrWhiteSpace(_catalog.DisplayTitle) ? _catalog.Title : _catalog.DisplayTitle;
+
+    string DisplayOverview => _catalog is null
+        ? ""
+        : string.IsNullOrWhiteSpace(_catalog.DisplayOverview) ? _catalog.Synopsis : _catalog.DisplayOverview;
+
+    string HeroTitle => _presentation?.Title
+        ?? (string.IsNullOrWhiteSpace(DisplayTitle) ? _catalog?.Title ?? "" : DisplayTitle);
+
+    string HeroOverview => _presentation?.Overview
+        ?? (string.IsNullOrWhiteSpace(DisplayOverview) ? _catalog?.Synopsis ?? "" : DisplayOverview);
+
+    string HeroPoster => _presentation?.PosterUrl is { Length: > 0 } poster
+        ? poster
+        : _catalog is null ? "" : MalCatalogService.Poster(_catalog);
+
+    string HeroBackdrop => _presentation?.BackdropUrl ?? "";
+
+    int HeroYear => _presentation?.Year is > 0 ? _presentation.Year : _catalog?.Year ?? 0;
+
+    double? HeroRating => _presentation?.Rating ?? _catalog?.Mean;
+
+    int? HeroRuntime => _presentation?.RuntimeMinutes;
+
+    string HeroNetwork => _presentation?.Network ?? "";
+
+    string HeroTagline => _catalog is null
+        ? ""
+        : string.Equals(_catalog.Title, HeroTitle, StringComparison.OrdinalIgnoreCase)
+            ? ""
+            : _catalog.Title;
+
+    int HeroTmdbId => _presentation?.TmdbId ?? _catalog?.TmdbId ?? 0;
+
+    string HeroStatus => _presentation?.Status is { Length: > 0 } status
+        ? status
+        : _catalog?.AiringStatus switch
+        {
+            "finished_airing" => "Finished",
+            "currently_airing" => "Airing",
+            "not_yet_aired" => "Not yet aired",
+            _ => _catalog?.AiringStatus ?? ""
+        };
+
+    int MaxEpisodes => _catalog is { NumEpisodes: > 0 } ? _catalog.NumEpisodes : 10000;
+
+    string OpenTargetLabel => _librarySeries is not null || _libraryMovie is not null
+        ? "Open in Library"
+        : _tmdbId > 0 ? "Open in Discovery" : "";
+
+    IReadOnlyList<string> Genres => (_catalog?.Genres ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
+
+    string AiredLabel
+    {
+        get
+        {
+            string start = _catalog?.StartDate ?? "";
+            string end = _catalog?.EndDate ?? "";
+            return string.IsNullOrWhiteSpace(end) ? start : $"{start} – {end}";
+        }
+    }
+
+    static string StatusVariant(string status) => status switch
+    {
+        MalStatuses.Watching => "info",
+        MalStatuses.Completed => "success",
+        MalStatuses.OnHold => "warning",
+        MalStatuses.Dropped => "error",
+        _ => "neutral"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!int.TryParse(state.User.FindFirst(StackarrClaims.UserIdClaim)?.Value, out _userId))
+            return;
+
+        await LoadAsync(MalId);
+    }
+
+    async Task LoadAsync(int malId)
+    {
+        _currentMalId = malId;
+        _loading = true;
+        _catalog = null;
+        _presentation = null;
+        _librarySeries = null;
+        _libraryMovie = null;
+        _tmdbId = 0;
+        _tmdbMovie = false;
+        _hasEntry = false;
+        _status = MalStatuses.PlanToWatch;
+        _score = 0;
+        _watched = 0;
+        _relations = [];
+
+        try
+        {
+            _catalog = await Lists.GetDetailsAsync(_userId, _currentMalId);
+            if (_catalog is not null)
+            {
+                _presentation = await Catalog.GetPresentationAsync(_catalog);
+                _relations = MalCatalogService.Relations(_catalog);
+                await ResolveOpenTargetAsync();
+            }
+
+            MalEntryView? entry = await Lists.GetEntryAsync(_userId, _currentMalId);
+            if (entry is not null)
+            {
+                _hasEntry = true;
+                _status = entry.Entry.Status;
+                _score = Math.Clamp(entry.Entry.Score, 0, 10);
+                _watched = entry.Entry.WatchedEpisodes;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task ResolveOpenTargetAsync()
+    {
+        MalDatasetEntry? mapping = Dataset.ByMalId(_currentMalId);
+        if (mapping is null)
+            return;
+
+        if (mapping.TmdbMovieIds.Count > 0)
+        {
+            _tmdbMovie = true;
+            _tmdbId = _presentation?.TmdbId ?? mapping.TmdbMovieIds[0];
+            _libraryMovie = await Library.GetLibraryMovieAsync(_tmdbId);
+            return;
+        }
+
+        if (mapping.TmdbTvId is int tmdbId)
+        {
+            _tmdbId = tmdbId;
+            _librarySeries = await Library.GetLibrarySeriesAsync(tmdbId);
+        }
+    }
+
+    async Task OpenMediaAsync()
+    {
+        DialogOptions options = new()
+        {
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium,
+            CloseOnEscapeKey = true
+        };
+
+        MudDialog.Close(DialogResult.Ok(true));
+
+        if (_librarySeries is not null)
+        {
+            DialogParameters<SeriesDetailDialog> parameters = new()
+            {
+                { x => x.Series, _librarySeries },
+                { x => x.IsAdmin, false }
+            };
+            await Dialogs.ShowAsync<SeriesDetailDialog>(_librarySeries.Title, parameters, options);
+            return;
+        }
+
+        if (_libraryMovie is not null)
+        {
+            DialogParameters<MovieDetailDialog> parameters = new()
+            {
+                { x => x.Movie, _libraryMovie },
+                { x => x.IsAdmin, false }
+            };
+            await Dialogs.ShowAsync<MovieDetailDialog>(_libraryMovie.Title, parameters, options);
+            return;
+        }
+
+        if (_tmdbId <= 0)
+            return;
+
+        MediaItem item = new()
+        {
+            Title = HeroTitle,
+            Year = HeroYear,
+            Overview = HeroOverview,
+            PosterUrl = HeroPoster,
+            BackdropUrl = HeroBackdrop,
+            Rating = HeroRating,
+            RuntimeMinutes = HeroRuntime,
+            Genres = Genres.ToList(),
+            MediaType = _tmdbMovie ? "movie" : "tv",
+            TmdbId = _tmdbId,
+            IsAnime = true
+        };
+        DialogParameters<RemoteMediaDialog> discovery = new() { { x => x.Item, item } };
+        await Dialogs.ShowAsync<RemoteMediaDialog>(item.Title, discovery, options);
+    }
+
+    async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Lists.UpdateAsync(_userId, _currentMalId, new MalListUpdate(
+                Status: _status,
+                Score: Math.Clamp(_score, 0, 10),
+                WatchedEpisodes: _watched));
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    async Task RemoveAsync()
+    {
+        _saving = true;
+        try
+        {
+            await Lists.RemoveAsync(_userId, _currentMalId);
+            MudDialog.Close(DialogResult.Ok(false));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

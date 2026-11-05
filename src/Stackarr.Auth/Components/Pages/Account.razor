@@ -1,0 +1,376 @@
+@page "/account"
+@attribute [Authorize]
+@using Microsoft.Extensions.Primitives
+@inject UserService Users
+@inject AuthenticationStateProvider AuthProvider
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject UiTextSizePreference TextSizes
+@inject UserCssService CustomCss
+@inject IJSRuntime JS
+
+<PageTitle>Stackarr - My account</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Person" Title="My account" />
+
+@if (_user is null)
+{
+    <LoadingView />
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6">
+            <SectionContainer Icon="@Icons.Material.Filled.Badge" Title="Profile">
+                <div style="padding:var(--st-space-md);display:flex;flex-direction:column;gap:18px;">
+                    <div class="st-account-avatar-row">
+                        @if (PreviewSrc is not null)
+                        {
+                            <img class="st-account-avatar" src="@PreviewSrc" alt="Profile picture" />
+                        }
+                        else
+                        {
+                            <span class="st-account-avatar st-user-avatar--initials" style="font-size:1.6rem;">@Initials</span>
+                        }
+                        <div style="min-width:0;flex:1 1 180px;">
+                            <InputFile Class="st-file-input" OnChange="OnAvatarChanged" Accept="image/png,image/jpeg,image/webp,image/gif" />
+                            <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);display:block;margin-top:4px;">PNG, JPG, WEBP or GIF, up to 2 MB.</MudText>
+                        </div>
+                    </div>
+
+                    <MudTextField @bind-Value="_username" Label="Username" Variant="Variant.Outlined" MaxLength="64"
+                                  HelperText="Changing this changes your media player login too." />
+                    <div>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" OnClick="SaveProfileAsync"
+                                   Disabled="@_saving" StartIcon="@Icons.Material.Filled.Save">
+                            Save profile
+                        </MudButton>
+                    </div>
+                </div>
+            </SectionContainer>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <SectionContainer Icon="@Icons.Material.Filled.Lock" Title="Password">
+                <div style="padding:var(--st-space-md);display:flex;flex-direction:column;gap:18px;">
+                    <MudTextField @bind-Value="_currentPassword" Label="Current password" Variant="Variant.Outlined"
+                                  InputType="InputType.Password" />
+                    <MudTextField @bind-Value="_newPassword" Label="New password" Variant="Variant.Outlined"
+                                  InputType="InputType.Password" />
+                    <MudTextField @bind-Value="_confirmPassword" Label="Confirm new password" Variant="Variant.Outlined"
+                                  InputType="InputType.Password" />
+                    <div>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" OnClick="ChangePasswordAsync"
+                                   Disabled="@_changingPassword" StartIcon="@Icons.Material.Filled.Key">
+                            Update password
+                        </MudButton>
+                    </div>
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                        Your password is used both for Stackarr and for the media players Stackarr manages for you.
+                    </MudAlert>
+                </div>
+            </SectionContainer>
+        </MudItem>
+
+        <MudItem xs="12">
+            <SectionContainer Icon="@Icons.Material.Filled.FormatSize" Title="Appearance">
+                <div style="padding:var(--st-space-md);display:flex;flex-direction:column;gap:12px;">
+                    <MudText Typo="Typo.body2" Style="color:var(--st-text-secondary);">
+                        Text size applies to this account across the whole app.
+                    </MudText>
+                    <StTabs T="UiTextSize" Variant="segmented" Items="_textSizeTabs"
+                            Value="_textSize" ValueChanged="SetTextSizeAsync" />
+                    <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);">
+                        Small fits more rows on screen; Large is easier to read from a distance.
+                    </MudText>
+                </div>
+            </SectionContainer>
+        </MudItem>
+
+        <MudItem xs="12">
+            <SectionContainer Icon="@Icons.Material.Filled.FormatColorText" Title="Custom CSS">
+                <div style="padding:var(--st-space-md);display:flex;flex-direction:column;gap:12px;">
+                    <MudText Typo="Typo.body2" Style="color:var(--st-text-secondary);">
+                        Provide custom CSS to style the app to your desires.
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);">
+                        Applied after the shared theme for this account only.
+                    </MudText>
+                    <CodeEditor @bind-Value="_customCss" Lines="14"
+                                Placeholder=":root { --st-accent: #e879f9; }" />
+                    <div class="st-css-ai-row">
+                        <MudTextField @bind-Value="_cssPrompt" Label="Describe the look you want"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2"
+                                      Placeholder="Warmer accents, softer cards and a compact dashboard." />
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                                   OnClick="GenerateCssAsync" Disabled="@(!CanGenerateCss || _generatingCss || string.IsNullOrWhiteSpace(_cssPrompt))"
+                                   StartIcon="@Icons.Material.Filled.AutoAwesome">
+                            @(_generatingCss ? "Generating…" : "Generate with AI")
+                        </MudButton>
+                    </div>
+                    @if (!CanGenerateCss)
+                    {
+                        <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);">
+                            AI CSS generation is unavailable. Enable the AI module and its Style feature to use it.
+                        </MudText>
+                    }
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                                   OnClick="SaveCssAsync" Disabled="@_savingCss"
+                                   StartIcon="@Icons.Material.Filled.Save">
+                            Save CSS
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Color="Color.Default"
+                                   OnClick="ClearCssAsync" Disabled="@_savingCss"
+                                   StartIcon="@Icons.Material.Filled.RestartAlt">
+                            Reset CSS
+                        </MudButton>
+                    </div>
+                </div>
+            </SectionContainer>
+        </MudItem>
+
+        <MudItem xs="12">
+            <SectionContainer Icon="@Icons.Material.Filled.Link" Title="Connections">
+                <div class="st-connections-list">
+                    <DiscordConnectionCard />
+                    <UiRegion Name="@UiRegions.AccountConnections" />
+                </div>
+            </SectionContainer>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    StackarrUser? _user;
+    string _username = "";
+    string _currentPassword = "";
+    string _newPassword = "";
+    string _confirmPassword = "";
+    byte[]? _pendingAvatar;
+    string? _pendingAvatarType;
+    bool _removeAvatar;
+    string? _existingAvatarVersion;
+    bool _saving;
+    bool _changingPassword;
+    UiTextSize _textSize = UiTextSize.Medium;
+    string _customCss = "";
+    string _cssPrompt = "";
+    bool _generatingCss;
+    bool _savingCss;
+
+    bool CanGenerateCss => CustomCss.CanGenerate;
+
+    readonly IReadOnlyList<StTabItem<UiTextSize>> _textSizeTabs =
+    [
+        new(UiTextSize.Small, "Small"),
+        new(UiTextSize.Medium, "Medium"),
+        new(UiTextSize.Large, "Large"),
+    ];
+
+    string Initials
+    {
+        get
+        {
+            string source = string.IsNullOrWhiteSpace(_username) ? "?" : _username;
+            return source[..1].ToUpperInvariant();
+        }
+    }
+
+    string? PreviewSrc
+    {
+        get
+        {
+            if (_removeAvatar)
+                return null;
+            if (_pendingAvatar is not null)
+                return $"data:{_pendingAvatarType ?? "image/png"};base64,{Convert.ToBase64String(_pendingAvatar)}";
+            if (_user?.Avatar is { Length: > 0 })
+                return $"/account/avatar/{_user.Id}?v={_existingAvatarVersion}";
+            return null;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!int.TryParse(state.User.FindFirst(StackarrClaims.UserIdClaim)?.Value, out int id))
+        {
+            Nav.NavigateTo("/account/logout", forceLoad: true);
+            return;
+        }
+
+        _user = await Users.GetByIdAsync(id);
+        if (_user is null)
+        {
+            Nav.NavigateTo("/account/logout", forceLoad: true);
+            return;
+        }
+
+        _username = _user.Username;
+        _existingAvatarVersion = _user.CreatedAt.Ticks.ToString();
+        _textSize = await TextSizes.GetAsync(_user.Id);
+        _customCss = await CustomCss.GetAsync(_user.Id);
+    }
+
+    async Task GenerateCssAsync()
+    {
+        if (_user is null || !CanGenerateCss || string.IsNullOrWhiteSpace(_cssPrompt))
+            return;
+
+        _generatingCss = true;
+        try
+        {
+            string? generated = await CustomCss.GenerateAsync(_user.Id, _cssPrompt, _customCss);
+            if (string.IsNullOrWhiteSpace(generated))
+            {
+                Snackbar.Add("The AI did not return any usable CSS.", Severity.Warning);
+                return;
+            }
+
+            _customCss = generated;
+            Snackbar.Add("CSS generated. Review it, then save.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not generate CSS: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _generatingCss = false;
+        }
+    }
+
+    async Task SaveCssAsync()
+    {
+        if (_user is null)
+            return;
+
+        _savingCss = true;
+        try
+        {
+            await CustomCss.SetAsync(_user.Id, _customCss);
+            _customCss = await CustomCss.GetAsync(_user.Id);
+            Snackbar.Add("Custom CSS saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _savingCss = false;
+        }
+    }
+
+    async Task ClearCssAsync()
+    {
+        if (_user is null)
+            return;
+
+        _savingCss = true;
+        try
+        {
+            await CustomCss.ClearAsync(_user.Id);
+            _customCss = "";
+            Snackbar.Add("Custom CSS cleared.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _savingCss = false;
+        }
+    }
+
+    async Task SetTextSizeAsync(UiTextSize size)
+    {
+        if (_user is null || size == _textSize)
+            return;
+
+        _textSize = size;
+        await TextSizes.SetAsync(_user.Id, size);
+        try
+        {
+            await JS.InvokeVoidAsync("stackarrTextSize.set", UiTextSizePreference.ToValue(size));
+        }
+        catch
+        {
+            /* The stored preference still applies on the next page load. */
+        }
+    }
+
+    async Task OnAvatarChanged(InputFileChangeEventArgs e)
+    {
+        const long maxBytes = 2 * 1024 * 1024;
+        try
+        {
+            using Stream stream = e.File.OpenReadStream(maxBytes);
+            using MemoryStream buffer = new();
+            await stream.CopyToAsync(buffer);
+            _pendingAvatar = buffer.ToArray();
+            _pendingAvatarType = string.IsNullOrWhiteSpace(e.File.ContentType) ? "image/png" : e.File.ContentType;
+            _removeAvatar = false;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not read image: {ex.Message}", Severity.Error);
+        }
+    }
+
+    async Task SaveProfileAsync()
+    {
+        if (_user is null) return;
+        _saving = true;
+        try
+        {
+            bool usernameChanged = !string.Equals(_user.Username, _username, StringComparison.Ordinal);
+            await Users.UpdateProfileAsync(_user.Id, _username, _username);
+
+            if (_pendingAvatar is not null || _removeAvatar)
+                await Users.SetAvatarAsync(_user.Id, _pendingAvatar, _pendingAvatarType);
+
+            // Re-issue the auth cookie so the app bar reflects any change immediately.
+            if (usernameChanged || _pendingAvatar is not null || _removeAvatar)
+                Nav.NavigateTo("/account/refresh?returnUrl=/account", forceLoad: true);
+            else
+            {
+                Snackbar.Add("Profile updated.", Severity.Success);
+                _saving = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _saving = false;
+        }
+    }
+
+    async Task ChangePasswordAsync()
+    {
+        if (_user is null) return;
+        if (_newPassword != _confirmPassword)
+        {
+            Snackbar.Add("New passwords do not match.", Severity.Warning);
+            return;
+        }
+
+        _changingPassword = true;
+        try
+        {
+            await Users.ChangePasswordAsync(_user.Id, _currentPassword, _newPassword);
+            _currentPassword = _newPassword = _confirmPassword = "";
+            Snackbar.Add("Password updated.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _changingPassword = false;
+        }
+    }
+}

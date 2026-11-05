@@ -1,0 +1,56 @@
+@* One manual subtitle-search candidate, rendered with the same row shell as release search. *@
+
+<div class="st-release">
+    <div class="st-release-body">
+        <div class="st-release-title" title="@Candidate.Title">@Candidate.Title</div>
+
+        <div class="st-release-chips">
+            <StChip Variant="info">@LanguageLabel</StChip>
+            @if (Candidate.Forced)
+            {
+                <StChip Variant="neutral">Forced</StChip>
+            }
+            @if (Candidate.HearingImpaired)
+            {
+                <StChip Variant="neutral">HI</StChip>
+            }
+            @if (Candidate.Score > 0)
+            {
+                <StChip Variant="success">@Candidate.Score%</StChip>
+            }
+        </div>
+
+        <div class="st-release-meta">@MetaLine</div>
+    </div>
+
+    <div class="st-release-actions">
+        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                   Disabled="@Busy" OnClick="() => OnDownload.InvokeAsync()"
+                   title="Download this subtitle" AriaLabel="Download this subtitle">Download</MudButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SubtitleCandidate Candidate { get; set; } = default!;
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnDownload { get; set; }
+
+    string LanguageLabel => string.IsNullOrWhiteSpace(Candidate.LanguageName)
+        ? Candidate.LanguageCode.ToUpperInvariant()
+        : Candidate.LanguageName;
+
+    string MetaLine
+    {
+        get
+        {
+            List<string> parts = [];
+            if (!string.IsNullOrWhiteSpace(Candidate.Provider))
+                parts.Add(Candidate.Provider);
+            if (Candidate.ReleaseInfo.Count > 0)
+                parts.AddRange(Candidate.ReleaseInfo);
+            if (!string.IsNullOrWhiteSpace(Candidate.Uploader))
+                parts.Add($"by {Candidate.Uploader}");
+            return string.Join(" · ", parts);
+        }
+    }
+}

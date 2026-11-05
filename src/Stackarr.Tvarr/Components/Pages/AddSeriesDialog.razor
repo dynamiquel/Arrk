@@ -1,0 +1,138 @@
+@inject SonarrService SonarrService
+
+<MudDialog>
+    <TitleContent>
+        <StDialogTitle Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.AddCircle)"
+                       Title="@($"{(IsEdit ? "Edit" : "Add")} \"{Title}\"")" />
+    </TitleContent>
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close"
+                       OnClose="() => _errorMessage = null">@_errorMessage</MudAlert>
+        }
+        <MudSelect T="int" Label="Quality Profile" @bind-Value="_selectedProfileId"
+                   Variant="Variant.Outlined" Dense="true" Class="mb-4">
+            @foreach (QualityProfile profile in _profiles)
+            {
+                <MudSelectItem T="int" Value="@profile.Id">@profile.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (SeasonNumbers?.Count > 0)
+        {
+            <div class="mb-4">
+                <MudText Typo="Typo.caption" Style="color:var(--st-text-secondary);margin-bottom:6px;display:block;">Seasons to monitor</MudText>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                    @foreach (int sn in SeasonNumbers)
+                    {
+                        int seasonNum = sn;
+                        <MudChip T="int"
+                                 Variant="@(_selectedSeasons.Contains(seasonNum) ? Variant.Filled : Variant.Outlined)"
+                                 Color="@(_selectedSeasons.Contains(seasonNum) ? Color.Primary : Color.Default)"
+                                 OnClick="() => ToggleSeason(seasonNum)" Size="Size.Small">
+                            S@(seasonNum)
+                        </MudChip>
+                    }
+                </div>
+            </div>
+
+            <MudSwitch T="bool" @bind-Value="_monitorFutureSeasons" Label="Monitor future seasons"
+                       Color="Color.Primary" Class="mb-2" LabelPlacement="Placement.Start" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Save" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" Disabled="@_adding"
+                   title="@(IsEdit ? "Save" : "Add series")" AriaLabel="@(IsEdit ? "Save" : "Add series")">
+            @if (_adding)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+            }
+            else
+            {
+                <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Save : Icons.Material.Filled.Add)" Size="Size.Small" Class="mr-1" />
+            }
+            <span class="st-btn-label">@(IsEdit ? "Save" : "Add Series")</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public int TvdbId { get; set; }
+    [Parameter] public List<int>? SeasonNumbers { get; set; }
+    [Parameter] public List<QualityProfile> Profiles { get; set; } = [];
+    [Parameter] public bool IsEdit { get; set; }
+
+    int _selectedProfileId;
+    HashSet<int> _selectedSeasons = new();
+    bool _monitorFutureSeasons = true;
+    bool _adding;
+    string? _errorMessage;
+
+    List<QualityProfile> _profiles => Profiles;
+
+    protected override void OnInitialized()
+    {
+        if (_profiles.Count > 0)
+        {
+            _selectedProfileId = _profiles.First().Id;
+        }
+
+        if (SeasonNumbers != null)
+        {
+            _selectedSeasons = SeasonNumbers.ToHashSet();
+        }
+    }
+
+    void ToggleSeason(int seasonNumber)
+    {
+        if (_selectedSeasons.Contains(seasonNumber))
+        {
+            _selectedSeasons.Remove(seasonNumber);
+        }
+        else
+        {
+            _selectedSeasons.Add(seasonNumber);
+        }
+        StateHasChanged();
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Save()
+    {
+        _adding = true;
+        _errorMessage = null;
+        StateHasChanged();
+        try
+        {
+            if (IsEdit)
+            {
+                await SonarrService.UpdateSeriesMonitoring(
+                    TvdbId,
+                    _selectedProfileId,
+                    _selectedSeasons,
+                    _monitorFutureSeasons);
+            }
+            else
+            {
+                await SonarrService.AddSeriesWithOptions(
+                    TvdbId,
+                    Title,
+                    _selectedProfileId,
+                    _selectedSeasons,
+                    _monitorFutureSeasons);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to save: {ex.Message}";
+            _adding = false;
+        }
+        StateHasChanged();
+    }
+}

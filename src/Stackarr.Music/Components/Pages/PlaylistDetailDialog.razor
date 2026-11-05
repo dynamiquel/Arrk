@@ -1,0 +1,498 @@
+@* The one playlist popup. A playlist is a playlist: this dialog renders a library playlist, a
+   subscribed (Deezer) playlist and a Deezer editorial playlist with the same shell as the album
+   popup — square header, badges, one track list, one action bar. The only differences are which
+   actions the playlist kind supports. *@
+@using Stackarr.Core.Models
+@using Stackarr.Navidrome
+@using Stackarr.Navidrome.Models
+@using Stackarr.Music.Models
+@inject MusicCatalogService Catalog
+@inject MusicSubscriptionService Subscriptions
+@inject NavidromeService Navidrome
+@inject MusicReleaseProvider MusicReleases
+@inject SlskdReleaseProvider SoulseekReleases
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <StMusicDetailHeader Title="@Playlist.Title" ArtUrl="@ArtUrl" Icon="@Icons.Material.Filled.QueueMusic"
+                             Subtitle="@Subtitle" OnClose="() => MudDialog.Cancel()">
+            <Badges>
+                @if (Subscription is not null)
+                {
+                    <StatusPill Variant="info" Icon="@Icons.Material.Filled.Sync" Label="Subscribed" />
+                    <StatusPill Variant="@(MissingCount == 0 ? "success" : "warning")"
+                                     Icon="@Icons.Material.Filled.LibraryMusic"
+                                     Label="@($"{_tracks.Count - MissingCount}/{_tracks.Count} in library")" />
+                }
+                else if (NavidromeId is not null)
+                {
+                    <StatusPill Variant="neutral" Icon="@Icons.Material.Filled.LibraryMusic"
+                                     Label="@($"{_tracks.Count} song{(_tracks.Count == 1 ? "" : "s")}")" />
+                }
+                else if (!_subscribed)
+                {
+                    <StatusPill Variant="remote" Icon="@Icons.Material.Filled.Public" Label="Deezer playlist" />
+                }
+            </Badges>
+            <Actions>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow"
+                           Disabled="@(_busy || PlayableCount == 0)" Class="st-play-cta st-btn-gradient" OnClick="@(() => PlayAll(false))">
+                    <span class="st-btn-label">Play</span>
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Shuffle"
+                           Disabled="@(_busy || PlayableCount == 0)" OnClick="@(() => PlayAll(true))">
+                    <span class="st-btn-label">Shuffle</span>
+                </MudButton>
+                @if (IsDeezer)
+                {
+                    @if (_isAdmin)
+                    {
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Download"
+                                   Disabled="@(_busy || _tracks.Count == 0)" OnClick="AddToLibraryAsync">
+                            <span class="st-btn-label">Add to library</span>
+                        </MudButton>
+                    }
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@(_subscribed ? Icons.Material.Filled.Check : Icons.Material.Filled.LibraryAdd)"
+                               Disabled="@(_busy || _subscribed || _tracks.Count == 0)" OnClick="SubscribeAsync">
+                        <span class="st-btn-label">@(_subscribed ? "Subscribed" : "Subscribe")</span>
+                    </MudButton>
+                }
+            </Actions>
+        </StMusicDetailHeader>
+
+        <div class="st-detail-body" style="padding-top:8px;">
+            @if (_loading)
+            {
+                <LoadingView />
+            }
+            else if (_tracks.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Style="color:var(--st-text-secondary);">
+                    @(Subscription is not null ? "This playlist has no tracks yet." : "This playlist is empty.")
+                </MudText>
+            }
+            else
+            {
+                <div class="st-music-tracklist">
+                    @for (int i = 0; i < _tracks.Count; i++)
+                    {
+                        PlaylistTrack track = _tracks[i];
+                        <StTrackRow Number="@(i + 1)" Title="@track.Title" Meta="@track.Artist"
+                                    Hoverable="track.InLibrary"
+                                    Missing="@(Subscription is not null && !track.InLibrary && !track.IsDownloading)"
+                                    OnTitleClick="track.AlbumDeezerId > 0 ? () => OpenAlbum(track) : default">
+                            <Actions>
+                                @if (track.InLibrary)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Color="Color.Primary"
+                                                   title="Play" AriaLabel="Play" OnClick="@(() => PlayTrack(track))" />
+                                }
+                                else if (track.IsDownloading)
+                                {
+                                    <span class="st-music-track-download" title="@track.MissingStatus">
+                                        <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Small" Style="font-size:0.9rem;color:var(--st-blue);" />
+                                        @if (track.DownloadSize > 0)
+                                        {
+                                            <span class="st-music-track-download-pct">@(Math.Round(track.DownloadPercent))%</span>
+                                        }
+                                    </span>
+                                }
+                                else if (!string.IsNullOrEmpty(track.PreviewUrl))
+                                {
+                                    <span class="st-music-track-missing" title="Not in your library yet — plays a 30s preview">Preview</span>
+                                    <MudIconButton Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Primary"
+                                                   title="Play preview" AriaLabel="Play preview" OnClick="@(() => PlayTrack(track))" />
+                                }
+                                else if (Subscription is not null)
+                                {
+                                    <span class="st-music-track-missing" title="Wanted but not in your library yet">Missing</span>
+                                }
+                                <StTrackMenu IsAdmin="_isAdmin" HasFile="track.InLibrary" HasMediaInfo="track.InLibrary"
+                                             OnResearch="() => ResearchTrack(track)"
+                                             OnInteractive="() => OpenTrackInteractiveSearch(track)"
+                                             OnMediaInfo="() => OpenTrackInfo(track)"
+                                             OnLyrics="() => OpenLyrics(track)"
+                                             OnDelete="() => DeleteTrack(track)" />
+                            </Actions>
+                        </StTrackRow>
+                    }
+                </div>
+            }
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        @if (Subscription is not null)
+        {
+            <MudButton OnClick="RefreshAsync" Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_busy">
+                <span class="st-btn-label">@(_busy ? "Refreshing…" : "Refresh")</span>
+            </MudButton>
+        }
+        @if (NavidromeId is not null)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddSongsAsync">
+                <span class="st-btn-label">Add songs</span>
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" OnClick="EditAsync">
+                <span class="st-btn-label">Edit</span>
+            </MudButton>
+        }
+        @if (IsDeezer)
+        {
+            <MudButton OnClick="() => MudDialog.Cancel()" Variant="Variant.Text">Close</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    /// <summary>The playlist being shown (library, subscription projection or Deezer editorial).</summary>
+    [Parameter] public MusicItem Playlist { get; set; } = new();
+
+    /// <summary>Set for a Navidrome library playlist (editable).</summary>
+    [Parameter] public string? NavidromeId { get; set; }
+
+    /// <summary>Set for a subscribed playlist (read-only, refreshed from the source).</summary>
+    [Parameter] public MusicSubscription? Subscription { get; set; }
+
+    bool _loading = true;
+    bool _busy;
+    bool _isAdmin;
+    bool _subscribed;
+    int _userId;
+    string _artUrl = "";
+    List<PlaylistTrack> _tracks = [];
+
+    bool IsDeezer => NavidromeId is null && Subscription is null;
+    int MissingCount => _tracks.Count(t => !t.InLibrary);
+    int PlayableCount => PlaylistPlayback.LibraryQueue(_tracks).Count;
+    string ArtUrl => !string.IsNullOrEmpty(_artUrl) ? _artUrl : Playlist.ArtUrl;
+    string Subtitle => string.Join(" · ", new[] { Playlist.ArtistName, $"{_tracks.Count} song{(_tracks.Count == 1 ? "" : "s")}" }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is not null)
+        {
+            ClaimsPrincipal user = (await AuthStateTask).User;
+            _isAdmin = user.IsInRole(StackarrRoles.Admin);
+            int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out _userId);
+        }
+
+        try
+        {
+            if (Subscription is not null)
+            {
+                await LoadSubscriptionAsync();
+            }
+            else if (NavidromeId is not null)
+            {
+                await LoadLibraryAsync();
+            }
+            else
+            {
+                // Opening a Deezer playlist from Discover. If the user already subscribes to it, show
+                // it the way the library does, their downloaded songs resolved to Navidrome (playable,
+                // "x/y in library") and the rest as previews, rather than an all-preview view.
+                MusicSubscription? subscription = await Subscriptions.GetForUserBySourceAsync(_userId, Playlist.DeezerId);
+                if (subscription is not null)
+                {
+                    Subscription = subscription;
+                    _subscribed = true;
+                    await LoadSubscriptionAsync();
+                }
+                else
+                {
+                    await LoadDeezerAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load the playlist: {ex.Message}", Severity.Error);
+        }
+        // A missing song being grabbed shows its own progress until it lands.
+        try { _tracks = await ApplyDownloadStatesAsync(_tracks); }
+        catch { /* progress is an enhancement */ }
+        _loading = false;
+    }
+
+    /// <summary>Overlays each row's in-flight grab progress (matched by Deezer track id).</summary>
+    async Task<List<PlaylistTrack>> ApplyDownloadStatesAsync(List<PlaylistTrack> tracks)
+    {
+        if (tracks.Count == 0 || tracks.All(t => t.InLibrary || t.DeezerTrackId <= 0))
+            return tracks;
+
+        Dictionary<long, TrackGrabState> states = await Catalog.GetTrackDownloadStatesAsync();
+        if (states.Count == 0)
+            return tracks;
+
+        return tracks.Select(t =>
+        {
+            if (t.InLibrary || t.DeezerTrackId <= 0 || !states.TryGetValue(t.DeezerTrackId, out TrackGrabState? state) || !state.IsDownloading)
+                return t;
+            return t with { IsDownloading = true, DownloadSize = state.Size, DownloadSizeLeft = state.Remaining };
+        }).ToList();
+    }
+
+    async Task LoadSubscriptionAsync(bool sync = true)
+    {
+        if (sync)
+        {
+            try { await Subscriptions.SyncAsync(Subscription!); }
+            catch { /* show what we have */ }
+        }
+        _tracks = Subscriptions.GetTracks(Subscription!).Select(t => new PlaylistTrack(
+            t.Title, t.Artist, t.Album, t.SongId, t.PreviewUrl, 0, 0, t.CoverArtUrl, t.DeezerTrackId)).ToList();
+    }
+
+    async Task LoadLibraryAsync()
+    {
+        SubsonicPlaylist? playlist = await Navidrome.GetPlaylistAsync(NavidromeId!);
+        _artUrl = NavidromeService.CoverArtUrl(playlist?.CoverArt ?? "");
+        _tracks = (playlist?.Tracks ?? []).Select(s => new PlaylistTrack(
+            s.Title, s.Artist, s.Album, s.Id, "", 0, 0,
+            NavidromeService.CoverArtUrl(s.CoverArt))).ToList();
+    }
+
+    async Task LoadDeezerAsync()
+    {
+        List<MusicItem> items = await Catalog.GetPlaylistTracksAsync(Playlist.DeezerId);
+        _tracks = items.Select(t => new PlaylistTrack(
+            t.Title, t.ArtistName, t.AlbumName, "", t.PreviewUrl,
+            t.AlbumDeezerId, t.ArtistDeezerId, t.ArtUrl, t.DeezerId)).ToList();
+    }
+
+    /// <summary>Plays the whole playlist, only the songs we actually hold, so advancing never lands
+    /// on a preview.</summary>
+    async Task PlayAll(bool shuffle)
+    {
+        List<PlaylistTrack> queue = PlaylistPlayback.LibraryQueue(_tracks);
+        if (queue.Count == 0) return;
+        if (shuffle)
+            queue = [.. queue.OrderBy(_ => Random.Shared.Next())];
+        await Play(queue, 0);
+    }
+
+    /// <summary>Plays the row the user clicked: a held song starts the library queue at its position,
+    /// a preview plays as a one-off (never part of prev/next).</summary>
+    async Task PlayTrack(PlaylistTrack track)
+    {
+        (List<PlaylistTrack> queue, int index) = PlaylistPlayback.ForTrack(_tracks, track);
+        if (queue.Count == 0) return;
+        await Play(queue, index);
+    }
+
+    async Task Play(List<PlaylistTrack> tracks, int index)
+    {
+        var queue = tracks.Select(t => new
+        {
+            id = t.SongId,
+            title = t.Title,
+            artist = t.Artist,
+            album = t.Album,
+            cover = t.CoverUrl,
+            stream = t.InLibrary ? NavidromeService.PlayerStreamUrl(t.SongId) : t.PreviewUrl,
+            artistDeezerId = t.ArtistDeezerId,
+            albumArtist = t.Artist, albumDeezerId = t.AlbumDeezerId
+        }).ToList();
+        try { await JS.InvokeVoidAsync("stackarrMusic.play", queue, index); }
+        catch { /* player is an enhancement */ }
+    }
+
+    async Task OpenAlbum(PlaylistTrack track)
+    {
+        MusicItem album = new()
+        {
+            EntityType = MusicEntityType.Album,
+            Title = string.IsNullOrEmpty(track.Album) ? track.Title : track.Album,
+            ArtistName = track.Artist,
+            DeezerId = track.AlbumDeezerId
+        };
+        DialogParameters<AlbumDetailDialog> p = new() { { x => x.Album, album }, { x => x.IsAdmin, _isAdmin } };
+        await DialogService.ShowAsync<AlbumDetailDialog>(album.Title, p, MusicDialogLauncher.Detail());
+        Catalog.InvalidateLibraryCache();
+    }
+
+    async Task SubscribeAsync()
+    {
+        _busy = true;
+        try
+        {
+            MusicSubscription? sub = await Subscriptions.SubscribeAsync(_userId, Playlist);
+            if (sub is null)
+            {
+                Snackbar.Add("Could not subscribe to this playlist.", Severity.Error);
+            }
+            else
+            {
+                // Switch this popup to the subscribed view immediately (matched songs playable), so it
+                // looks like the library version without needing to be reopened.
+                Subscription = sub;
+                _subscribed = true;
+                await LoadSubscriptionAsync(sync: false);
+                Snackbar.Add($"Subscribed to {Playlist.Title} — it's in your library and will update automatically.", Severity.Success);
+            }
+        }
+        catch (Exception ex) { Snackbar.Add($"Could not subscribe: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task AddToLibraryAsync()
+    {
+        _busy = true;
+        try
+        {
+            int count = await Catalog.DownloadPlaylistAlbumsAsync(Playlist);
+            Snackbar.Add(count == 0
+                ? "Nothing to add from this playlist."
+                : $"Added {count} album(s) to your library — downloading now.", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Could not add the playlist: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task RefreshAsync()
+    {
+        if (Subscription is null) return;
+        _busy = true;
+        try
+        {
+            // Pull the latest from Deezer, then queue a grab for every song we still don't hold.
+            int searched = await Subscriptions.RefreshAsync(Subscription);
+            List<MusicSubscription> fresh = await Subscriptions.GetForUserAsync(Subscription.OwnerUserId);
+            Subscription = fresh.FirstOrDefault(s => s.Id == Subscription.Id) ?? Subscription;
+            await LoadSubscriptionAsync(sync: false);
+            await ApplyDownloadStatesOrEmpty();
+            Snackbar.Add(searched == 0
+                ? "Refreshed — nothing missing to search for."
+                : $"Refreshed — searching for {searched} missing song(s).",
+                Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Refresh failed: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    /// <summary>Drops any file we hold for this song and re-searches it (a per-song "Search").</summary>
+    async Task ResearchTrack(PlaylistTrack track)
+    {
+        _busy = true;
+        try
+        {
+            await Catalog.ResearchTrackAsync(track.Artist, track.Title, track.DeezerTrackId);
+            Snackbar.Add($"Searching \"{track.Title}\"…", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Search failed: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task OpenTrackInteractiveSearch(PlaylistTrack track)
+    {
+        DialogParameters<StReleaseSearchDialog> parameters = new()
+        {
+            { x => x.Title, track.Title },
+            { x => x.Subtitle, track.Artist },
+            { x => x.Providers, new List<ReleaseProvider> { MusicReleases, SoulseekReleases } },
+            { x => x.Query, new ReleaseSearchQuery
+                {
+                    Domain = MusicMediaDomains.Music,
+                    Kind = MusicReleaseKinds.Track,
+                    Artist = track.Artist,
+                    Album = track.Album,
+                    Title = track.Title,
+                    Noun = "music"
+                } },
+            { x => x.IsAdmin, _isAdmin }
+        };
+        DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+        await DialogService.ShowAsync<StReleaseSearchDialog>($"Interactive search · {track.Title}", parameters, options);
+    }
+
+    async Task OpenTrackInfo(PlaylistTrack track)
+    {
+        _busy = true;
+        try
+        {
+            MusicTechnical tech = await Catalog.GetTrackTechnicalForSongAsync(track.Title, track.DeezerTrackId);
+            DialogParameters<MusicInfoDialog> p = new() { { x => x.Title, track.Title }, { x => x.Technical, tech } };
+            await DialogService.ShowAsync<MusicInfoDialog>($"{track.Title} · Media Info", p,
+                new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true });
+        }
+        catch (Exception ex) { Snackbar.Add($"Could not read media info: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    /// <summary>The traditional (plain list) lyrics view for one song of this playlist.</summary>
+    async Task OpenLyrics(PlaylistTrack track)
+    {
+        DialogParameters<LyricsDialog> p = new()
+        {
+            { x => x.Title, track.Title },
+            { x => x.Artist, track.Artist },
+            { x => x.SongId, string.IsNullOrEmpty(track.SongId) ? null : track.SongId },
+            { x => x.DeezerTrackId, track.DeezerTrackId },
+            { x => x.IsAdmin, _isAdmin }
+        };
+        await DialogService.ShowAsync<LyricsDialog>($"{track.Title} · Lyrics", p,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true });
+    }
+
+    async Task DeleteTrack(PlaylistTrack track)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync("Delete file",
+            $"Delete the file for \"{track.Title}\"? The song will show as missing and can be re-searched.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirm != true) return;
+        _busy = true;
+        try
+        {
+            await Catalog.DeleteTrackForSongAsync(track.Title, track.DeezerTrackId);
+            await LoadSubscriptionOrLibraryAsync();
+            Snackbar.Add($"Deleted the file for \"{track.Title}\".", Severity.Success);
+        }
+        catch (Exception ex) { Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task LoadSubscriptionOrLibraryAsync()
+    {
+        if (Subscription is not null)
+        {
+            await LoadSubscriptionAsync(sync: false);
+            await ApplyDownloadStatesOrEmpty();
+        }
+        else if (NavidromeId is not null)
+        {
+            await LoadLibraryAsync();
+        }
+    }
+
+    async Task ApplyDownloadStatesOrEmpty()
+    {
+        try { _tracks = await ApplyDownloadStatesAsync(_tracks); }
+        catch { /* progress is an enhancement */ }
+    }
+
+    async Task AddSongsAsync()
+    {
+        if (NavidromeId is null) return;
+        DialogParameters<AddSongsDialog> p = new() { { x => x.PlaylistId, NavidromeId } };
+        await DialogService.ShowAsync<AddSongsDialog>("Add Songs", p, MusicDialogLauncher.Detail());
+        await LoadLibraryAsync();
+    }
+
+    async Task EditAsync()
+    {
+        if (NavidromeId is null) return;
+        DialogParameters<EditPlaylistDialog> p = new() { { x => x.PlaylistId, NavidromeId }, { x => x.PlaylistName, Playlist.Title } };
+        await DialogService.ShowAsync<EditPlaylistDialog>("Edit Playlist", p, MusicDialogLauncher.Detail());
+        await LoadLibraryAsync();
+    }
+}

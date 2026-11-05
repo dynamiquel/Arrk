@@ -1,0 +1,56 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docuser
+
+## Rider / JetBrains
+.idea/
+*.sln.DotSettings.user
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Stackarr
+config/
+data/
+tmp/
+stackarr-data/
+
+## Local runtime state
+*.db
+*.db-shm
+*.db-wal
+*.pid
+
+## Local container fixtures and agent scratch space
+test-data/
+.opencode/
+.sisyphus/
+.worktrees/
+AGENTS.LOCAL.md

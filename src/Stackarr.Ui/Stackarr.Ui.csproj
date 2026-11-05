@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Stackarr.Ui is the shared UI layer every module builds against: the design tokens and
+    theme, reusable primitives, and the UI contracts the shell composes modules from
+    (surfaces, navigation, slots/regions, head assets and endpoint mapping). The shell
+    (Stackarr.App) never references a module's UI types directly; it renders whatever the
+    registered contracts describe.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.Core\Stackarr.Core.csproj" />
+    <ProjectReference Include="..\Stackarr.Media.Abstractions\Stackarr.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\Stackarr.Downloads.Abstractions\Stackarr.Downloads.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+    <PackageReference Include="Pondhawk.Monaco" Version="1.0.2" />
+  </ItemGroup>
+
+  <!-- Components, authorization and endpoint mapping live in the ASP.NET Core shared framework. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!-- Region/route scanning internals are unit-tested directly. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Stackarr.Ui.Tests" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Stackarr.Downloads.Abstractions" />
+  </ItemGroup>
+</Project>

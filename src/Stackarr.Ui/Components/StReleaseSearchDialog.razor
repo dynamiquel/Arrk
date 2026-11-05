@@ -1,0 +1,239 @@
+@* Shared interactive release picker. Streams scored candidates from one or more ReleaseProviders as
+   each source/indexer responds, so results appear immediately instead of waiting for the slowest
+   indexer. Used by the movie, series, season, episode and album dialogs, so Radarr, Sonarr, Prowlarr
+   and Soulseek all search through the same UI.
+
+   Uses the same card-overlay shell as the media info / speedtest popups (st-media-dialog +
+   StDialogTitle + floating close), so it reads as part of the same family. *@
+
+@using Stackarr.Core.Models
+@using Stackarr.Core.Services
+@using System.Threading.Channels
+@implements IDisposable
+@inject ISnackbar Snackbar
+@inject LiveActivityRegistry LiveActivity
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-release-search">
+            <StDialogTitle Icon="@Icons.Material.Filled.TravelExplore"
+                           Title="@Title"
+                           Subtitle="@Subtitle" />
+
+            <div class="st-release-search-bar">
+                <MudText Typo="Typo.caption" Class="st-release-search-count">@CountText</MudText>
+                @if (_searching)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary"
+                                         Style="margin-left:8px;" />
+                }
+                <MudSpacer />
+                <MudSwitch T="bool" @bind-Value="_showRejected" Color="Color.Primary" Label="Show rejected"
+                           Dense="true" />
+                <StIconButton Icon="@Icons.Material.Filled.Refresh" Title="Search again" Variant="ActionVariant.Neutral"
+                              Disabled="@_loading" OnClick="Search" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_error) && _releases.Count == 0 && !_searching)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.ErrorOutline" Message="@_error" />
+            }
+            else if (Visible.Count == 0)
+            {
+                @if (_searching || _loading)
+                {
+                    <div class="st-release-search-state"><LoadingView Message="Searching indexers…" /></div>
+                }
+                else
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                                Message="@(_releases.Count > 0 ? "All releases were rejected." : "No releases found on your sources.")" />
+                }
+            }
+            else
+            {
+                <div class="st-release-list">
+                    @foreach (ReleaseCandidate release in Visible)
+                    {
+                        <StReleaseRow Release="release" Busy="@_busy"
+                                      OnGrab="@(() => Grab(release))" />
+                    }
+                </div>
+            }
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string Title { get; set; } = "";
+    /// <summary>Scope shown under the title, e.g. the year, or "Season 1" / the artist.</summary>
+    [Parameter] public string Subtitle { get; set; } = "";
+    /// <summary>One or more sources to search. Results from all of them are streamed and merged.</summary>
+    [Parameter] public IReadOnlyList<ReleaseProvider> Providers { get; set; } = [];
+    [Parameter, EditorRequired] public ReleaseSearchQuery Query { get; set; } = new();
+    [Parameter] public bool IsAdmin { get; set; }
+
+    readonly List<ReleaseCandidate> _releases = [];
+    readonly HashSet<string> _seen = new(StringComparer.OrdinalIgnoreCase);
+    CancellationTokenSource? _cts;
+    bool _searching = true;
+    bool _loading = true;
+    bool _busy;
+    bool _showRejected;
+    string _error = "";
+
+    int RejectedCount => _releases.Count(r => r.Rejected);
+
+    /// <summary>Human noun supplied by the feature that opened the picker.</summary>
+    string DomainNoun => string.IsNullOrWhiteSpace(Query.Noun) ? "releases" : Query.Noun;
+
+    /// <summary>Non-rejected candidates first (best score, then seeders); rejected ones only on demand.</summary>
+    List<ReleaseCandidate> Visible => (_showRejected ? _releases : _releases.Where(r => !r.Rejected))
+        .OrderBy(r => r.Rejected)
+        .ThenByDescending(r => r.Score)
+        .ThenByDescending(r => r.Seeders)
+        .ToList();
+
+    string CountText
+    {
+        get
+        {
+            if (Visible.Count == 0) return _searching ? "Searching…" : "No releases";
+            string count = $"{Visible.Count} release{(Visible.Count == 1 ? "" : "s")}";
+            if (_searching) return $"{count}…";
+            return !_showRejected && RejectedCount > 0 ? $"{count} · {RejectedCount} rejected hidden" : count;
+        }
+    }
+
+    protected override Task OnInitializedAsync() => Search();
+
+    async Task Search()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        CancellationToken ct = _cts.Token;
+
+        _releases.Clear();
+        _seen.Clear();
+        _error = "";
+        _searching = true;
+        _loading = false;
+        StateHasChanged();
+
+        if (Providers.Count == 0)
+        {
+            _error = "No search sources are available.";
+            _searching = false;
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            await foreach (ReleaseCandidate release in StreamAsync(ct).WithCancellation(ct))
+            {
+                if (_seen.Add(DedupeKey(release)))
+                {
+                    _releases.Add(release);
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer search replaced this one.
+        }
+        catch (Exception ex)
+        {
+            if (_releases.Count == 0)
+                _error = $"Search failed: {ex.Message}";
+        }
+
+        _searching = false;
+        StateHasChanged();
+    }
+
+    /// <summary>Runs every provider concurrently and yields candidates as each returns them.</summary>
+    async IAsyncEnumerable<ReleaseCandidate> StreamAsync(
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+    {
+        Channel<ReleaseCandidate> channel = Channel.CreateUnbounded<ReleaseCandidate>(
+            new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
+
+        Task[] producers = Providers.Select(provider => Task.Run(async () =>
+        {
+            using LiveActivityScope activity = LiveActivity.Begin(
+                LiveActivityKind.Search, $"Searching \"{Title}\"", $"Looking for {DomainNoun} · {provider.Name}");
+            try
+            {
+                await foreach (ReleaseCandidate release in provider.SearchStreamAsync(Query, ct).WithCancellation(ct))
+                    await channel.Writer.WriteAsync(release, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // expected on cancel/research
+            }
+            catch (Exception ex)
+            {
+                await channel.Writer.WriteAsync(Rejected("Search failed: " + ex.Message, provider.Name), ct);
+            }
+        }, ct)).ToArray();
+
+        _ = Task.WhenAll(producers).ContinueWith(_ => channel.Writer.TryComplete(), TaskScheduler.Default);
+
+        await foreach (ReleaseCandidate release in channel.Reader.ReadAllAsync(ct))
+            yield return release;
+    }
+
+    static ReleaseCandidate Rejected(string reason, string source) => new()
+    {
+        Id = $"{source}:error:{reason.GetHashCode()}",
+        Title = source,
+        Indexer = source,
+        Rejected = true,
+        Rejections = [reason]
+    };
+
+    static string DedupeKey(ReleaseCandidate r) =>
+        !string.IsNullOrEmpty(r.InfoHash) ? r.InfoHash
+        : !string.IsNullOrEmpty(r.MagnetUrl) ? r.MagnetUrl
+        : $"{r.Id}|{r.Indexer}";
+
+    async Task Grab(ReleaseCandidate release)
+    {
+        if (!IsAdmin)
+        {
+            Snackbar.Add("Only administrators can grab releases.", Severity.Warning);
+            return;
+        }
+
+        ReleaseProvider? provider = Providers.FirstOrDefault(p =>
+            release.Indexer.StartsWith(p.Name, StringComparison.OrdinalIgnoreCase))
+            ?? Providers.FirstOrDefault();
+
+        _busy = true;
+        StateHasChanged();
+        try
+        {
+            ReleaseGrabResult result = await (provider?.GrabAsync(release, Query)
+                ?? Task.FromResult(new ReleaseGrabResult(false, release, "No provider owns this release.")));
+            Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Grab failed: {ex.Message}", Severity.Error);
+        }
+        _busy = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

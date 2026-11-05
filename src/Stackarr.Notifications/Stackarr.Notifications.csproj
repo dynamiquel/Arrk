@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    The notifications module owns its own UI (Razor class library): the app-bar bell, the unified
+    inbox card sheet, the shared event feed and the All Events page, contributed to the shell
+    through the Stackarr.Ui contracts. Delivery transports and the UI live together so the whole
+    notification surface can be added or omitted as one unit.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.Auth.Abstractions\Stackarr.Auth.Abstractions.csproj" />
+    <ProjectReference Include="..\Stackarr.Core\Stackarr.Core.csproj" />
+    <ProjectReference Include="..\Stackarr.Ui\Stackarr.Ui.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

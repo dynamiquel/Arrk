@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Leaf contract assembly for acquisition and downloader concepts. No Stackarr project or
+    third-party package references, so feature modules and plugins can depend on it cheaply.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.Media.Abstractions\Stackarr.Media.Abstractions.csproj" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

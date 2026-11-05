@@ -1,0 +1,37 @@
+@attribute [UiRegion("tv.episode.menu")]
+@inject IDialogService Dialogs
+@inject SubtitleService Subtitles
+
+@if (Subtitles.IsAvailable && Context is not null && Context.Episode.Id > 0 && Context.Episode.HasFile)
+{
+    <MudMenuItem Icon="@Icons.Material.Filled.Subtitles" OnClick="@(_ => OpenAsync())">Subtitles</MudMenuItem>
+}
+
+@code {
+    [Parameter] public TvEpisodeActionContext? Context { get; set; }
+
+    async Task OpenAsync()
+    {
+        if (Context is null)
+            return;
+
+        TvEpisode episode = Context.Episode;
+        string scope = $"S{episode.SeasonNumber:00}E{episode.EpisodeNumber:00}";
+        DialogParameters<SubtitleSearchDialog> parameters = new()
+        {
+            {
+                x => x.Target,
+                SubtitleTarget.Episode(
+                    episode.SeriesId,
+                    episode.Id,
+                    episode.SeasonNumber,
+                    string.IsNullOrWhiteSpace(episode.Title) ? scope : $"{scope} · {episode.Title}",
+                    Context.Series?.Title ?? "")
+            }
+        };
+        await Dialogs.ShowAsync<SubtitleSearchDialog>(
+            "Subtitles",
+            parameters,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true });
+    }
+}

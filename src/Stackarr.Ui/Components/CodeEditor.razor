@@ -1,0 +1,38 @@
+<MudTextField @bind-Value="InternalValue"
+              Lines="Lines"
+              Immediate="true"
+              Placeholder="@Placeholder"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Code"
+              Style="@EditorStyle"
+              Class="@EditorClass"
+              Disabled="Disabled" />
+
+@code {
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public int Lines { get; set; } = 25;
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string EditorStyle { get; set; } = "font-family:'JetBrains Mono',monospace; font-size:0.9375rem; line-height:1.6; background:var(--st-bg-primary); color:var(--st-text-primary);";
+    [Parameter] public string EditorClass { get; set; } = "";
+
+    string InternalValue
+    {
+        get => Value;
+        set
+        {
+            if (Value != value)
+            {
+                Value = value;
+                _ = ValueChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    public void SetValue(string value)
+    {
+        Value = value;
+        InvokeAsync(StateHasChanged);
+    }
+}

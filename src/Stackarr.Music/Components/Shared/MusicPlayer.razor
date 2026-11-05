@@ -1,0 +1,279 @@
+@* Persistent bottom mini-player. Playback is driven by js/stackarr-music.js; components start
+   playback with JS.InvokeVoidAsync("stackarrMusic.play", songs, index). Clicking the title/artist
+   opens the album/artist popup via the JS→.NET callbacks below. *@
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject MusicCatalogService Catalog
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<div id="st-music-player" class="st-music-player" aria-label="Music player">
+    @* A slim handle across the top of the bar; the chevron opens the full-screen player. It sits
+       above the lyrics pane so it stays reachable while the bar is grown into its lyrics card. *@
+    <div class="st-music-handle">
+        <button id="st-music-expand" class="st-music-handle-btn" type="button" aria-label="Open full player" title="Full player">
+            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowUp" />
+        </button>
+    </div>
+
+    @* The lyrics pane follows the handle so the bar "grows upward" when expanded; it is hidden
+       unless the player has the is-expanded class. Nothing else about the bar changes. *@
+    <div id="st-music-lyrics-pane" class="st-music-lyrics-pane" role="region" aria-label="Lyrics">
+        <div class="st-music-lyrics-tools">
+            <span id="st-lyrics-static" class="st-music-lyrics-hint" style="display:none;"
+                  title="These lyrics carry no timings, so the list will not follow the song">not synced</span>
+            <button id="st-lyrics-earlier" class="st-music-lyrics-offset-btn" type="button" aria-label="Lyrics earlier" title="Lyrics earlier">−</button>
+            <span id="st-lyrics-offset" class="st-music-lyrics-offset-value" title="Lyrics timing offset">0.0s</span>
+            <button id="st-lyrics-later" class="st-music-lyrics-offset-btn" type="button" aria-label="Lyrics later" title="Lyrics later">+</button>
+        </div>
+        <div id="st-music-lyrics-scroll" class="st-music-lyrics-scroll">
+            <div class="st-lrc-inner"></div>
+        </div>
+    </div>
+
+    <div class="st-music-player-row">
+        <img id="st-music-art" class="st-music-player-art" src="" alt="" style="display:none;cursor:pointer;" title="Open album" />
+
+        <div class="st-music-player-info">
+            <div id="st-music-title" class="st-music-player-title" title="Open album" style="cursor:pointer;">&nbsp;</div>
+            <div id="st-music-artist" class="st-music-player-artist" title="Open artist" style="cursor:pointer;">&nbsp;</div>
+        </div>
+
+    <div class="st-music-player-controls">
+        <button id="st-music-shuffle" class="st-music-btn" type="button" aria-label="Shuffle" title="Shuffle">
+            <MudIcon Icon="@Icons.Material.Filled.Shuffle" />
+        </button>
+        <button id="st-music-prev" class="st-music-btn" type="button" aria-label="Previous" title="Previous">
+            <MudIcon Icon="@Icons.Material.Filled.SkipPrevious" />
+        </button>
+        <button id="st-music-toggle" class="st-music-btn st-music-btn--play" type="button" aria-label="Play/Pause" title="Play/Pause">
+            <span class="st-music-icon-play"><MudIcon Icon="@Icons.Material.Filled.PlayArrow" /></span>
+            <span class="st-music-icon-pause"><MudIcon Icon="@Icons.Material.Filled.Pause" /></span>
+        </button>
+        <button id="st-music-next" class="st-music-btn" type="button" aria-label="Next" title="Next">
+            <MudIcon Icon="@Icons.Material.Filled.SkipNext" />
+        </button>
+        <button id="st-music-loop" class="st-music-btn st-music-btn--loop" type="button" aria-label="Repeat" title="Repeat">
+            <span class="st-music-icon-repeat"><MudIcon Icon="@Icons.Material.Filled.Repeat" /></span>
+            <span class="st-music-icon-repeat-one"><MudIcon Icon="@Icons.Material.Filled.RepeatOne" /></span>
+        </button>
+        <button id="st-music-airplay" class="st-music-btn" type="button" aria-label="AirPlay" title="AirPlay" style="display:none;">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M6 22h12l-6-6-6 6zM21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v-2H3V5h18v12h-4v2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+        </button>
+        <button id="st-music-lyrics" class="st-music-btn" type="button" aria-label="Lyrics" title="Lyrics" style="display:none;">
+            <MudIcon Icon="@Icons.Material.Filled.Lyrics" />
+        </button>
+    </div>
+
+    <div id="st-music-progress" class="st-music-progress">
+        <div id="st-music-fill" class="st-music-fill"></div>
+    </div>
+
+    <div id="st-music-time" class="st-music-time"></div>
+
+    <div class="st-music-player-volume">
+        <MudIcon Icon="@Icons.Material.Filled.VolumeUp" Size="Size.Small" />
+        <input id="st-music-volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
+    </div>
+
+    <div id="st-music-status" class="st-music-status"></div>
+
+    <button id="st-music-close" class="st-music-btn" type="button" aria-label="Close" title="Close">
+        <MudIcon Icon="@Icons.Material.Filled.Close" />
+    </button>
+    </div>
+</div>
+
+@* Full-screen now-playing player. A second *surface* for the same playback, not a second player:
+   js/stackarr-music.js drives both from one <audio>, so opening or closing it never changes what
+   is playing. Desktop centres the art (Apple-TV style) and splits into art | lyrics when the song
+   has lyrics; phones keep the art and slide the live lyrics up over it. *@
+<div id="st-full-player" class="st-full-player" aria-label="Now playing" aria-hidden="true">
+    <div id="st-fp-backdrop" class="st-fp-backdrop" aria-hidden="true"></div>
+
+    <div class="st-fp-head">
+        <div class="st-fp-head-label">Now playing</div>
+        <div class="st-fp-head-actions">
+            <button id="st-fp-lyrics" class="st-fp-icon-btn" type="button" aria-label="Lyrics" title="Lyrics" style="display:none;">
+                <MudIcon Icon="@Icons.Material.Filled.Lyrics" />
+            </button>
+            <button id="st-fp-close" class="st-fp-icon-btn" type="button" aria-label="Close now playing" title="Close">
+                <MudIcon Icon="@Icons.Material.Filled.Close" />
+            </button>
+        </div>
+    </div>
+
+    <div class="st-fp-main">
+        <div class="st-fp-left">
+            <img id="st-fp-art" class="st-fp-art" src="" alt="" style="display:none;cursor:pointer;" title="Open album" />
+            <div class="st-fp-info-col">
+                <div id="st-fp-title" class="st-fp-title" title="Open album" style="cursor:pointer;">&nbsp;</div>
+                <div id="st-fp-artist" class="st-fp-artist" title="Open artist" style="cursor:pointer;">&nbsp;</div>
+            </div>
+        </div>
+
+        <div id="st-fp-lyrics-pane" class="st-fp-lyrics-pane" role="region" aria-label="Lyrics">
+            <div id="st-fp-lyrics-scroll" class="st-fp-lyrics-scroll">
+                <div class="st-lrc-inner"></div>
+            </div>
+            <div class="st-fp-lyrics-tools">
+                <span id="st-fp-lyrics-static" class="st-music-lyrics-hint" style="display:none;"
+                      title="These lyrics carry no timings, so the list will not follow the song">not synced</span>
+                <button id="st-fp-lyrics-earlier" class="st-music-lyrics-offset-btn" type="button" aria-label="Lyrics earlier" title="Lyrics earlier">−</button>
+                <span id="st-fp-lyrics-offset" class="st-music-lyrics-offset-value" title="Lyrics timing offset">0.0s</span>
+                <button id="st-fp-lyrics-later" class="st-music-lyrics-offset-btn" type="button" aria-label="Lyrics later" title="Lyrics later">+</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="st-fp-controls">
+        <div class="st-fp-seek">
+            <span id="st-fp-elapsed" class="st-fp-time">0:00</span>
+            <div id="st-fp-progress" class="st-fp-progress" aria-label="Seek">
+                <div id="st-fp-fill" class="st-fp-fill"><span class="st-fp-progress-handle"></span></div>
+            </div>
+            <span id="st-fp-duration" class="st-fp-time">0:00</span>
+        </div>
+
+        <div class="st-fp-transport">
+            <button id="st-fp-shuffle" class="st-fp-btn" type="button" aria-label="Shuffle" title="Shuffle">
+                <MudIcon Icon="@Icons.Material.Filled.Shuffle" />
+            </button>
+            <button id="st-fp-prev" class="st-fp-btn" type="button" aria-label="Previous" title="Previous">
+                <MudIcon Icon="@Icons.Material.Filled.SkipPrevious" />
+            </button>
+            <button id="st-fp-toggle" class="st-fp-btn st-fp-play" type="button" aria-label="Play/Pause" title="Play/Pause">
+                <span class="st-fp-icon-play"><MudIcon Icon="@Icons.Material.Filled.PlayArrow" /></span>
+                <span class="st-fp-icon-pause"><MudIcon Icon="@Icons.Material.Filled.Pause" /></span>
+            </button>
+            <button id="st-fp-next" class="st-fp-btn" type="button" aria-label="Next" title="Next">
+                <MudIcon Icon="@Icons.Material.Filled.SkipNext" />
+            </button>
+            <button id="st-fp-loop" class="st-fp-btn" type="button" aria-label="Repeat" title="Repeat">
+                <span class="st-fp-icon-repeat"><MudIcon Icon="@Icons.Material.Filled.Repeat" /></span>
+                <span class="st-fp-icon-repeat-one"><MudIcon Icon="@Icons.Material.Filled.RepeatOne" /></span>
+            </button>
+        </div>
+
+        @* Three equal-ish columns keep the slider itself centred: the leading icon and the trailing
+           AirPlay slot (empty when WebKit can't cast) both hold their space. *@
+        <div class="st-fp-volume">
+            <span class="st-fp-vol-icon"><MudIcon Icon="@Icons.Material.Filled.VolumeUp" Size="Size.Small" /></span>
+            <input id="st-fp-volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
+            <span class="st-fp-vol-slot">
+                <button id="st-fp-airplay" class="st-fp-btn" type="button" aria-label="AirPlay" title="AirPlay" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M6 22h12l-6-6-6 6zM21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v-2H3V5h18v12h-4v2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+                </button>
+            </span>
+        </div>
+    </div>
+
+    @* Mirrors the bar's top handle: a slim row at the bottom to collapse the view. *@
+    <div class="st-fp-handle">
+        <button id="st-fp-collapse" class="st-fp-handle-btn" type="button" aria-label="Close now playing" title="Close">
+            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" />
+        </button>
+    </div>
+</div>
+
+
+@code {
+    DotNetObjectReference<MusicPlayer>? _ref;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _ref = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("stackarrMusic.init", _ref);
+            }
+            catch { /* player is an enhancement */ }
+        }
+    }
+
+    [JSInvokable]
+    public Task OpenArtist(long deezerId) => OpenAsync(MusicEntityType.Artist, deezerId);
+
+    [JSInvokable]
+    public Task OpenAlbum(long deezerId) => OpenAsync(MusicEntityType.Album, deezerId);
+
+    [JSInvokable]
+    public async Task OpenArtistByName(string name)
+    {
+        // Prefer the artist we hold (a Soulseek/loose import opens as in-library), then Deezer.
+        MusicItem? local = await Catalog.FindLibraryArtistByNameAsync(name);
+        if (local is { LibraryId: > 0 })
+        {
+            await OpenAsync(local);
+            return;
+        }
+        MusicItem? artist = await Catalog.FindArtistByNameAsync(name);
+        if (artist?.DeezerId > 0)
+        {
+            await OpenAsync(MusicEntityType.Artist, artist.DeezerId);
+            return;
+        }
+        Snackbar.Add($"\"{name}\" isn't in your library.", Severity.Info);
+    }
+
+    [JSInvokable]
+    public async Task OpenAlbumByName(string artist, string album, string title)
+    {
+        // Resolve the release we actually hold first: by album name, then by the song's title (so a
+        // compilation/deluxe name mismatch or a missing album tag still lands on our copy), then Deezer.
+        MusicItem? local = await Catalog.FindLibraryAlbumByNameAsync(artist, album);
+        if (local is not { LibraryId: > 0 } && !string.IsNullOrWhiteSpace(title))
+            local = await Catalog.FindLibraryAlbumByTrackAsync(artist, title);
+        if (local is { LibraryId: > 0 })
+        {
+            await OpenAsync(local);
+            return;
+        }
+        MusicItem? found = await Catalog.FindAlbumByNameAsync(artist, album);
+        if (found?.DeezerId > 0)
+        {
+            await OpenAsync(MusicEntityType.Album, found.DeezerId);
+            return;
+        }
+        Snackbar.Add($"\"{album}\" isn't in your library.", Severity.Info);
+    }
+
+    async Task OpenAsync(MusicItem item)
+    {
+        DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true, Position = DialogPosition.Center };
+        if (item.EntityType == MusicEntityType.Artist)
+        {
+            DialogParameters<ArtistDetailDialog> p = new() { { x => x.Artist, item } };
+            await DialogService.ShowAsync<ArtistDetailDialog>(null, p, options);
+        }
+        else
+        {
+            DialogParameters<AlbumDetailDialog> p = new() { { x => x.Album, item } };
+            await DialogService.ShowAsync<AlbumDetailDialog>(null, p, options);
+        }
+    }
+
+    async Task OpenAsync(MusicEntityType type, long deezerId)
+    {
+        if (deezerId <= 0) return;
+        DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true, Position = DialogPosition.Center };
+        if (type == MusicEntityType.Artist)
+        {
+            DialogParameters<ArtistDetailDialog> p = new() { { x => x.Artist, new MusicItem { EntityType = MusicEntityType.Artist, DeezerId = deezerId } } };
+            await DialogService.ShowAsync<ArtistDetailDialog>(null, p, options);
+        }
+        else
+        {
+            DialogParameters<AlbumDetailDialog> p = new() { { x => x.Album, new MusicItem { EntityType = MusicEntityType.Album, DeezerId = deezerId } } };
+            await DialogService.ShowAsync<AlbumDetailDialog>(null, p, options);
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _ref?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

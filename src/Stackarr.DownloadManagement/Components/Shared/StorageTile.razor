@@ -1,0 +1,64 @@
+@inject StorageSpaceService StorageSpace
+@implements IDisposable
+
+@* The storage tile body. DownloadManagement owns the storage roots and disk probe behind the
+   storage thresholds, so it contributes this body to the shared tile catalogue. *@
+
+@if (_spaces.Count > 0)
+{
+    <div class="st-hw-bars">
+        @foreach (StorageSpace space in _spaces)
+        {
+            <UsageBar Label="@space.Label" Percent="@space.UsedPercent" Text="@($"{FormatHelper.FormatBytes(space.FreeBytes)} free")" />
+        }
+    </div>
+    <div class="st-stat-sub">@Detail</div>
+}
+else
+{
+    <div class="st-stat-sub">Unavailable</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    // Free space only moves slowly; a minute matches the storage threshold job's cadence.
+    const int RefreshSeconds = 60;
+
+    IReadOnlyList<StorageSpace> _spaces = [];
+    CancellationTokenSource? _cts;
+    Timer? _refreshTimer;
+
+    string Detail => _spaces.Count switch
+    {
+        0 => "Unavailable",
+        1 => $"{_spaces[0].UsedPercent:F0}% used of {FormatHelper.FormatBytes(_spaces[0].TotalBytes)}",
+        _ => string.Join(" · ", _spaces.Select(s =>
+            $"{s.Label} {s.UsedPercent:F0}% of {FormatHelper.FormatBytes(s.TotalBytes)}"))
+    };
+
+    protected override void OnInitialized()
+    {
+        Load();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            _ =>
+            {
+                Load();
+                return InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _refreshTimer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    void Load() => _spaces = StorageSpace.GetSpaces();
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+}

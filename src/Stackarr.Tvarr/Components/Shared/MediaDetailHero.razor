@@ -1,0 +1,157 @@
+@* Shared full-bleed detail header for movies, shows and remote search results. *@
+
+<div class="st-detail-hero">
+    @if (!string.IsNullOrEmpty(BackdropUrl))
+    {
+        <div class="st-detail-hero-bg" style="background-image:url('@BackdropUrl');"></div>
+    }
+    <DialogCloseButton Class="st-dialog-close--floating" OnClick="OnClose" />
+
+    <div class="st-detail-hero-content">
+        <div class="st-detail-hero-main">
+            @if (!string.IsNullOrEmpty(PosterUrl))
+            {
+                <img src="@PosterUrl" class="st-detail-hero-poster" alt="@Title" />
+            }
+            <div class="st-detail-hero-meta">
+                @if (Badges != null)
+                {
+                    <div class="st-detail-hero-badges">@Badges</div>
+                }
+
+                @if (!string.IsNullOrEmpty(LogoUrl))
+                {
+                    <img src="@LogoUrl" class="st-detail-hero-logo" alt="@Title" title="@Title" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.h3" Class="st-detail-hero-title">@Title</MudText>
+                }
+
+                <div class="st-detail-hero-sub">
+                    @if (Year > 0)
+                    {
+                        <span>@Year@if (EndYear > 0 && EndYear != Year) { @($"–{EndYear}") }</span>
+                    }
+                    @if (RuntimeMinutes is > 0)
+                    {
+                        <span>@FormatRuntime(RuntimeMinutes.Value)</span>
+                    }
+                    @if (Rating is > 0)
+                    {
+                        <span class="st-detail-hero-rating">
+                            <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning" Style="font-size:0.9rem;" />
+                            @Rating.Value.ToString("F1")
+                        </span>
+                    }
+                    @if (!string.IsNullOrEmpty(Certification))
+                    {
+                        <span class="st-detail-hero-cert">@FormatHelper.ToUkCertification(Certification)</span>
+                    }
+                    @if (!string.IsNullOrEmpty(ExtraMeta))
+                    {
+                        <span>@ExtraMeta</span>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(Tagline))
+                {
+                    <div class="st-detail-hero-tagline">@Tagline</div>
+                }
+
+                <div class="st-detail-hero-links">
+                    @if (!string.IsNullOrEmpty(TmdbUrl))
+                    {
+                        <MudButton Href="@TmdbUrl" Target="_blank" Variant="Variant.Outlined" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.OpenInNew" Class="st-hero-link"
+                                   title="Open on TMDB" AriaLabel="Open on TMDB">
+                            TMDB
+                        </MudButton>
+                    }
+                    @if (!string.IsNullOrEmpty(ImdbId))
+                    {
+                        <MudButton Href="@($"https://www.imdb.com/title/{ImdbId}")" Target="_blank" Variant="Variant.Outlined"
+                                   Size="Size.Small" StartIcon="@Icons.Material.Filled.OpenInNew" Class="st-hero-link"
+                                   title="Open on IMDb" AriaLabel="Open on IMDb">
+                            IMDb
+                        </MudButton>
+                    }
+                    @if (Links != null)
+                    {
+                        @Links
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(PlayUrl) || !string.IsNullOrEmpty(TrailerKey) || HeaderActions is not null)
+        {
+            <div class="st-detail-hero-play">
+                @HeaderActions
+                @if (!string.IsNullOrEmpty(PlayUrl))
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               Size="Size.Large"
+                               Href="@PlayUrl" Target="@PlayTarget"
+                               StartIcon="@Icons.Material.Filled.PlayArrow"
+                               Class="st-play-cta st-btn-gradient"
+                               title="@(PlayTarget is null ? "Play" : "Play in Jellyfin")">
+                        @(string.IsNullOrEmpty(PlayLabel) ? "Play" : PlayLabel)
+                    </MudButton>
+                }
+                @if (!string.IsNullOrEmpty(TrailerKey))
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                               Size="Size.Large"
+                               StartIcon="@(IsTrailerPlaying ? Icons.Material.Filled.Close : Icons.Material.Filled.PlayArrow)"
+                               OnClick="OnPlayTrailer">
+                        @(IsTrailerPlaying ? "Hide Trailer" : "Play Trailer")
+                    </MudButton>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public int Year { get; set; }
+    [Parameter] public int EndYear { get; set; }
+    [Parameter] public string PosterUrl { get; set; } = "";
+    [Parameter] public string BackdropUrl { get; set; } = "";
+    [Parameter] public string LogoUrl { get; set; } = "";
+    [Parameter] public double? Rating { get; set; }
+    [Parameter] public int? RuntimeMinutes { get; set; }
+    [Parameter] public string Certification { get; set; } = "";
+    [Parameter] public string ExtraMeta { get; set; } = "";
+    [Parameter] public string Tagline { get; set; } = "";
+    [Parameter] public int TmdbId { get; set; }
+    [Parameter] public string ImdbId { get; set; } = "";
+    [Parameter] public string TrailerKey { get; set; } = "";
+    [Parameter] public string PlayUrl { get; set; } = "";
+    [Parameter] public string PlayLabel { get; set; } = "Play";
+    [Parameter] public string MediaType { get; set; } = "movie";
+    [Parameter] public bool IsTrailerPlaying { get; set; }
+    [Parameter] public RenderFragment? Badges { get; set; }
+    [Parameter] public RenderFragment? Links { get; set; }
+    /// <summary>Primary action buttons rendered in the hero's play area (e.g. Play / Shuffle).</summary>
+    [Parameter] public RenderFragment? HeaderActions { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnPlayTrailer { get; set; }
+
+    string TmdbUrl => TmdbId <= 0 ? "" : MediaType == "tv"
+        ? $"https://www.themoviedb.org/tv/{TmdbId}"
+        : $"https://www.themoviedb.org/movie/{TmdbId}";
+
+    /// <summary>Internal player links open in the same tab; external Jellyfin links open a new one.</summary>
+    string? PlayTarget => PlayUrl.StartsWith('/') ? null : "_blank";
+
+    static string FormatRuntime(int minutes)
+    {
+        if (minutes <= 0) return "";
+        if (minutes < 60) return $"{minutes}m";
+        int h = minutes / 60;
+        int m = minutes % 60;
+        return m == 0 ? $"{h}h" : $"{h}h {m}m";
+    }
+}

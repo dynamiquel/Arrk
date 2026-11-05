@@ -1,0 +1,60 @@
+@using Stackarr.Core.Modules
+
+@* Details for one loaded module (About → Modules). Uses the same information rows and
+   neutral chips as the rest of the About page. *@
+
+<MudDialog>
+    <TitleContent>
+        <StDialogTitle Icon="@Icons.Material.Filled.Extension" Title="@Module.ModuleName" Subtitle="@Module.Author" />
+    </TitleContent>
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+
+        <div class="st-info-list">
+            <div class="st-info-row">
+                <div class="st-info-row-main">
+                    <span class="st-info-row-title">Version</span>
+                </div>
+                <StChip Variant="neutral">@Module.ModuleVersion</StChip>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Module.Description))
+            {
+                <div class="st-info-row">
+                    <div class="st-info-row-main">
+                        <span class="st-info-row-title">Description</span>
+                        <div class="st-info-row-desc">@Module.Description</div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="st-info-section-title">Dependencies</div>
+
+        @if (Module.Dependencies.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="st-info-row-sub">No third-party dependencies.</MudText>
+        }
+        else
+        {
+            <div class="st-info-list">
+                @foreach (ModuleDependency dependency in Module.Dependencies)
+                {
+                    <div class="st-info-row">
+                        <div class="st-info-row-main">
+                            <MudLink Href="@dependency.Url" Target="_blank" Typo="Typo.body2" Class="st-info-row-title">
+                                @dependency.Name
+                            </MudLink>
+                            <div class="st-info-row-sub">by @dependency.Author</div>
+                            <div class="st-info-row-desc">@dependency.Description</div>
+                        </div>
+                        <StChip Variant="neutral">@dependency.License</StChip>
+                    </div>
+                }
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [Parameter, EditorRequired] public ModuleInfo Module { get; set; } = default!;
+}

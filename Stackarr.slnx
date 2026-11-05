@@ -1,0 +1,64 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Stackarr.App/Stackarr.App.csproj" />
+    <Project Path="src/Stackarr.Auth.Abstractions/Stackarr.Auth.Abstractions.csproj" />
+    <Project Path="src/Stackarr.Auth/Stackarr.Auth.csproj" />    <Project Path="src/Stackarr.Bazarr/Stackarr.Bazarr.csproj" />
+    <Project Path="src/Stackarr.Subtitles/Stackarr.Subtitles.csproj" />
+    <Project Path="src/Stackarr.Subtitles.Abstractions/Stackarr.Subtitles.Abstractions.csproj" />
+    <Project Path="src/Stackarr.Subtitles.OpenSubtitles/Stackarr.Subtitles.OpenSubtitles.csproj" />
+    <Project Path="src/Stackarr.Ai/Stackarr.Ai.csproj" />
+    <Project Path="src/Stackarr.Cloudflared/Stackarr.Cloudflared.csproj" />
+    <Project Path="src/Stackarr.Configuration/Stackarr.Configuration.csproj" />
+    <Project Path="src/Stackarr.Core/Stackarr.Core.csproj" />
+    <Project Path="src/Stackarr.Docker/Stackarr.Docker.csproj" />
+    <Project Path="src/Stackarr.DownloadManagement/Stackarr.DownloadManagement.csproj" />
+    <Project Path="src/Stackarr.Downloads.Abstractions/Stackarr.Downloads.Abstractions.csproj" />
+    <Project Path="src/Stackarr.Jellyfin/Stackarr.Jellyfin.csproj" />
+    <Project Path="src/Stackarr.Music.Abstractions/Stackarr.Music.Abstractions.csproj" />
+    <Project Path="src/Stackarr.Music/Stackarr.Music.csproj" />
+    <Project Path="src/Stackarr.Mal/Stackarr.Mal.csproj" />
+    <Project Path="src/Stackarr.Media.Abstractions/Stackarr.Media.Abstractions.csproj" />
+    <Project Path="src/Stackarr.MediaLifecycle/Stackarr.MediaLifecycle.csproj" />
+    <Project Path="src/Stackarr.WatchActivity/Stackarr.WatchActivity.csproj" />
+    <Project Path="src/Stackarr.Slskd/Stackarr.Slskd.csproj" />
+    <Project Path="src/Stackarr.Navidrome/Stackarr.Navidrome.csproj" />
+    <Project Path="src/Stackarr.Notifications/Stackarr.Notifications.csproj" />
+    <Project Path="src/Stackarr.Orchestration/Stackarr.Orchestration.csproj" />
+    <Project Path="src/Stackarr.Prowlarr/Stackarr.Prowlarr.csproj" />
+    <Project Path="src/Stackarr.Requests/Stackarr.Requests.csproj" />
+    <Project Path="src/Stackarr.Transmission/Stackarr.Transmission.csproj" />
+    <Project Path="src/Stackarr.Speedtest/Stackarr.Speedtest.csproj" />
+    <Project Path="src/Stackarr.Ui/Stackarr.Ui.csproj" />
+    <Project Path="src/Stackarr.Tv.Abstractions/Stackarr.Tv.Abstractions.csproj" />
+    <Project Path="src/Stackarr.Tvarr/Stackarr.Tvarr.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Stackarr.SamplePlugin/Stackarr.SamplePlugin.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Stackarr.App.Tests/Stackarr.App.Tests.csproj" />    <Project Path="tests/Stackarr.Auth.Tests/Stackarr.Auth.Tests.csproj" />
+    <Project Path="tests/Stackarr.Ai.Tests/Stackarr.Ai.Tests.csproj" />
+    <Project Path="tests/Stackarr.Cloudflared.Tests/Stackarr.Cloudflared.Tests.csproj" />
+    <Project Path="tests/Stackarr.Configuration.Tests/Stackarr.Configuration.Tests.csproj" />
+    <Project Path="tests/Stackarr.Core.Tests/Stackarr.Core.Tests.csproj" />
+    <Project Path="tests/Stackarr.Docker.Tests/Stackarr.Docker.Tests.csproj" />
+    <Project Path="tests/Stackarr.DownloadManagement.Tests/Stackarr.DownloadManagement.Tests.csproj" />
+    <Project Path="tests/Stackarr.IntegrationTests/Stackarr.IntegrationTests.csproj" />
+    <Project Path="tests/Stackarr.Jellyfin.Tests/Stackarr.Jellyfin.Tests.csproj" />
+    <Project Path="tests/Stackarr.Music.Tests/Stackarr.Music.Tests.csproj" />    <Project Path="tests/Stackarr.Mal.Tests/Stackarr.Mal.Tests.csproj" />
+    <Project Path="tests/Stackarr.MediaLifecycle.Tests/Stackarr.MediaLifecycle.Tests.csproj" />    <Project Path="tests/Stackarr.Slskd.Tests/Stackarr.Slskd.Tests.csproj" />
+    <Project Path="tests/Stackarr.Navidrome.Tests/Stackarr.Navidrome.Tests.csproj" />
+    <Project Path="tests/Stackarr.Notifications.Tests/Stackarr.Notifications.Tests.csproj" />
+    <Project Path="tests/Stackarr.Orchestration.Tests/Stackarr.Orchestration.Tests.csproj" />
+    <Project Path="tests/Stackarr.Prowlarr.Tests/Stackarr.Prowlarr.Tests.csproj" />
+    <Project Path="tests/Stackarr.Requests.Tests/Stackarr.Requests.Tests.csproj" />
+    <Project Path="tests/Stackarr.Speedtest.Tests/Stackarr.Speedtest.Tests.csproj" />
+    <Project Path="tests/Stackarr.TestSupport/Stackarr.TestSupport.csproj" />
+    <Project Path="tests/Stackarr.Transmission.Tests/Stackarr.Transmission.Tests.csproj" />
+    <Project Path="tests/Stackarr.Tvarr.Tests/Stackarr.Tvarr.Tests.csproj" />
+    <Project Path="tests/Stackarr.Ui.Tests/Stackarr.Ui.Tests.csproj" />
+    <Project Path="tests/Stackarr.Bazarr.Tests/Stackarr.Bazarr.Tests.csproj" />
+    <Project Path="tests/Stackarr.Subtitles.Tests/Stackarr.Subtitles.Tests.csproj" />
+    <Project Path="tests/Stackarr.Subtitles.OpenSubtitles.Tests/Stackarr.Subtitles.OpenSubtitles.Tests.csproj" />
+  </Folder>
+</Solution>

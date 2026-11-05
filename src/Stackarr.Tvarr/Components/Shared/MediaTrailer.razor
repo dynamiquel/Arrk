@@ -1,0 +1,27 @@
+@* Embedded trailer player. Visibility is controlled by the parent (hero "Play Trailer" button). *@
+
+@if (!string.IsNullOrEmpty(TrailerKey))
+{
+    <div class="st-trailer st-trailer--expanded">
+        <div class="st-trailer-frame">
+            <iframe src="@($"https://www.youtube-nocookie.com/embed/{TrailerKey}?rel=0&modestbranding=1&playsinline=1&autoplay=1")"
+                    title="@(string.IsNullOrEmpty(Title) ? "Trailer" : $"{Title} trailer")"
+                    frameborder="0"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen></iframe>
+        </div>
+        <div class="st-trailer-actions">
+            <MudButton Href="@($"https://www.youtube.com/watch?v={TrailerKey}")" Target="_blank" Size="Size.Small"
+                       Variant="Variant.Text" StartIcon="@Icons.Material.Filled.OpenInNew"
+                       title="Watch on YouTube" AriaLabel="Watch on YouTube">
+                <span class="st-btn-label">Watch on YouTube</span>
+            </MudButton>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? TrailerKey { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+}

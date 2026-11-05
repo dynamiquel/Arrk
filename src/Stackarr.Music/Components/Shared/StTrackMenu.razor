@@ -1,0 +1,50 @@
+@* Per-song overflow menu, mirroring the episode tile's "..." menu: Research (drop a wrong file and
+   re-grab it), Interactive search, Media info, or Delete the placed file. *@
+@if (ShowMenu)
+{
+    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+             ListClass="st-track-menu" Class="st-track-action-btn"
+             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+             AriaLabel="Song actions" title="Song actions">
+        @if (ShowResearch)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.Search" OnClick="@(() => OnResearch.InvokeAsync())">Search</MudMenuItem>
+        }
+        @if (ShowInteractive)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.TravelExplore" OnClick="@(() => OnInteractive.InvokeAsync())">Interactive search</MudMenuItem>
+        }
+        @if (ShowMediaInfo)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => OnMediaInfo.InvokeAsync())">Media info</MudMenuItem>
+        }
+        @if (ShowLyrics)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.Lyrics" OnClick="@(() => OnLyrics.InvokeAsync())">Lyrics</MudMenuItem>
+        }
+        @if (ShowDelete)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => OnDelete.InvokeAsync())">Delete</MudMenuItem>
+        }
+    </MudMenu>
+}
+
+@code {
+    /// <summary>Acquisition and deletion are admin actions; lyrics and media info are available to anyone.</summary>
+    [Parameter] public bool IsAdmin { get; set; }
+    [Parameter] public bool HasFile { get; set; }
+    [Parameter] public bool HasMediaInfo { get; set; }
+    [Parameter] public EventCallback OnResearch { get; set; }
+    [Parameter] public EventCallback OnInteractive { get; set; }
+    [Parameter] public EventCallback OnMediaInfo { get; set; }
+    [Parameter] public EventCallback OnLyrics { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    bool ShowResearch => IsAdmin && OnResearch.HasDelegate;
+    bool ShowInteractive => IsAdmin && OnInteractive.HasDelegate;
+    bool ShowMediaInfo => HasMediaInfo && OnMediaInfo.HasDelegate;
+    // Shown for any song we hold: the lyrics view also offers to look again when none are found yet.
+    bool ShowLyrics => HasFile && OnLyrics.HasDelegate;
+    bool ShowDelete => IsAdmin && HasFile && OnDelete.HasDelegate;
+    bool ShowMenu => ShowResearch || ShowInteractive || ShowMediaInfo || ShowLyrics || ShowDelete;
+}

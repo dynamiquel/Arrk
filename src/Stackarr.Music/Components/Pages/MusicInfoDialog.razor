@@ -1,0 +1,71 @@
+@* Audio media info: the file's embedded tags plus its technical attributes, in one compact grid. *@
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-media-info-dialog">
+            <StDialogTitle Icon="@Icons.Material.Filled.Info" Title="Media Info" Subtitle="@Title" />
+
+            @if (!Technical.HasInfo)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.Info" Message="No file information is available for this album yet." />
+            }
+            else
+            {
+                <div class="st-media-info">
+                    <div class="st-media-info-section">
+                        <div class="st-detail-section-label">
+                            <MudIcon Icon="@Icons.Material.Filled.Sell" Size="Size.Small" /> Tags
+                        </div>
+                        @if (!Technical.HasTags)
+                        {
+                            <MudText Typo="Typo.body2" Style="color:var(--st-text-secondary);">No embedded tags were read from this file.</MudText>
+                        }
+                        else
+                        {
+                            <MetaGrid>
+                                <MetaItem Label="Title" Value="@Dash(Technical.TagTitle)" />
+                                <MetaItem Label="Artist" Value="@Dash(Technical.TagArtist)" />
+                                <MetaItem Label="Album artist" Value="@Dash(Technical.TagAlbumArtist)" />
+                                <MetaItem Label="Album" Value="@Dash(Technical.TagAlbum)" />
+                                <MetaItem Label="Track" Value="@Dash(Technical.TagTrack)" />
+                                <MetaItem Label="Disc" Value="@Dash(Technical.TagDisc)" />
+                                <MetaItem Label="Date" Value="@Dash(Technical.TagDate)" />
+                                <MetaItem Label="Genre" Value="@Dash(Technical.TagGenre)" />
+                            </MetaGrid>
+                        }
+                    </div>
+
+                    <div class="st-media-info-section">
+                        <div class="st-detail-section-label">
+                            <MudIcon Icon="@Icons.Material.Filled.VolumeUp" Size="Size.Small" /> Audio
+                        </div>
+                        <MetaGrid GridTemplate="repeat(auto-fit, minmax(120px, 1fr))">
+                            <MetaItem Label="Container" Value="@Dash(Technical.Container)" />
+                            <MetaItem Label="Duration" Value="@Dash(Technical.DurationLabel)" />
+                            <MetaItem Label="Size" Value="@(Technical.FileSizeBytes > 0 ? FormatHelper.FormatBytes(Technical.FileSizeBytes) : "—")" />
+                            <MetaItem Label="Quality" Value="@Dash(Technical.Quality)" />
+                            <MetaItem Label="Codec" Value="@Dash(Technical.Codec)" />
+                            <MetaItem Label="Profile" Value="@Dash(Technical.Profile)" />
+                            <MetaItem Label="Channels" Value="@Dash(Technical.ChannelsLabel)" />
+                            <MetaItem Label="Sample rate" Value="@Dash(Technical.SampleRate)" />
+                            <MetaItem Label="Bit depth" Value="@Dash(Technical.Bits)" />
+                            <MetaItem Label="Bit rate" Value="@Dash(Technical.BitRate)" />
+                            @if (!string.IsNullOrEmpty(Technical.Spatial))
+                            {
+                                <MetaItem Label="Immersive" Value="@Technical.Spatial" />
+                            }
+                        </MetaGrid>
+                    </div>
+                </div>
+            }
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public MusicTechnical Technical { get; set; } = new();
+
+    static string Dash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+}

@@ -1,0 +1,105 @@
+@inject DashboardSummaryCache SummaryCache
+@implements IDisposable
+
+<div class="status-bar">
+    @foreach (StatusItem status in _statuses)
+    {
+        <div class="status-block @status.CssClass" title="@status.Name: @status.Text">
+            <span class="status-label">@status.Name</span>
+        </div>
+    }
+</div>
+@if (_statuses.Count == 0)
+{
+    <div class="st-stat-sub">Waiting for service state…</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    const int RefreshSeconds = 2;
+
+    List<StatusItem> _statuses = [];
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(CancellationToken.None);
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAsync(CancellationToken ct)
+    {
+        try
+        {
+            DashboardSummary summary = await SummaryCache.GetAsync(ct);
+            _statuses = [.. summary.Services
+                .Select(s => new StatusItem(
+                    s.Definition.DisplayName,
+                    CssClass(s.State.IsEnabled, s.State.IsHealthy, s.State.AggregateState),
+                    StatusText(s.State.IsEnabled, s.State.IsHealthy, s.State.AggregateState)))
+                .OrderBy(s => s.Name)];
+        }
+        catch
+        {
+            // A transient Docker failure keeps the last known state.
+        }
+    }
+
+    static string CssClass(bool isEnabled, bool isRunning, ContainerState state)
+    {
+        if (!isEnabled)
+            return "status-unknown";
+        if (isRunning)
+            return "status-running";
+
+        return state switch
+        {
+            ContainerState.Starting => "status-starting",
+            ContainerState.Paused => "status-paused",
+            ContainerState.Restarting => "status-restarting",
+            _ => "status-stopped"
+        };
+    }
+
+    static string StatusText(bool isEnabled, bool isRunning, ContainerState state)
+    {
+        if (!isEnabled)
+            return "Disabled";
+        if (isRunning)
+            return "Running";
+
+        return state switch
+        {
+            ContainerState.Starting => "Starting",
+            ContainerState.Exited => "Stopped",
+            ContainerState.Stopped => "Stopped",
+            ContainerState.Paused => "Paused",
+            ContainerState.Restarting => "Restarting",
+            ContainerState.Created => "Created",
+            ContainerState.Removing => "Removing",
+            ContainerState.Dead => "Dead",
+            _ => "No containers"
+        };
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+
+    sealed record StatusItem(string Name, string CssClass, string Text);
+}

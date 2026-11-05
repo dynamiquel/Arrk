@@ -1,0 +1,86 @@
+@inherits LayoutComponentBase
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthProvider
+@inject UiTextSizePreference TextSizes
+
+<StackarrTheme />
+<UserCssStyle />
+
+<MudLayout>
+    <MudAppBar Elevation="0" Class="st-appbar">
+        @* Desktop: rail toggle at the left. Mobile: no top-left control (it moves to the
+           floating bottom-right cluster below). *@
+        <MudIconButton Icon="@Icons.Material.Filled.GridView" Color="Color.Inherit" Edge="Edge.Start"
+                       Class="@($"st-header-btn st-desktop-nav-trigger {(_drawerOpen ? "st-header-btn--active" : "")}")"
+                       aria-label="Toggle navigation sidebar" title="Toggle sidebar"
+                       OnClick="ToggleDrawer" />
+        <a href="/" class="st-appbar-brand" aria-label="Stackarr home">
+            <div class="st-appbar-logo">
+                <MudIcon Icon="@Icons.Material.Filled.Dns" Color="Color.Default" Size="Size.Small" />
+            </div>
+            <MudText Typo="Typo.h6" Class="st-appbar-title">Stackarr</MudText>
+        </a>
+        <MudSpacer />
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Mini"
+               ClipMode="DrawerClipMode.Docked"
+               Elevation="0" Class="st-drawer"
+               MiniWidth="68px" Width="240px">
+        <NavMenu Variant="rail" />
+    </MudDrawer>
+    <MudMainContent Class="st-main">
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="st-page-container pa-3 pa-sm-5 pa-md-8">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@* App-bar controls, rendered outside <MudLayout> and the app bar so neither the docked
+   drawer's sibling margins nor the app bar's backdrop-filter (a containing block for fixed
+   descendants) can shift them. Desktop: top-right of the header. Mobile: floating
+   bottom-right cluster. *@
+<div class="st-appbar-actions">
+    <MudIconButton Icon="@Icons.Material.Filled.GridView" Color="Color.Inherit"
+                   Class="st-header-btn st-mobile-nav-trigger"
+                   aria-label="Open navigation" title="Navigation"
+                   OnClick="OpenNavGridAsync" />
+    <UiRegion Name="@UiRegions.ShellAppBarActions" />
+</div>
+
+@* Outside MudLayout so the docked drawer's sibling margins never shift it. *@
+<UiRegion Name="@UiRegions.ShellOverlays" />
+
+@code {
+    bool _drawerOpen;
+
+    void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    Task OpenNavGridAsync() => DialogService.ShowAsync<NavGridDialog>(null, StCardSheetOptions.Create());
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            // The head script applies the cookie before first paint; this syncs the account's
+            // stored preference (correcting a stale cookie, e.g. after switching accounts).
+            AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+            if (!int.TryParse(state.User.FindFirst(StackarrClaims.UserIdClaim)?.Value, out int userId))
+                return;
+
+            UiTextSize size = await TextSizes.GetAsync(userId);
+            string value = UiTextSizePreference.ToValue(size);
+            string current = await JS.InvokeAsync<string>("stackarrTextSize.get");
+            if (current != value || !await JS.InvokeAsync<bool>("stackarrTextSize.has"))
+                await JS.InvokeVoidAsync("stackarrTextSize.set", value);
+        }
+        catch
+        {
+            /* Appearance is cosmetic; a JS or database hiccup must not break the shell. */
+        }
+    }
+}

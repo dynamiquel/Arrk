@@ -1,0 +1,169 @@
+@using Stackarr.Core.Enums
+@using Stackarr.Core.Playback
+@inject ContinueWatchingService Continue
+@inject ITvPlayerLinks JellyfinLink
+
+@if (_items.Count > 0)
+{
+    <div class="st-continue">
+        <div class="st-continue-head">
+            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Primary" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Continue Watching</MudText>
+        </div>
+        <div class="st-continue-row">
+            @foreach (ContinueWatchingItem item in _items)
+            {
+                @ItemTemplate(item)
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Limit { get; set; } = 20;
+
+    /// <summary>Restrict the shelf to a single media domain (movies on the Movies page, TV on Shows).</summary>
+    [Parameter] public MediaDomain? Domain { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    List<ContinueWatchingItem> _items = [];
+    readonly Dictionary<string, int> _imageStage = [];
+    readonly HashSet<string> _logoFailed = [];
+
+    RenderFragment<ContinueWatchingItem> ItemTemplate => item => @<text>
+        @if (PlayHref(item) is string href)
+        {
+            <a class="st-continue-card" href="@href" target="@(href.StartsWith('/') ? null : "_blank")" rel="noopener"
+               title="@(href.StartsWith('/') ? "Play" : "Play in Jellyfin")">
+                @CardBody(item)
+            </a>
+        }
+        else
+        {
+            <div class="st-continue-card">
+                @CardBody(item)
+            </div>
+        }
+    </text>;
+
+    /// <summary>
+    /// The play target for a continue-watching card: the in-site player when enabled, otherwise
+    /// Jellyfin's deep link.
+    /// </summary>
+    string? PlayHref(ContinueWatchingItem item)
+    {
+        if (string.IsNullOrEmpty(item.PlayUrl))
+            return null;
+
+        if (JellyfinLink.WebPlayerEnabled && JellyfinLink.ExtractItemId(item.PlayUrl) is string id)
+        {
+            string title = item.IsEpisode ? (item.ParentTitle ?? item.Title) : item.Title;
+            return JellyfinLink.BuildWatchUrl(id, title, item.IsEpisode ? "/tv" : "/movies", item.ImageUrl ?? item.FallbackImageUrl);
+        }
+
+        return item.PlayUrl;
+    }
+
+    RenderFragment CardBody(ContinueWatchingItem item) => @<text>
+        <div class="st-continue-media">
+            @{ int stage = _imageStage.GetValueOrDefault(item.Key.CacheKey, 0); string src = stage == 0 ? (item.ImageUrl ?? "") : stage == 1 ? (item.FallbackImageUrl ?? "") : ""; }
+            @if (!string.IsNullOrEmpty(src))
+            {
+                <img class="st-continue-image" src="@src" alt="@item.Title" loading="lazy"
+                     @onerror="args => OnImageError(item)" />
+            }
+            else
+            {
+                <div class="st-continue-image st-continue-image--placeholder">
+                    <MudIcon Icon="@(item.IsEpisode ? Icons.Material.Filled.Tv : Icons.Material.Filled.Movie)" Size="Size.Large" />
+                </div>
+            }
+
+            <div class="st-continue-scrim"></div>
+
+            @if (!string.IsNullOrEmpty(item.LogoUrl) && !_logoFailed.Contains(item.Key.CacheKey))
+            {
+                <img class="st-continue-logo" src="@item.LogoUrl" alt="@(item.ParentTitle ?? item.Title)" loading="lazy"
+                     @onerror="args => OnLogoError(item)" />
+            }
+
+            <div class="st-continue-hover">
+                <span class="st-continue-remaining">
+                    <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" />
+                    @(item.IsUpNext ? "Next episode" : string.IsNullOrEmpty(Remaining(item)) ? "Play" : Remaining(item) + " left")
+                </span>
+            </div>
+
+            @if (!item.IsUpNext)
+            {
+                <div class="st-continue-progress">
+                    <div class="st-continue-progress-fill" style="@($"width:{Math.Round(Math.Clamp(item.Progress, 0, 1) * 100)}%")"></div>
+                </div>
+            }
+        </div>
+        <div class="st-continue-info">
+            @if (item.IsEpisode)
+            {
+                <div class="st-continue-title" title="@item.ParentTitle">@(item.ParentTitle ?? item.Title)</div>
+                <div class="st-continue-sub">
+                    @if (item.IsUpNext)
+                    {
+                        <span class="st-continue-next">NEXT</span>
+                    }
+                    <span class="st-continue-epno">@item.ScopeLabel</span>@item.Title
+                </div>
+            }
+            else
+            {
+                <div class="st-continue-title" title="@item.Title">@item.Title</div>
+            }
+        </div>
+    </text>;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Continue.IsAvailable || AuthStateTask is null)
+            return;
+
+        string username = (await AuthStateTask).User.Identity?.Name ?? "";
+        if (string.IsNullOrWhiteSpace(username))
+            return;
+
+        try
+        {
+            _items = (await Continue.GetAsync(username, Limit, Domain)).ToList();
+        }
+        catch
+        {
+            /* non-critical shelf */
+        }
+    }
+
+    void OnImageError(ContinueWatchingItem item)
+    {
+        string key = item.Key.CacheKey;
+        int stage = _imageStage.GetValueOrDefault(key, 0);
+        if (stage < 2)
+        {
+            _imageStage[key] = stage + 1;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    void OnLogoError(ContinueWatchingItem item)
+    {
+        if (_logoFailed.Add(item.Key.CacheKey))
+            InvokeAsync(StateHasChanged);
+    }
+
+    static string Remaining(ContinueWatchingItem item)
+    {
+        if (item.RemainingTicks <= 0)
+            return "";
+        TimeSpan remaining = TimeSpan.FromTicks(item.RemainingTicks);
+        if (remaining.TotalHours >= 1)
+            return $"{(int)remaining.TotalHours}h {remaining.Minutes}m";
+        return $"{Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes))}m";
+    }
+}

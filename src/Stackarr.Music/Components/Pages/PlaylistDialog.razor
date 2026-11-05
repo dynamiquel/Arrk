@@ -1,0 +1,47 @@
+@* Create or rename a Navidrome playlist. *@
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-request-dialog">
+            <MudText Typo="Typo.h6" Class="mb-3">@(IsRename ? "Rename playlist" : "New playlist")</MudText>
+            <MudTextField T="string" @bind-Value="Name" Label="Name" Variant="Variant.Outlined"
+                          AutoFocus="true" Immediate="true" OnKeyDown="OnKeyDown" Class="mb-2" />
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@Error</MudAlert>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                   StartIcon="@(IsRename ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                   Disabled="@(string.IsNullOrWhiteSpace(Name))">
+            <span class="st-btn-label">@(IsRename ? "Rename" : "Create")</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string InitialName { get; set; } = "";
+    [Parameter] public bool IsRename { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    string Name { get; set; } = "";
+
+    protected override void OnInitialized() => Name = InitialName;
+
+    void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(Name))
+            Submit();
+    }
+
+    void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(Name))
+            return;
+        MudDialog.Close(DialogResult.Ok(Name.Trim()));
+    }
+}

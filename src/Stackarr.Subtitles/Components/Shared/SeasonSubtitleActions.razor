@@ -1,0 +1,35 @@
+@attribute [UiRegion("tv.series.season")]
+@inject IDialogService Dialogs
+@inject SubtitleService Subtitles
+
+@if (Subtitles.IsAvailable && Context is not null && Context.Series.Id > 0)
+{
+    <MudTooltip Text="@($"Subtitles for season {Context.Season.SeasonNumber}")">
+        <MudIconButton Icon="@Icons.Material.Filled.Subtitles" Size="Size.Small" Color="Color.Primary"
+                       OnClick="OpenAsync" StopPropagation="true" Class="st-season-monitor-btn"
+                       title="Season subtitles" AriaLabel="Season subtitles" />
+    </MudTooltip>
+}
+
+@code {
+    [Parameter] public TvSeriesSeasonContext? Context { get; set; }
+
+    async Task OpenAsync()
+    {
+        if (Context is null)
+            return;
+
+        TvSeries series = Context.Series;
+        DialogParameters<SubtitleSearchDialog> parameters = new()
+        {
+            {
+                x => x.Target,
+                SubtitleTarget.Season(series.Id, Context.Season.SeasonNumber, series.Title, $"Season {Context.Season.SeasonNumber}")
+            }
+        };
+        await Dialogs.ShowAsync<SubtitleSearchDialog>(
+            "Subtitles",
+            parameters,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true });
+    }
+}

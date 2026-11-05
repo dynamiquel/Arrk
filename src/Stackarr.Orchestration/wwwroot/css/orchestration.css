@@ -1,0 +1,178 @@
+/* Orchestration, Docker pages/tiles, service cards and the scheduler. Split out of the shared app.css so the orchestration module owns its styling. */
+
+/* Service Cards */
+.st-service-card {
+    background-color: var(--st-glass-surface);
+    background-image: var(--st-glass-image);
+    border: 1px solid var(--st-glass-border);
+    backdrop-filter: var(--st-glass-blur);
+    -webkit-backdrop-filter: var(--st-glass-blur);
+    box-shadow: var(--st-glass-highlight);
+    border-radius: var(--st-radius-md);
+    padding: var(--st-space-md) var(--st-space-lg);
+    cursor: pointer;
+    transition: all var(--st-transition-fast);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--st-space-md);
+    min-height: 68px;
+    box-sizing: border-box;
+    position: relative;
+}
+.st-service-card .status-dot {
+    margin-top: 3px;
+}
+.st-service-card:hover {
+    border-color: var(--st-border-hover);
+    box-shadow: var(--st-glow-2);
+    background-color: var(--st-bg-elevated);
+}
+.st-service-card--disabled { opacity: 0.45; }
+.st-service-card--error { border-color: rgba(248, 113, 113, 0.35); }
+.st-service-card--expanded {
+    border-color: var(--st-pink);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.st-service-name { font-weight: 600; font-size: 1rem; color: var(--st-text-primary); }
+.st-service-desc { font-size: .9375rem; color: var(--st-text-secondary); margin-top: 2px; }
+.st-service-expand-icon {
+    transition: transform var(--st-transition-fast);
+    color: var(--st-text-muted);
+}
+.st-service-expand-icon--open { transform: rotate(180deg); }
+
+/* Service Card Expanded Panel */
+.st-service-detail {
+    background: var(--st-bg-elevated);
+    border: 1px solid var(--st-border-strong);
+    border-top: 1px solid var(--st-border);
+    border-radius: 0 0 var(--st-radius-md) var(--st-radius-md);
+    padding: var(--st-space-lg);
+    max-height: 500px;
+    overflow-y: auto;
+}
+.st-service-detail-row {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    padding: 5px 0;
+}
+.st-service-detail-label {
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--st-pink);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    margin-top: var(--st-space-md);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.st-service-detail-label:first-child { margin-top: 0; }
+
+/* Grid stretch */
+.st-service-grid .mud-grid-item {
+    display: flex;
+    flex-direction: column;
+}
+.st-service-grid .mud-grid-item > .st-service-card {
+    width: 100%;
+    flex: 1;
+}
+
+/* Raw container log output (Docker container page) */
+.st-container-logs {
+    max-height: 480px;
+    overflow: auto;
+    background: var(--st-bg-primary);
+}
+
+.st-container-log-pre {
+    margin: 0;
+    padding: 12px var(--st-space-md);
+    font-family: var(--st-font-mono);
+    font-size: .8125rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--st-text-primary);
+}
+
+/* Scheduler, job cards */
+
+.st-scheduler-card {
+    background-color: var(--st-glass-surface);
+    background-image: var(--st-glass-image);
+    border: 1px solid var(--st-glass-border);
+    backdrop-filter: var(--st-glass-blur);
+    -webkit-backdrop-filter: var(--st-glass-blur);
+    box-shadow: var(--st-glass-highlight);
+    border-radius: var(--st-radius-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    box-sizing: border-box;
+    transition: border-color var(--st-transition-fast), box-shadow var(--st-transition-fast);
+}
+.st-scheduler-card:hover { border-color: var(--st-border-hover); box-shadow: var(--st-glow-2); }
+
+.st-scheduler-card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+.st-scheduler-card-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--st-radius-sm);
+    background: var(--st-pink-soft);
+    color: var(--st-pink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.st-scheduler-card-title { flex: 1; min-width: 0; }
+.st-scheduler-card-name { font-weight: 600; color: var(--st-text-primary); line-height: 1.3; }
+.st-scheduler-card-id {
+    font-family: var(--st-font-mono);
+    font-size: .75rem;
+    color: var(--st-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.st-scheduler-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: .875rem;
+    color: var(--st-text-secondary);
+}
+.st-scheduler-card-row { display: flex; align-items: center; gap: 6px; }
+.st-scheduler-card-row .st-info-label { flex-shrink: 0; }
+.st-scheduler-card-cron {
+    font-family: var(--st-font-mono);
+    font-size: .8125rem;
+    background: var(--st-bg-primary);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-sm);
+    padding: 1px 6px;
+    color: var(--st-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.st-scheduler-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--st-space-xs);
+    margin-top: auto;
+    border-top: 1px solid var(--st-border);
+    padding-top: var(--st-space-sm);
+}

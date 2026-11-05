@@ -1,0 +1,63 @@
+@* Reusable Apple-style glass card dialog shell: grabber pill, header with an anchored close
+   button, scrollable body and an optional footer. Show it with StCardSheetOptions so it renders
+   as a floating card that closes on backdrop click / Escape / navigation. *@
+
+<MudDialog Class="@($"st-card-sheet-dialog {(FullHeight ? "st-card-sheet-dialog--full" : "")} {Class}")"
+           DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <div class="st-card-grabber"></div>
+
+        <div class="st-apple-card-header @HeaderClass">
+            @if (Avatar is not null)
+            {
+                @Avatar
+            }
+            else if (!string.IsNullOrEmpty(Icon))
+            {
+                <div class="st-appbar-logo st-appbar-logo--sm">
+                    <MudIcon Icon="@Icon" Size="Size.Small" Color="Color.Default" />
+                </div>
+            }
+            <div class="st-apple-card-header-text">
+                <MudText Typo="Typo.subtitle1" Class="st-apple-card-title">@Title</MudText>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <MudText Typo="Typo.caption" Class="st-apple-card-subtitle">@Subtitle</MudText>
+                }
+            </div>
+            <MudSpacer />
+            @HeaderActions
+            @* Fixed-positioned, so the slot just reserves the space it paints over. *@
+            <span class="st-apple-card-close-slot">
+                <DialogCloseButton Class="st-dialog-close--floating" />
+            </span>
+        </div>
+
+        <div class="st-apple-card-body @BodyClass">
+            @ChildContent
+        </div>
+
+        @if (Footer is not null)
+        {
+            <div class="st-apple-card-footer @FooterClass">
+                @Footer
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string HeaderClass { get; set; } = "";
+    [Parameter] public string BodyClass { get; set; } = "";
+    [Parameter] public string FooterClass { get; set; } = "";
+    /// <summary>On mobile, take the whole screen height instead of rising to its content height.</summary>
+    [Parameter] public bool FullHeight { get; set; }
+    [Parameter] public RenderFragment? Avatar { get; set; }
+    [Parameter] public RenderFragment? HeaderActions { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+}

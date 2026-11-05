@@ -1,0 +1,48 @@
+@* Reusable stat tile used across the Movies / Shows / Anime pages. *@
+
+<div class="st-stat-card st-media-stat-tile @Class" style="@Style">
+    <div class="st-stat-label">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <MudIcon Icon="@Icon" Size="Size.Small" Style="font-size:1rem;" />
+        }
+        <span>@Label</span>
+    </div>
+    <div class="st-stat-value st-stat-value--@ValueColor">
+        @if (Loading)
+        {
+            <MudSkeleton Width="70px" Height="32px" />
+        }
+        else
+        {
+            @Value
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(Sub))
+    {
+        <div class="st-stat-sub">@Sub</div>
+    }
+    @if (Progress.HasValue)
+    {
+        <MudProgressLinear Value="@(Progress.Value * 100)" Color="@ProgressColor" Size="Size.Small" Rounded="true"
+                           Style="height:4px;margin-top:10px;" />
+    }
+    @if (ChildContent != null)
+    {
+        <div style="margin-top:8px;">@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string? Sub { get; set; }
+    [Parameter] public string ValueColor { get; set; } = "purple";
+    [Parameter] public Color ProgressColor { get; set; } = Color.Primary;
+    [Parameter] public double? Progress { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

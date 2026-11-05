@@ -1,0 +1,214 @@
+@using Stackarr.Core.Requests
+@using Stackarr.Requests
+@inject RequestService RequestService
+@inject MediaCatalogService Catalog
+@inject ISnackbar Snackbar
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-request-dialog">
+            <div class="st-request-dialog-head">
+                @if (!string.IsNullOrEmpty(Item.PosterUrl))
+                {
+                    <img src="@Item.PosterUrl" alt="@Item.Title" class="st-request-dialog-poster" />
+                }
+                <div style="min-width:0;">
+                    <MudText Typo="Typo.h6">@Item.Title</MudText>
+                    <MudText Typo="Typo.caption" Style="color:var(--st-text-secondary);">
+                        @(Item.Year > 0 ? Item.Year.ToString() : "") @(IsShow ? "· TV Show" : "· Movie")
+                    </MudText>
+                </div>
+            </div>
+
+            <MudText Typo="Typo.body2" Class="mb-3">Request @Item.Title and wait for approval.</MudText>
+
+            @if (IsShow)
+            {
+                <MudText Typo="Typo.caption" Class="st-add-label">What would you like?</MudText>
+                <StTabs T="RequestScope" Variant="segmented" Class="st-tabs--sm mb-3"
+                        Items="_scopeTabs" Value="_scope" ValueChanged="SetScope" />
+
+                @if (_scope is RequestScope.Season or RequestScope.Episode)
+                {
+                    <MudSelect T="int" Label="Season" @bind-Value="_season" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                        @foreach (int s in Seasons)
+                        {
+                            <MudSelectItem T="int" Value="@s">@($"Season {s}")</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                @if (_scope == RequestScope.Episode)
+                {
+                    <MudNumericField T="int" @bind-Value="_episode" Label="Episode number" Min="1"
+                                     Variant="Variant.Outlined" Dense="true" Class="mb-3" />
+                }
+            }
+
+            <MudSelect T="string" Label="Quality" @bind-Value="_qualityKey" Variant="Variant.Outlined" Dense="true" Class="mb-2">
+                @foreach (RequestQualityOption option in _qualityOptions)
+                {
+                    <MudSelectItem T="string" Value="@option.Key">@option.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@_errorMessage</MudAlert>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                   StartIcon="@Icons.Material.Filled.Send" Disabled="@_submitting">
+            <span class="st-btn-label">@(_submitting ? "Requesting…" : "Request")</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    enum RequestScope { Series, Season, Episode }
+
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    [Parameter] public MediaItem Item { get; set; } = new();
+
+    RequestScope _scope = RequestScope.Series;
+    int _season;
+    int _episode = 1;
+    string _qualityKey = "";
+    List<RequestQualityOption> _qualityOptions = [];
+    bool _submitting;
+    string? _errorMessage;
+    int _userId;
+    string _username = "";
+
+    bool IsShow => string.Equals(Item.MediaType, TmdbMediaType.Tv, StringComparison.OrdinalIgnoreCase) || Item.TvdbId > 0;
+
+    List<int> Seasons
+    {
+        get
+        {
+            if (Item.AvailableSeasonNumbers is { Count: > 0 })
+                return Item.AvailableSeasonNumbers.Where(s => s > 0).OrderBy(s => s).ToList();
+            int count = Item.SeasonCount ?? 0;
+            return Enumerable.Range(1, Math.Max(count, 1)).ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is not null)
+        {
+            System.Security.Claims.ClaimsPrincipal user = (await AuthStateTask).User;
+            string? idClaim = user.FindFirst(StackarrClaims.UserIdClaim)?.Value;
+            int.TryParse(idClaim, out _userId);
+            _username = user.Identity?.Name ?? "";
+        }
+
+        _season = Seasons.FirstOrDefault();
+        await LoadQualityOptionsAsync();
+    }
+
+    static readonly StTabItem<RequestScope>[] _scopeTabs =
+    [
+        new(RequestScope.Series, "Entire Show"),
+        new(RequestScope.Season, "Season"),
+        new(RequestScope.Episode, "Episode")
+    ];
+
+    async Task SetScope(RequestScope scope)
+    {
+        _scope = scope;
+        await LoadQualityOptionsAsync();
+    }
+
+    async Task LoadQualityOptionsAsync()
+    {
+        _qualityOptions = [];
+        (MediaDomain domain, RequestKind kind) = CurrentCapability();
+        IMediaRequestHandler? handler = RequestService.Registry.GetHandler(domain, kind);
+        if (handler is null || !handler.IsAvailable)
+            return;
+
+        try
+        {
+            _qualityOptions = (await handler.GetQualityOptionsAsync()).ToList();
+            if (_qualityOptions.Count > 0)
+                _qualityKey = _qualityOptions[0].Key;
+        }
+        catch
+        {
+            /* quality options are optional; the backend default applies */
+        }
+    }
+
+    (MediaDomain, RequestKind) CurrentCapability() => !IsShow
+        ? (TvMediaDomains.Movie, RequestKind.Movie)
+        : _scope switch
+        {
+            RequestScope.Season => (TvMediaDomains.Tv, RequestKind.Season),
+            RequestScope.Episode => (TvMediaDomains.Tv, RequestKind.Episode),
+            _ => (TvMediaDomains.Tv, RequestKind.Series)
+        };
+
+    async Task Submit()
+    {
+        if (_userId <= 0)
+        {
+            _errorMessage = "You must be signed in to request media.";
+            return;
+        }
+
+        _submitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            RequestTarget target = await BuildTargetAsync();
+
+            RequestOperationResult result = await RequestService.CreateAsync(
+                _userId, _username, target,
+                string.IsNullOrWhiteSpace(_qualityKey) ? null : _qualityKey);
+
+            if (!result.Success)
+            {
+                _errorMessage = result.Message ?? "Request failed.";
+                _submitting = false;
+                return;
+            }
+
+            Snackbar.Add(result.Message ?? $"Requested {Item.Title}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _submitting = false;
+        }
+    }
+
+    async Task<RequestTarget> BuildTargetAsync()
+    {
+        if (!IsShow)
+            return TvRequestTargets.ForMovie(Item);
+
+        // Series/season/episode need a TVDB id; resolve it if the lookup didn't carry one.
+        MediaItem item = Item;
+        if (item.TvdbId <= 0 && item.TmdbId > 0)
+        {
+            int tvdb = await Catalog.ResolveTvdbIdAsync(item.TmdbId);
+            if (tvdb > 0)
+                item = item with { TvdbId = tvdb };
+        }
+
+        return _scope switch
+        {
+            RequestScope.Season => TvRequestTargets.ForSeason(item, _season),
+            RequestScope.Episode => TvRequestTargets.ForEpisode(item, _season, _episode),
+            _ => TvRequestTargets.ForSeries(item)
+        };
+    }
+}

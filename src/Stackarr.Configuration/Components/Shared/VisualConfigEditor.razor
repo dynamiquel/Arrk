@@ -1,0 +1,209 @@
+@inject ConfigFormBuilder FormBuilder
+@inject ConfigSectionRegistry SectionRegistry
+@inject IConfiguration Configuration
+
+@* Schema-driven visual editor. Reads the exact same JSON schema as the YAML editor. *@
+
+<div class="st-visual-config">
+    <aside class="st-visual-nav">
+        <SearchBox @bind-Value="_search" Placeholder="Filter settings..." Margin="Margin.Dense"
+                   Clearable="true" DebounceInterval="200" Dense="true" Class="mb-3" />
+
+        @foreach (ConfigFormGroup group in Model.Groups)
+        {
+            List<ConfigFormSection> sections = VisibleSections(group).ToList();
+            if (sections.Count == 0)
+                continue;
+
+            <div class="st-visual-nav-group">@group.Title</div>
+            foreach (ConfigFormSection sec in sections)
+            {
+                ConfigFormSection captured = sec;
+                <button type="button"
+                        class="st-visual-nav-item @(_selected == captured ? "st-visual-nav-item--active" : "")"
+                        @onclick="@(() => _selected = captured)">
+                    <MudIcon Icon="@ConfigIconResolver.Resolve(captured.Icon)" Size="Size.Small" />
+                    <span class="st-visual-nav-label">@captured.Title</span>
+                    @if (SectionErrorCount(captured) > 0)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Color="Color.Error" Class="ml-auto" />
+                    }
+                </button>
+            }
+        }
+    </aside>
+
+    <div class="st-visual-body">
+        @if (!string.IsNullOrEmpty(_loadError))
+        {
+            <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+        }
+        else if (Errors.Count > 0)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">
+                <MudText Typo="Typo.body2">@Errors.Count issue(s) need fixing before you can apply:</MudText>
+                <ul class="st-config-error-list">
+                    @foreach (ConfigValidationError error in Errors.Take(8))
+                    {
+                        <li>@error.Format()</li>
+                    }
+                </ul>
+            </MudAlert>
+        }
+
+        @if (_selected == null)
+        {
+            <div class="st-visual-cards">
+                @foreach (ConfigFormSection sec in Model.TopLevelSections)
+                {
+                    ConfigFormSection captured = sec;
+                    <button type="button" class="st-visual-card" @onclick="@(() => _selected = captured)">
+                        <MudIcon Icon="@ConfigIconResolver.Resolve(captured.Icon)" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.subtitle1">@captured.Title</MudText>
+                            @if (!string.IsNullOrEmpty(captured.Description))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@captured.Description</MudText>
+                            }
+                        </div>
+                        @if (SectionErrorCount(captured) > 0)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Class="ml-auto" />
+                        }
+                    </button>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="st-form-section-header">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@ConfigIconResolver.Resolve(_selected.Icon)" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.h6">@_selected.Title</MudText>
+                </div>
+                @if (!string.IsNullOrEmpty(_selected.Description))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@_selected.Description</MudText>
+                }
+            </div>
+
+            <div class="st-form-section-body">
+                <div class="st-form-grid">
+                    @foreach (ConfigFormNode child in VisibleChildren(_selected))
+                    {
+                        <div class="st-form-item @(IsWideNode(child) ? "st-form-item--wide" : "")">
+                            <ConfigFormNodeEditor Node="child" OnChanged="HandleChanged" Errors="Errors" ReadOnly="ReadOnly" />
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public IReadOnlyList<ConfigValidationError> Errors { get; set; } = [];
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Increment to force the form to rebuild from the live config.</summary>
+    [Parameter] public int RefreshToken { get; set; }
+
+    ConfigFormModel Model { get; set; } = new();
+    ConfigFormSection? _selected;
+    string _search = "";
+    string? _loadError;
+    string? _defaultsYaml;
+    int _builtToken = -1;
+
+    protected override void OnParametersSet()
+    {
+        if (Model.Groups.Count == 0 || _builtToken != RefreshToken)
+            Rebuild();
+    }
+
+    void Rebuild()
+    {
+        _builtToken = RefreshToken;
+        try
+        {
+            string effective = ConfigRenderer.Render(Configuration, SectionRegistry);
+            Model = FormBuilder.Build(effective);
+            _selected = Model.TopLevelSections.FirstOrDefault();
+            _loadError = null;
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load configuration: {ex.Message}";
+        }
+    }
+
+    async Task HandleChanged(ConfigFormNode _)
+    {
+        // Only emit values that differ from the defaults, and preserve any keys
+        // not managed by the schema, such as unrecognised settings.
+        string yaml = ConfigFormSerializer.Serialize(Model, Value, GetDefaultsYaml());
+        Value = yaml;
+        await ValueChanged.InvokeAsync(yaml);
+    }
+
+    string GetDefaultsYaml()
+    {
+        _defaultsYaml ??= ConfigRenderer.Render(new ConfigurationBuilder().Build(), SectionRegistry);
+        return _defaultsYaml;
+    }
+
+    IEnumerable<ConfigFormSection> VisibleSections(ConfigFormGroup group)
+    {
+        IEnumerable<ConfigFormSection> sections = group.Sections.Where(section => !Model.IsSubsection(section));
+        if (string.IsNullOrWhiteSpace(_search))
+            return sections;
+
+        return sections.Where(s =>
+            s.Title.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+            ContainsMatch(s));
+    }
+
+    IEnumerable<ConfigFormNode> VisibleChildren(ConfigFormSection section)
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+            return section.Children;
+
+        List<ConfigFormNode> matches = section.Children
+            .Where(c => Matches(c))
+            .ToList();
+
+        return matches.Count > 0 ? matches : section.Children;
+    }
+
+    bool ContainsMatch(ConfigFormNode node) => node is ConfigObjectNode obj && obj.Children.Any(Matches);
+
+    static bool IsWideNode(ConfigFormNode node) =>
+        node is ConfigObjectNode or ConfigArrayNode or ConfigDictionaryNode or ConfigRawNode;
+
+    bool Matches(ConfigFormNode node)
+    {
+        if (node.Title.Contains(_search, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return node is ConfigObjectNode obj && obj.Children.Any(Matches);
+    }
+
+    int SectionErrorCount(ConfigFormSection section) =>
+        Errors.Count(e => !string.IsNullOrEmpty(e.Path) && PathBelongsToSection(section, e.Path));
+
+    static bool PathBelongsToSection(ConfigFormSection section, string errorPath)
+    {
+        if (string.IsNullOrEmpty(section.SectionPath))
+            return true;
+
+        string dotted = string.Join('.', section.SectionPath
+            .Split(':', StringSplitOptions.RemoveEmptyEntries)
+            .Select(YamlConfigSerializer.ToCamelCase));
+
+        return errorPath.Equals(dotted, StringComparison.OrdinalIgnoreCase) ||
+               errorPath.StartsWith(dotted + ".", StringComparison.OrdinalIgnoreCase) ||
+               errorPath.StartsWith(dotted + "[", StringComparison.OrdinalIgnoreCase);
+    }
+}

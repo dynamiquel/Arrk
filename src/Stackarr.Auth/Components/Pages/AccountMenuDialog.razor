@@ -1,0 +1,87 @@
+@* Account menu: a card sheet with the signed-in user's profile and account actions. *@
+@inject NavigationManager Nav
+@inject UserService Users
+
+<StCardSheetDialog Title="@Username"
+                   Subtitle="@(IsAdmin ? "Administrator" : "Member")"
+                   Class="st-account-card-sheet">
+    <Avatar>
+        @if (HasAvatar && UserId is not null)
+        {
+            <img class="st-user-avatar st-user-avatar--lg" src="@($"/account/avatar/{UserId}")" alt="@Username" />
+        }
+        else
+        {
+            <span class="st-user-avatar st-user-avatar--initials st-user-avatar--lg">@Initials</span>
+        }
+    </Avatar>
+    <ChildContent>
+        <div class="st-account-card-actions">
+            <a href="/account" class="st-account-card-item">
+                <span class="st-account-card-icon"><MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" /></span>
+                <span>My account</span>
+                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Class="ml-auto" Style="color:var(--st-text-muted);" />
+            </a>
+            @if (IsAdmin)
+            {
+                <a href="/users" class="st-account-card-item">
+                    <span class="st-account-card-icon"><MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Size="Size.Small" /></span>
+                    <span>Manage users</span>
+                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" Class="ml-auto" Style="color:var(--st-text-muted);" />
+                </a>
+            }
+            <button type="button" class="st-account-card-item st-account-card-item--danger" @onclick="Logout">
+                <span class="st-account-card-icon"><MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" /></span>
+                <span>Sign out</span>
+            </button>
+        </div>
+    </ChildContent>
+</StCardSheetDialog>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    string Username { get; set; } = "Account";
+    bool IsAdmin { get; set; }
+    bool HasAvatar { get; set; }
+    int? UserId { get; set; }
+
+    string Initials
+    {
+        get
+        {
+            string name = string.IsNullOrWhiteSpace(Username) ? "?" : Username;
+            return name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null)
+            return;
+
+        AuthenticationState state = await AuthState;
+        ClaimsPrincipal principal = state.User;
+
+        Username = principal.Identity?.Name
+            ?? principal.FindFirst(StackarrClaims.DisplayNameClaim)?.Value
+            ?? "Account";
+        IsAdmin = principal.IsInRole(StackarrRoles.Admin);
+
+        if (int.TryParse(principal.FindFirst(StackarrClaims.UserIdClaim)?.Value, out int id))
+        {
+            UserId = id;
+            StackarrUser? user = await Users.GetByIdAsync(id);
+            HasAvatar = user?.Avatar is { Length: > 0 };
+            if (user is not null)
+                Username = user.Username;
+        }
+    }
+
+    void Logout()
+    {
+        MudDialog.Close();
+        Nav.NavigateTo("/account/logout", forceLoad: true);
+    }
+}

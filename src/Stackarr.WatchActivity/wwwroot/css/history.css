@@ -1,0 +1,74 @@
+/* Watch/listen history timeline. Rows use the shared StMediaRow component; this file only
+   owns the page-level layout (stats, toolbar, day headings). */
+
+.st-history-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--st-space-md);
+    margin-bottom: var(--st-space-md);
+}
+
+.st-history-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--st-space-md);
+    flex-wrap: wrap;
+    margin-bottom: var(--st-space-lg);
+}
+
+.st-history-filters {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.st-history-source-select {
+    min-width: 150px;
+}
+
+.st-history-search {
+    min-width: 220px;
+}
+
+.st-history-user-select {
+    min-width: 160px;
+}
+
+.st-history-day {
+    margin-bottom: var(--st-space-lg);
+}
+
+.st-history-day-header {
+    color: var(--st-text-muted);
+    margin-bottom: 8px;
+}
+
+.st-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.st-history-ago {
+    color: var(--st-text-muted);
+    font-size: .8125rem;
+}
+
+@media (max-width: 760px) {
+    .st-history-toolbar {
+        align-items: stretch;
+    }
+
+    .st-history-filters {
+        width: 100%;
+    }
+
+    .st-history-source-select,
+    .st-history-search,
+    .st-history-user-select {
+        min-width: 0;
+        flex: 1 1 150px;
+    }
+}

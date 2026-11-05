@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Stackarr logo">
+  <defs>
+    <linearGradient id="stackarr-gradient" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e879a0"/>
+      <stop offset="0.55" stop-color="#c084fc"/>
+      <stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="18" fill="#140d1d" stroke="#3a2a52" stroke-width="1.5"/>
+  <path d="M16 25.5 32 16l16 9.5L32 35Z" fill="url(#stackarr-gradient)"/>
+  <path d="M16 34.5 32 44l16-9.5" fill="none" stroke="url(#stackarr-gradient)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".72"/>
+  <path d="M16 43 32 52.5 48 43" fill="none" stroke="url(#stackarr-gradient)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".38"/>
+  <path d="m29.4 22.3 7.7 3.3-7.7 3.4Z" fill="#140d1d"/>
+</svg>

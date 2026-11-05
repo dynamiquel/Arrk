@@ -1,0 +1,7 @@
+.st-sample-list {
+    margin: 0;
+    padding-left: var(--st-space-lg, 1.5rem);
+    display: grid;
+    gap: var(--st-space-xs, 0.25rem);
+    color: var(--st-text-secondary, #a899be);
+}

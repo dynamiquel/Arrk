@@ -1,0 +1,625 @@
+/* Stackarr, Theme tokens & global overrides The whole look is driven by the tokens in the ":root" block. To re-theme the app, edit those values, components read from them, so most of the UI follows automatically. Token groups: palette · brand gradient · glass · glow & shadow · spacing · radii · sizing · typography · transitions */
+
+:root {
+    /* Palette */
+    --st-bg-primary: #0f0a18;
+    --st-bg-surface: #181225;
+    --st-bg-elevated: #221a30;
+    --st-bg-drawer: color-mix(in srgb, var(--st-bg-primary) 70%, var(--st-bg-surface));
+    --st-border: #2d2040;
+    --st-border-strong: #3a2a52;
+    --st-border-hover: #4a3668;
+    --st-text-primary: #e8e0f0;
+    --st-text-secondary: #a899be;
+    --st-text-muted: #6b5c80;
+
+    /* Accent / status colours. The "-soft" variants are tinted fills. */
+    --st-pink: #e879a0;
+    --st-pink-soft: color-mix(in srgb, var(--st-pink) 15%, transparent);
+    --st-pink-glow: color-mix(in srgb, var(--st-pink) 30%, transparent);
+    --st-purple: #c084fc;
+    --st-purple-soft: color-mix(in srgb, var(--st-purple) 15%, transparent);
+    --st-lavender: #a78bfa;
+    --st-indigo: #818cf8;
+    --st-blue: #818cf8;
+    --st-blue-soft: color-mix(in srgb, var(--st-blue) 12%, transparent);
+    --st-green: #4ade80;
+    --st-green-soft: color-mix(in srgb, var(--st-green) 12%, transparent);
+    --st-yellow: #fbbf24;
+    --st-yellow-soft: color-mix(in srgb, var(--st-yellow) 12%, transparent);
+    --st-red: #f87171;
+    --st-red-soft: color-mix(in srgb, var(--st-red) 12%, transparent);
+    --st-orange: #fb923c;
+    --st-orange-soft: color-mix(in srgb, var(--st-orange) 15%, transparent);
+
+    /* Brand gradient, derived from the three accent colours. Change
+       --st-pink / --st-purple / --st-blue and the gradient, glows and
+       accent-tinted surfaces follow. */
+    --st-gradient: linear-gradient(135deg,
+        var(--st-pink) 0%,
+        var(--st-purple) 55%,
+        var(--st-blue) 100%);
+    --st-gradient-soft: linear-gradient(135deg,
+        color-mix(in srgb, var(--st-pink) 16%, transparent),
+        color-mix(in srgb, var(--st-purple) 16%, transparent));
+    --st-gradient-line: linear-gradient(90deg,
+        var(--st-pink),
+        var(--st-purple),
+        var(--st-blue));
+
+    /* Glass */
+    /* The glass family derives from the surface and text tokens. */
+    --st-glass-surface: color-mix(in srgb, var(--st-bg-surface) 50%, transparent);
+    --st-glass-surface-strong: color-mix(in srgb, var(--st-bg-elevated) 72%, transparent);
+    --st-glass-popover: color-mix(in srgb, var(--st-bg-elevated) 50%, transparent);
+    --st-glass-image: linear-gradient(180deg,
+        color-mix(in srgb, var(--st-text-primary) 3%, transparent),
+        color-mix(in srgb, var(--st-text-primary) 1%, transparent));
+    --st-glass-border: color-mix(in srgb, var(--st-text-primary) 8%, transparent);
+    --st-glass-highlight: inset 0 1px 0 color-mix(in srgb, var(--st-text-primary) 4%, transparent);
+    --st-glass-blur: blur(14px);
+
+    /* Control fills & on-colour text */
+    /* Quiet glass fill + border strengths for outline buttons and overlay actions. */
+    --st-glass-fill: color-mix(in srgb, var(--st-text-primary) 6%, transparent);
+    --st-glass-border-soft: color-mix(in srgb, var(--st-text-primary) 28%, transparent);
+    --st-glass-border-strong: color-mix(in srgb, var(--st-text-primary) 16%, transparent);
+    --st-glass-border-bright: color-mix(in srgb, var(--st-text-primary) 40%, transparent);
+    /* Darker glass for actions that sit over artwork. */
+    --st-overlay-fill: color-mix(in srgb, var(--st-bg-primary) 55%, transparent);
+    --st-overlay-fill-strong: color-mix(in srgb, var(--st-bg-primary) 88%, transparent);
+    --st-overlay-border: color-mix(in srgb, var(--st-text-primary) 20%, transparent);
+    /* Brand-pink fills/borders, derived from the gradient stop so they re-theme together. */
+    --st-pink-fill: color-mix(in srgb, var(--st-pink) 85%, transparent);
+    --st-pink-fill-strong: color-mix(in srgb, var(--st-pink) 95%, transparent);
+    --st-pink-border: color-mix(in srgb, var(--st-pink) 50%, transparent);
+    --st-pink-fill-hover: color-mix(in srgb, var(--st-pink) 22%, transparent);
+    /* Destructive red: content colour + hover glow (delete / remove / deny). */
+    --st-red-glow: 0 0 14px color-mix(in srgb, var(--st-red) 35%, transparent);
+    /* Text/icon colour that reads on a solid accent fill. */
+    --st-on-accent: #ffffff;
+    --st-on-green: #10201a;
+    --st-on-yellow: #201a10;
+
+    /* Glow & shadow */
+    --st-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --st-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --st-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --st-shadow-glow: 0 0 20px var(--st-pink-glow);
+    --st-glow-1: 0 0 14px color-mix(in srgb, var(--st-purple) 18%, transparent);
+    --st-glow-2: 0 6px 22px rgba(0, 0, 0, 0.45), 0 0 16px color-mix(in srgb, var(--st-purple) 15%, transparent);
+
+    /* Accent glow */
+    /* The halo that belongs with the brand gradient, so every "glowing
+       gradient" (seek fills, the primary transport button, range thumbs)
+       matches. Pair one with --st-gradient / --st-gradient-line:
+           background-image: var(--st-gradient);
+           box-shadow: var(--st-glow-accent-strong);
+       --st-glow-accent is the soft halo on a gradient line or fill;
+       --st-glow-accent-strong is the bigger lift under the primary
+       button; --st-glow-accent-pink is the pink halo on handles/thumbs. */
+    --st-glow-accent: 0 0 12px color-mix(in srgb, var(--st-purple) 45%, transparent);
+    --st-glow-accent-strong: 0 8px 24px color-mix(in srgb, var(--st-purple) 35%, transparent);
+    --st-glow-accent-pink: 0 0 10px color-mix(in srgb, var(--st-pink) 80%, transparent);
+    /* The unmistakable hover halo for a primary CTA (gradient/solid). */
+    --st-glow-primary: 0 6px 20px rgba(0, 0, 0, 0.28), 0 0 18px color-mix(in srgb, var(--st-pink) 44%, transparent), 0 0 34px color-mix(in srgb, var(--st-purple) 32%, transparent);
+
+    /* Spacing scale */
+    --st-space-2xs: 2px;
+    --st-space-xs: 4px;
+    --st-space-sm: 8px;
+    --st-space-md: 16px;
+    --st-space-lg: 24px;
+    --st-space-xl: 32px;
+    --st-space-2xl: 48px;
+
+    /* Radii */
+    --st-radius-sm: 6px;
+    --st-radius-md: 10px;
+    --st-radius-lg: 14px;
+    --st-radius-xl: 20px;
+    --st-radius-full: 9999px;
+    --st-radius-btn: 8px;
+    --st-icon-btn-size: 32px;
+
+    /* Sizing */
+    --st-control-height: 40px;
+    --st-control-height-sm: 36px;
+    --st-appbar-height: 64px;
+    --st-drawer-width: 240px;
+    --st-drawer-mini-width: 68px;
+    --st-avatar-sm: 30px;
+    --st-avatar-md: 36px;
+    --st-avatar-lg: 84px;
+
+    /* Typography */
+    --st-font-sans: "Google Sans", "Product Sans", "Inter", system-ui, -apple-system, sans-serif;
+    --st-font-mono: "JetBrains Mono", "Fira Code", monospace;
+    /* One ladder for all type. Body/tabs are --st-font-size-md (1rem); everything else steps
+       from it. No rule may hard-code a size below --st-font-size-2xs. */
+    --st-font-size-2xs: 0.75rem;
+    --st-font-size-xs: 0.8125rem;
+    --st-font-size-sm: 0.875rem;
+    --st-font-size-md: 1rem;
+    --st-font-size-lg: 1.125rem;
+    --st-font-size-xl: 1.25rem;
+
+    /* Transitions */
+    --st-transition-fast: 150ms ease;
+    --st-transition-normal: 250ms ease;
+}
+
+/* Base */
+
+html {
+    font-size: 16px;
+    /* Prevent mobile browsers from "font boosting" wide content (e.g. label tables). */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* A real, grabbable scrollbar; the thumb stays transparent until hover. */
+    scrollbar-width: auto;
+    scrollbar-color: transparent transparent;
+}
+
+/* Per-user text size (Account → Appearance). Every size in the app is relative to this root,
+   so the whole UI — MudBlazor typography included — follows it. */
+html[data-text-size="small"] { font-size: 15px; }
+html[data-text-size="large"] { font-size: 18px; }
+*:hover { scrollbar-color: var(--st-border-hover) transparent; }
+
+html, body {
+    height: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    margin: 0;
+    padding: 0;
+    /* Flat base plus a few very soft colour washes for depth. */
+    background:
+        radial-gradient(1100px 700px at 8% -10%, color-mix(in srgb, var(--st-purple) 7%, transparent), rgba(15, 10, 24, 0) 60%),
+        radial-gradient(1000px 700px at 100% 108%, color-mix(in srgb, var(--st-pink) 6%, transparent), rgba(15, 10, 24, 0) 60%),
+        radial-gradient(800px 600px at 100% -5%, color-mix(in srgb, var(--st-blue) 5%, transparent), rgba(15, 10, 24, 0) 55%),
+        var(--st-bg-primary);
+    background-attachment: fixed;
+    color: var(--st-text-primary);
+    font-family: var(--st-font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+    height: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+a {
+    text-decoration: none;
+    color: var(--st-pink);
+    transition: color var(--st-transition-fast);
+}
+a:hover { color: var(--st-purple); }
+
+/* Scrollbars: real and grabbable, thumb hidden until the area is hovered. */
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
+*:hover::-webkit-scrollbar-thumb {
+    background: var(--st-border-hover);
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--st-pink);
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+
+::selection { background: var(--st-pink-soft); color: var(--st-pink); }
+:focus-visible { outline: 2px solid var(--st-pink); outline-offset: 2px; }
+
+.mono, code, pre, .font-mono { font-family: var(--st-font-mono) !important; }
+pre, code { font-family: var(--st-font-mono); }
+
+/* Buttons Hierarchy: · .st-btn-gradient → the one primary CTA on a view (brand gradient) · filled primary   → a normal primary action (matte pink glass) · outlined / text  → everything else */
+
+.mud-button { text-transform: none !important; font-weight: 600 !important; letter-spacing: 0.01em; }
+.mud-button-root { border-radius: var(--st-radius-btn) !important; }
+/* Consistent button height; the media Play / Play Trailer CTAs opt out. */
+.mud-button-root:not(.mud-icon-button) { min-height: var(--st-control-height); }
+.mud-button-root.mud-button-size-small:not(.mud-icon-button) {
+    min-height: var(--st-control-height-sm);
+    font-size: var(--st-font-size-sm) !important;
+}
+
+.mud-button-filled {
+    border-radius: var(--st-radius-btn) !important;
+    transition: box-shadow var(--st-transition-fast), filter var(--st-transition-fast), transform var(--st-transition-fast);
+}
+.mud-button-filled:hover:not(:disabled) {
+    box-shadow: var(--st-glow-2);
+    filter: brightness(1.03);
+}
+.mud-button-filled:active:not(:disabled) { transform: translateY(1px); }
+
+/* Normal primary action: matte brand pink with a glass edge and highlight. */
+.mud-button-filled-primary {
+    background-color: var(--st-pink-fill) !important;
+    background-image: none !important;
+    color: var(--st-on-accent) !important;
+    border: 1px solid var(--st-glass-border-soft) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 var(--st-glass-border-soft), 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+}
+.mud-button-filled-primary:hover:not(:disabled) {
+    background-color: var(--st-pink-fill-strong) !important;
+    box-shadow: inset 0 1px 0 var(--st-glass-border-soft), var(--st-glow-2) !important;
+}
+
+/* Highest-priority CTA: full brand gradient. */
+.st-btn-gradient {
+    background-color: var(--st-pink) !important;
+    background-image: var(--st-gradient) !important;
+    color: var(--st-on-accent) !important;
+    border: 1px solid var(--st-glass-border-strong) !important;
+    box-shadow: var(--st-shadow-sm), var(--st-glow-accent) !important;
+    transition: box-shadow var(--st-transition-fast), filter var(--st-transition-fast), transform var(--st-transition-fast);
+}
+.st-btn-gradient:hover:not(:disabled) {
+    box-shadow: var(--st-glow-primary) !important;
+    filter: brightness(1.07);
+}
+.st-btn-gradient:active:not(:disabled) { transform: translateY(1px); }
+
+.mud-button-outlined {
+    border-radius: var(--st-radius-btn) !important;
+    background: var(--st-glass-fill) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: background var(--st-transition-fast), border-color var(--st-transition-fast), box-shadow var(--st-transition-fast);
+}
+.mud-button-outlined:hover:not(:disabled) { box-shadow: var(--st-glow-1); }
+.mud-button-text { border-radius: var(--st-radius-btn) !important; }
+.mud-button-text:hover:not(:disabled) { background: var(--st-gradient-soft) !important; }
+.mud-icon-button {
+    border-radius: var(--st-radius-btn) !important;
+    transition: background var(--st-transition-fast), color var(--st-transition-fast);
+}
+:where(.mud-icon-button):hover { background: var(--st-gradient-soft) !important; }
+.mud-button-group-root .mud-button-root { border-radius: 0 !important; }
+.mud-button-group-root > .mud-button-root:first-child { border-radius: var(--st-radius-btn) 0 0 var(--st-radius-btn) !important; }
+.mud-button-group-root > .mud-button-root:last-child { border-radius: 0 var(--st-radius-btn) var(--st-radius-btn) 0 !important; }
+
+/* Button design system Every button in the app is shaped by ONE token: --st-radius-btn. Change that single value to reshape buttons everywhere (square, rounded, pill, ...). Variants only differ in colour/emphasis, never in shape: · .st-btn-gradient              primary CTA (brand gradient) · .mud-button-filled-primary    solid pink (normal primary) · .mud-button-outlined          quiet neutral outline (glass) · .mud-button-outlined-primary  pink outline · .mud-button-outlined-error    red content + red hover glow (destructive only) · .st-icon-btn                  small square icon action (neutral; Danger = red) */
+
+/* All outlined buttons share the quiet glass fill (set on .mud-button-outlined above);
+   only the tint differs, so they read as one family. */
+
+/* Neutral outline (the "white outline" button): soft glass chip, standard button shape. */
+.mud-button-outlined {
+    border-color: var(--st-glass-border-strong) !important;
+    color: var(--st-text-primary) !important;
+}
+.mud-button-outlined:hover:not(:disabled) {
+    background: var(--st-gradient-soft) !important;
+    border-color: var(--st-purple) !important;
+    box-shadow: var(--st-glow-1);
+}
+
+/* Pink outline. */
+.mud-button-outlined-primary {
+    background: var(--st-pink-soft) !important;
+    border-color: var(--st-pink-border) !important;
+    color: var(--st-pink) !important;
+}
+.mud-button-outlined-primary:hover:not(:disabled) {
+    background: var(--st-pink-fill-hover) !important;
+    border-color: var(--st-pink) !important;
+    box-shadow: var(--st-glow-1);
+}
+
+/* Red outline, destructive actions only (delete / remove / deny). It keeps the normal
+   outline glass and border; only the content is red, and hovering glows red (not purple).
+   `.st-btn-danger` is the same style for a destructive button that isn't Color.Error. */
+.mud-button-outlined-error,
+.st-btn-danger {
+    color: var(--st-red) !important;
+}
+.mud-button-outlined-error .mud-icon-root,
+.st-btn-danger .mud-icon-root {
+    color: var(--st-red) !important;
+}
+.mud-button-outlined-error:hover:not(:disabled),
+.st-btn-danger:hover:not(:disabled) {
+    background: var(--st-red-soft) !important;
+    border-color: var(--st-red) !important;
+    color: var(--st-red) !important;
+    box-shadow: var(--st-red-glow);
+}
+
+/* Small square icon action button, the one action-button design, used for the
+   monitor/remove/close/pause/resume/delete/refresh controls everywhere. Neutral outline by
+   default; only destructive actions (Danger) are coloured. Shape is always --st-radius-btn. */
+.st-icon-btn,
+.st-ep-actions .mud-menu-icon-button-activator {
+    width: var(--st-icon-btn-size) !important;
+    height: var(--st-icon-btn-size) !important;
+    min-width: var(--st-icon-btn-size) !important;
+    padding: 0 !important;
+    border-radius: var(--st-radius-btn) !important;
+    border: 1px solid var(--st-border-strong) !important;
+    background: var(--st-bg-elevated) !important;
+    color: var(--st-text-secondary) !important;
+    transition: background var(--st-transition-fast), color var(--st-transition-fast), border-color var(--st-transition-fast), box-shadow var(--st-transition-fast);
+}
+.st-icon-btn:hover:not(:disabled),
+.st-ep-actions .mud-menu-icon-button-activator:hover {
+    color: var(--st-on-accent) !important;
+    background: var(--st-gradient-soft) !important;
+    border-color: var(--st-border-hover) !important;
+    box-shadow: var(--st-glow-1);
+}
+
+/* Overlay variant: artwork + the episode overflow menu activator. */
+.st-icon-btn--overlay,
+.st-ep-actions .mud-menu-icon-button-activator {
+    background: var(--st-overlay-fill) !important;
+    border-color: var(--st-overlay-border) !important;
+    color: var(--st-on-accent) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.st-icon-btn--overlay:hover:not(:disabled),
+.st-ep-actions .mud-menu-icon-button-activator:hover { border-color: var(--st-glass-border-bright) !important; }
+
+/* Destructive action: red content, red glow on hover (overrides the neutral/overlay hover). */
+.st-icon-btn--danger { color: var(--st-red) !important; }
+.st-icon-btn--danger:hover:not(:disabled) {
+    background: var(--st-red-soft) !important;
+    border-color: var(--st-red) !important;
+    color: var(--st-red) !important;
+    box-shadow: var(--st-red-glow);
+}
+
+/* Inputs, selects, popovers */
+
+/* Fields carry a faint glass fill so selects match the rest of the UI. */
+.mud-input.mud-input-outlined,
+.mud-input.mud-input-filled {
+    background-color: rgba(255, 255, 255, 0.035);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.mud-input.mud-input-outlined .mud-input-outlined-border { border-color: var(--st-glass-border) !important; }
+.mud-input.mud-input-outlined:focus-within .mud-input-outlined-border { border-color: var(--st-purple) !important; }
+
+/* Popup panels (select / autocomplete / menu / picker): translucent glass. */
+.mud-popover {
+    background-color: var(--st-glass-popover) !important;
+    background-image: var(--st-glass-image) !important;
+    backdrop-filter: blur(26px) saturate(1.3);
+    -webkit-backdrop-filter: blur(26px) saturate(1.3);
+    border: 1px solid var(--st-glass-border) !important;
+    border-radius: var(--st-radius-md) !important;
+    box-shadow: var(--st-shadow-lg), var(--st-glow-1) !important;
+    overflow: hidden;
+}
+.mud-popover .mud-list,
+.mud-popover .mud-menu-list,
+.mud-popover .mud-picker-content { background: transparent !important; }
+
+.mud-list-item { border-radius: var(--st-radius-sm) !important; }
+.mud-list-item:hover,
+.mud-menu-item:hover { background: var(--st-gradient-soft) !important; }
+
+/* One menu scale for every dropdown. */
+.mud-popover .mud-menu-list { padding: 4px !important; min-width: 150px; }
+.mud-popover .mud-menu-item {
+    min-height: 30px !important;
+    padding: 4px 10px !important;
+    border-radius: var(--st-radius-sm) !important;
+}
+.mud-popover .mud-menu-item .mud-icon-root,
+.mud-popover .mud-menu-item .mud-list-item-icon {
+    font-size: 1rem !important;
+    min-width: 20px !important;
+    margin-right: 8px !important;
+}
+.mud-popover .mud-menu-item .mud-list-item-text,
+.mud-popover .mud-menu-item .mud-typography {
+    font-size: var(--st-font-size-sm) !important;
+    font-weight: 500 !important;
+}
+
+/* Surfaces: tables, progress, dialogs, expansion panels */
+
+.mud-table { border: 1px solid var(--st-border) !important; border-radius: var(--st-radius-md) !important; }
+.mud-data-grid {
+    border: 1px solid var(--st-border) !important;
+    border-radius: var(--st-radius-md) !important;
+    overflow: hidden;
+}
+.mud-data-grid .mud-datagrid-toolbar {
+    background: var(--st-bg-surface) !important;
+    border-bottom: 1px solid var(--st-border) !important;
+}
+/* Docker infrastructure grids: size columns to their content and scroll
+   instead of wrapping long names/ids into tall columns. */
+.st-infra-grid .mud-table-container { overflow-x: auto; }
+.st-infra-grid .mud-table-root { table-layout: auto; }
+.st-infra-grid .mud-table-cell { white-space: nowrap; }
+
+/* Progress bars: a translucent glass track with a see-through fill. */
+.mud-progress-linear {
+    border-radius: var(--st-radius-full) !important;
+    height: 6px !important;
+    background-color: var(--st-glass-fill) !important;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 0 0 1px var(--st-glass-border) !important;
+    overflow: hidden;
+}
+.mud-progress-linear .mud-progress-linear-bar {
+    opacity: 0.8;
+    box-shadow: inset 0 1px 0 var(--st-glass-border-soft);
+}
+.mud-progress-circular { color: var(--st-pink) !important; }
+
+.mud-overlay .mud-overlay-scrim {
+    background-color: var(--st-overlay-fill) !important;
+    backdrop-filter: blur(10px) saturate(1.2);
+    -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+
+.mud-dialog {
+    position: relative;
+    border-radius: 24px !important;
+    border: 1px solid var(--st-glass-border) !important;
+    background-color: var(--st-glass-surface-strong) !important;
+    background-image: var(--st-glass-image) !important;
+    backdrop-filter: blur(28px) saturate(1.35);
+    -webkit-backdrop-filter: blur(28px) saturate(1.35);
+    box-shadow: var(--st-shadow-lg), var(--st-glow-1), var(--st-glass-highlight) !important;
+    overflow: hidden !important;
+}
+/* Apple-style top grabber pill: a mobile/tablet affordance (the sheet is draggable-feeling).
+   Desktops use a plain floating card, so the pill and the space it reserved are dropped. */
+@media (max-width: 959.98px) {
+    .mud-dialog::before {
+        content: '';
+        position: absolute;
+        top: 7px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 36px;
+        height: 4px;
+        border-radius: var(--st-radius-full);
+        background: rgba(255, 255, 255, 0.26);
+        z-index: 25;
+        pointer-events: none;
+    }
+}
+.mud-dialog .mud-dialog-title { overflow: visible !important; position: relative; }
+
+/* Expansion panels (e.g. show seasons): glass, like the other tiles. */
+.mud-expansion-panels { background: transparent !important; }
+.mud-expansion-panel {
+    background-color: var(--st-glass-surface) !important;
+    background-image: var(--st-glass-image) !important;
+    border: 1px solid var(--st-glass-border) !important;
+    border-radius: var(--st-radius-md) !important;
+    margin-bottom: var(--st-space-sm);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden;
+}
+.mud-expansion-panel-header,
+.mud-expansion-panel-content { background: transparent !important; }
+.mud-expansion-panel:before { display: none !important; }
+
+/* Toasts, calm surface with a severity accent stripe */
+
+.mud-snackbar,
+.mud-snackbar.mud-theme-primary,
+.mud-snackbar.mud-theme-secondary,
+.mud-snackbar.mud-theme-tertiary,
+.mud-snackbar.mud-theme-info,
+.mud-snackbar.mud-theme-success,
+.mud-snackbar.mud-theme-warning,
+.mud-snackbar.mud-theme-error,
+.mud-snackbar.mud-theme-dark {
+    background-color: var(--st-bg-elevated) !important;
+    color: var(--st-text-primary) !important;
+    border: 1px solid var(--st-border-strong) !important;
+    border-left-width: 3px !important;
+    border-left-style: solid !important;
+    border-radius: var(--st-radius-md) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 16px color-mix(in srgb, var(--st-purple) 10%, transparent) !important;
+    backdrop-filter: blur(10px);
+}
+.mud-snackbar.mud-theme-primary { border-left-color: var(--st-pink) !important; }
+.mud-snackbar.mud-theme-secondary { border-left-color: var(--st-purple) !important; }
+.mud-snackbar.mud-theme-info { border-left-color: var(--st-blue) !important; }
+.mud-snackbar.mud-theme-success { border-left-color: var(--st-green) !important; }
+.mud-snackbar.mud-theme-warning { border-left-color: var(--st-yellow) !important; }
+.mud-snackbar.mud-theme-error { border-left-color: var(--st-red) !important; }
+.mud-snackbar .mud-snackbar-icon { color: var(--st-text-secondary) !important; opacity: 1; }
+.mud-snackbar.mud-theme-primary .mud-snackbar-icon { color: var(--st-pink) !important; }
+.mud-snackbar.mud-theme-secondary .mud-snackbar-icon { color: var(--st-purple) !important; }
+.mud-snackbar.mud-theme-info .mud-snackbar-icon { color: var(--st-blue) !important; }
+.mud-snackbar.mud-theme-success .mud-snackbar-icon { color: var(--st-green) !important; }
+.mud-snackbar.mud-theme-warning .mud-snackbar-icon { color: var(--st-yellow) !important; }
+.mud-snackbar.mud-theme-error .mud-snackbar-icon { color: var(--st-red) !important; }
+.mud-snackbar .mud-snackbar-content-action > button { color: var(--st-text-secondary) !important; }
+
+/* MudBlazor chrome (tabs, chips, app shell borders) */
+
+.mud-appbar { border-bottom: 1px solid var(--st-border) !important; }
+.mud-drawer { border-right: 1px solid var(--st-border) !important; }
+
+.mud-tab { text-transform: none !important; font-weight: 600 !important; font-size: var(--st-font-size-md) !important; }
+.mud-tab.active { color: var(--st-text-primary) !important; }
+.mud-tab:not(.active) { color: var(--st-text-secondary) !important; }
+.mud-tab:hover:not(.active) { color: var(--st-text-primary) !important; background: var(--st-gradient-soft) !important; }
+.mud-tab-slider { background: var(--st-gradient-line) !important; height: 3px !important; }
+
+.mud-chip { border-radius: var(--st-radius-full) !important; font-weight: 500 !important; }
+
+/* Form controls, readable labels, helper text and spacing MudBlazor shrinks floating labels to scale(0.75) and uses 0.75rem helper text; at this app's 16px root that reads far too small. */
+
+.mud-input-control > .mud-input-control-input-container > .mud-input-label-inputcontrol {
+    font-size: var(--st-font-size-md) !important;
+}
+.mud-input-control .mud-shrink ~ label.mud-input-label-inputcontrol,
+.mud-input-control .mud-input:focus-within ~ label.mud-input-label-inputcontrol {
+    font-size: 1.2rem !important;
+}
+
+/* Keep the outlined border notch sized to match the larger floating label. */
+.mud-input.mud-input-outlined > .mud-input-outlined-border legend {
+    font-size: var(--st-font-size-sm) !important;
+}
+
+.mud-input-helper-text {
+    font-size: var(--st-font-size-sm) !important;
+    line-height: 1.5 !important;
+    margin-top: 7px !important;
+    letter-spacing: 0 !important;
+}
+.mud-input-helper-text-margin-dense {
+    margin-top: 7px !important;
+}
+
+/* Field value text lines up with the label and helper text underneath. */
+.mud-input > input.mud-input-root-outlined,
+div.mud-input-slot.mud-input-root-outlined {
+    padding-left: 11px !important;
+    padding-right: 11px !important;
+}
+.mud-input-label-outlined {
+    transform: translate(11px, 20px) scale(1) !important;
+}
+.mud-input-label-outlined.mud-input-label-margin-dense {
+    transform: translate(11px, 12px) scale(1) !important;
+}
+.mud-shrink ~ label.mud-input-label-inputcontrol.mud-input-label-outlined,
+.mud-input:focus-within ~ label.mud-input-label-inputcontrol.mud-input-label-outlined {
+    transform: translate(11px, -6px) scale(0.75) !important;
+}
+
+/* Switches read with their label first; pin the control to the left. */
+.mud-switch {
+    margin: 2px 0;
+    gap: 10px;
+}
+.mud-input-control.mud-input-control-boolean-input > .mud-input-control-input-container {
+    align-items: flex-start;
+}
+.mud-input-control.mud-input-control-boolean-input .mud-switch {
+    width: fit-content;
+    justify-content: flex-end;
+}

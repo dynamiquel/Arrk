@@ -1,0 +1,77 @@
+@* Split search button: the primary action runs the automatic "grab best" search; the caret opens
+   a menu that additionally offers admin-only interactive search. Reused by the movie, series and
+   album dialogs so every media type searches the same way.
+
+   The caret uses MudMenu's built-in icon activator (which wires the click to the toggle); a custom
+   ActivatorContent in MudBlazor 9 does not open the menu, so we style the built-in activator to
+   join it flush with the primary button. *@
+
+<div class="@($"st-split-btn {(_showCaret ? "st-split-btn--split" : "")}")">
+    <MudButton Variant="@Variant" Color="Color.Primary" Disabled="@Disabled"
+               StartIcon="@Icons.Material.Filled.Search" OnClick="RunSearch"
+               Class="st-split-btn-main"
+               title="@Label" AriaLabel="@Label">
+        <span class="st-btn-label">@Label</span>
+    </MudButton>
+    @if (_showCaret)
+    {
+        <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
+                 Variant="@Variant" Color="Color.Primary" Size="@Size"
+                 Dense="true" Disabled="@Disabled"
+                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                 AriaLabel="More search options" title="More search options">
+            <MudMenuItem OnClick="RunSearch" Icon="@Icons.Material.Filled.Search">@AutoLabel</MudMenuItem>
+            @if (EnableInteractive && OnInteractive.HasDelegate)
+            {
+                <MudMenuItem OnClick="RunInteractive" Icon="@Icons.Material.Filled.TravelExplore">Interactive search…</MudMenuItem>
+            }
+            @if (EnableRetry && OnRetry.HasDelegate)
+            {
+                <MudMenuItem OnClick="RunRetry" Icon="@Icons.Material.Filled.Refresh">Retry search</MudMenuItem>
+            }
+            @if (EnableUpload && OnUpload.HasDelegate)
+            {
+                <MudMenuItem OnClick="RunUpload" Icon="@Icons.Material.Filled.CloudUpload">Upload from computer</MudMenuItem>
+            }
+        </MudMenu>
+    }
+</div>
+
+@code {
+    /// <summary>Automatic search (the arr/music picks and grabs the best release).</summary>
+    [Parameter] public EventCallback OnSearch { get; set; }
+
+    /// <summary>Opens the interactive release picker. Only wired when <see cref="EnableInteractive"/>.</summary>
+    [Parameter] public EventCallback OnInteractive { get; set; }
+
+    /// <summary>Optional retry action shown in the caret menu.</summary>
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    /// <summary>Optional upload action shown in the caret menu.</summary>
+    [Parameter] public EventCallback OnUpload { get; set; }
+
+    /// <summary>Admins only, hides the caret entirely for non-admins.</summary>
+    [Parameter] public bool EnableInteractive { get; set; }
+
+    [Parameter] public bool EnableRetry { get; set; } = true;
+    [Parameter] public bool EnableUpload { get; set; } = true;
+
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Label { get; set; } = "Search";
+    [Parameter] public string AutoLabel { get; set; } = "Search now";
+    [Parameter] public Variant Variant { get; set; } = Variant.Outlined;
+    [Parameter] public Size Size { get; set; } = Size.Medium;
+
+    bool _showCaret =>
+        (EnableInteractive && OnInteractive.HasDelegate)
+        || (EnableRetry && OnRetry.HasDelegate)
+        || (EnableUpload && OnUpload.HasDelegate);
+
+    Task RunSearch() => OnSearch.InvokeAsync();
+
+    Task RunInteractive() => OnInteractive.InvokeAsync();
+
+    Task RunRetry() => OnRetry.InvokeAsync();
+
+    Task RunUpload() => OnUpload.InvokeAsync();
+}

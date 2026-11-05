@@ -1,0 +1,36 @@
+@attribute [UiRegion("tv.movie.links")]
+@inject IDialogService Dialogs
+@inject SubtitleService Subtitles
+
+@if (Subtitles.IsAvailable && IsLibraryContext(Context))
+{
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="st-hero-link"
+               StartIcon="@Icons.Material.Filled.Subtitles" OnClick="OpenAsync">
+        Subtitles
+    </MudButton>
+}
+
+@code {
+    // Accepts every context the links region hands out (library and remote media) so the remote
+    // dialog does not fail parameter binding; the action simply renders only for library items.
+    [Parameter] public object? Context { get; set; }
+
+    internal static bool IsLibraryContext(object? context) =>
+        context is TvMovieActionContext { Movie.Id: > 0 };
+
+    async Task OpenAsync()
+    {
+        if (Context is not TvMovieActionContext { Movie.Id: > 0 } context)
+            return;
+
+        TvMovie movie = context.Movie;
+        DialogParameters<SubtitleSearchDialog> parameters = new()
+        {
+            { x => x.Target, SubtitleTarget.Movie(movie.Id, movie.Title, movie.Year > 0 ? movie.Year.ToString() : "") }
+        };
+        await Dialogs.ShowAsync<SubtitleSearchDialog>(
+            "Subtitles",
+            parameters,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true });
+    }
+}

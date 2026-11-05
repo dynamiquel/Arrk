@@ -1,0 +1,69 @@
+using MudBlazor;
+using Stackarr.DownloadManagement.Components.Shared;
+using Stackarr.DownloadManagement.Components.Tiles;
+using Stackarr.Ui;
+
+namespace Stackarr.DownloadManagement;
+
+/// <summary>
+/// Contributes the torrent transfer summaries and the storage tile. The same definitions are used
+/// by the Downloads page (without customisation) and by the dashboard, where the shared frame adds
+/// the <c>TORRENTS - …</c> context.
+/// </summary>
+public sealed class DownloadManagementTileProvider : ITileProvider
+{
+    public IReadOnlyList<TileDefinition> Tiles { get; } =
+    [
+        new(
+            "torrents.download",
+            "Torrents",
+            "Download",
+            Icons.Material.Filled.ArrowDownward,
+            typeof(TorrentStatTile),
+            Order: 10,
+            Description: "Current download speed and total downloaded.",
+            Href: "/downloads",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "download" }),
+        new(
+            "torrents.upload",
+            "Torrents",
+            "Upload",
+            Icons.Material.Filled.ArrowUpward,
+            typeof(TorrentStatTile),
+            Order: 20,
+            Description: "Current upload speed and total uploaded.",
+            Href: "/downloads",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "upload" }),
+        new(
+            "torrents.active",
+            "Torrents",
+            "Active",
+            Icons.Material.Filled.Cloud,
+            typeof(TorrentStatTile),
+            Order: 30,
+            Description: "Torrents currently downloading.",
+            Href: "/downloads",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "active" }),
+        new(
+            "torrents.seeding",
+            "Torrents",
+            "Seeding",
+            Icons.Material.Filled.Speed,
+            typeof(TorrentStatTile),
+            Order: 40,
+            Description: "Torrents currently seeding.",
+            Href: "/downloads",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "seeding" }),
+        new(
+            "system.storage",
+            "System",
+            "Storage",
+            Icons.Material.Filled.Storage,
+            typeof(StorageTile),
+            Order: 10,
+            Description: "Free space on the media and downloads roots.",
+            Href: "/downloads",
+            DefaultSection: "Overview",
+            DefaultOrder: 80)
+    ];
+}

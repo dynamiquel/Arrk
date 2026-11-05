@@ -1,0 +1,299 @@
+@inject ConfigAutocompleteProvider AutocompleteService
+@inject ConfigValidator ConfigValidator
+@inject IJSRuntime JS
+
+<div class="st-config-editor-wrap">
+    <div class="st-config-editor-area">
+        <textarea @ref="_textareaRef"
+                  class="st-config-textarea"
+                  value="@Value"
+                  @oninput="HandleInput"
+                  @onkeydown="HandleKeyDown"
+                  @onblur="HandleBlur"
+                  placeholder="@Placeholder"
+                  spellcheck="false"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"></textarea>
+
+        @if (_showSuggestions && _suggestions.Count > 0)
+        {
+            <div class="st-config-suggestions" @ref="_dropdownRef">
+                @foreach ((AutocompleteSuggestion suggestion, int index) in _suggestions.Select((s, i) => (s, i)))
+                {
+                    <div class="st-config-suggestion @(index == _selectedIndex ? "st-config-suggestion--selected" : "")"
+                         @onmousedown:preventDefault="true"
+                         @onmousedown="() => AcceptSuggestion(suggestion)"
+                         @onmouseenter="@(() => _selectedIndex = index)">
+                        <div class="st-config-suggestion-header">
+                            <span class="st-config-suggestion-label">@suggestion.Label</span>
+                            <span class="st-config-suggestion-type">@suggestion.TypeHint</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(suggestion.Description))
+                        {
+                            <div class="st-config-suggestion-desc">@suggestion.Description</div>
+                        }
+                        @if (!string.IsNullOrEmpty(suggestion.DefaultValue))
+                        {
+                            <div class="st-config-suggestion-default">default: @suggestion.DefaultValue</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (_validationErrors.Count > 0)
+    {
+        <div class="st-config-validation-errors">
+            <div class="st-config-validation-header">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Color="Color.Error" />
+                <MudText Typo="Typo.caption" Color="Color.Error">@(_validationErrors.Count) issue(s)</MudText>
+            </div>
+            @foreach (string error in _validationErrors.Take(5))
+            {
+                <div class="st-config-validation-error">@error</div>
+            }
+            @if (_validationErrors.Count > 5)
+            {
+                <div class="st-config-validation-more">... and @(_validationErrors.Count - 5) more</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "";
+
+    ElementReference _textareaRef;
+    ElementReference _dropdownRef;
+
+    List<AutocompleteSuggestion> _suggestions = new();
+    List<string> _validationErrors = new();
+    bool _showSuggestions;
+    int _selectedIndex;
+    int _cursorOffset;
+    Timer? _validationTimer;
+
+    async Task HandleInput(ChangeEventArgs e)
+    {
+        string value = e.Value?.ToString() ?? "";
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+
+        try
+        {
+            CursorPos pos = await JS.InvokeAsync<CursorPos>("ce.getPos", _textareaRef);
+            _cursorOffset = pos.Start;
+        }
+        catch
+        {
+            _cursorOffset = value.Length;
+        }
+
+        UpdateSuggestions();
+        ScheduleValidation();
+    }
+
+    async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Tab")
+        {
+            await JS.InvokeVoidAsync("ce.insertText", _textareaRef, "  ");
+            CursorPos pos = await JS.InvokeAsync<CursorPos>("ce.getPos", _textareaRef);
+            _cursorOffset = pos.Start;
+            Value = await JS.InvokeAsync<string>("ce.getValue", _textareaRef);
+            await ValueChanged.InvokeAsync(Value);
+            UpdateSuggestions();
+            StateHasChanged();
+            return;
+        }
+
+        if (!_showSuggestions || _suggestions.Count == 0)
+        {
+            if (e.Key == "Enter" && !e.ShiftKey)
+            {
+                CursorPos pos = await JS.InvokeAsync<CursorPos>("ce.getPos", _textareaRef);
+                string indent = GetIndentAtCursor(Value, pos.Start);
+                await JS.InvokeVoidAsync("ce.insertText", _textareaRef, "\n" + indent);
+                Value = await JS.InvokeAsync<string>("ce.getValue", _textareaRef);
+                await ValueChanged.InvokeAsync(Value);
+                _cursorOffset = pos.Start + 1 + indent.Length;
+                StateHasChanged();
+            }
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                _selectedIndex = Math.Min(_selectedIndex + 1, _suggestions.Count - 1);
+                await ScrollSelectedIntoView();
+                StateHasChanged();
+                break;
+
+            case "ArrowUp":
+                _selectedIndex = Math.Max(_selectedIndex - 1, 0);
+                await ScrollSelectedIntoView();
+                StateHasChanged();
+                break;
+
+            case "Enter":
+            case "Tab":
+                await AcceptSuggestion(_suggestions[_selectedIndex]);
+                break;
+
+            case "Escape":
+                _showSuggestions = false;
+                StateHasChanged();
+                break;
+        }
+    }
+
+    void HandleBlur()
+    {
+        Task.Delay(150).ContinueWith(_ =>
+        {
+            _showSuggestions = false;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    void UpdateSuggestions()
+    {
+        try
+        {
+            AutocompleteResult result = AutocompleteService.GetSuggestions(Value, _cursorOffset);
+            _suggestions = result.Suggestions;
+            _showSuggestions = _suggestions.Count > 0;
+            _selectedIndex = 0;
+        }
+        catch
+        {
+            _suggestions = new();
+            _showSuggestions = false;
+        }
+    }
+
+    async Task AcceptSuggestion(AutocompleteSuggestion suggestion)
+    {
+        try
+        {
+            CursorPos pos = await JS.InvokeAsync<CursorPos>("ce.getPos", _textareaRef);
+
+            // Find the start of the current word being typed (walk backwards from cursor)
+            string before = Value[..pos.Start];
+            int wordStart = before.LastIndexOf('\n') + 1;
+            string currentLine = before[wordStart..];
+
+            // For key suggestions, replace from the start of the word to the cursor
+            // For value suggestions, replace from after the colon
+            int replaceStart;
+            if (suggestion.Kind == CompletionKind.Property)
+            {
+                // Find where the current word starts (first non-space after last newline or indentation)
+                replaceStart = wordStart;
+                for (int i = wordStart; i < pos.Start; i++)
+                {
+                    if (Value[i] != ' ')
+                    {
+                        replaceStart = i;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                // For values, replace from the cursor position of the value start
+                // Find the colon position to know where the value starts
+                int colonIdx = currentLine.IndexOf(':');
+                if (colonIdx >= 0 && suggestion.Kind == CompletionKind.Value)
+                {
+                    replaceStart = wordStart + colonIdx + 1;
+                    // Skip whitespace after colon
+                    while (replaceStart < pos.Start && Value[replaceStart] == ' ')
+                        replaceStart++;
+                }
+                else
+                {
+                    replaceStart = pos.Start;
+                }
+            }
+
+            string after = Value[pos.End..];
+            string insertText = suggestion.InsertText;
+            string newText = Value[..replaceStart] + insertText + after;
+            Value = newText;
+            await ValueChanged.InvokeAsync(Value);
+            _cursorOffset = replaceStart + insertText.Length;
+
+            // Set cursor position via JS
+            await JS.InvokeVoidAsync("ce.setPos", _textareaRef, _cursorOffset);
+
+            _showSuggestions = false;
+            UpdateSuggestions();
+        }
+        catch
+        {
+        }
+
+        StateHasChanged();
+    }
+
+    static string GetIndentAtCursor(string text, int offset)
+    {
+        int lineStart = text.LastIndexOf('\n', Math.Max(0, offset - 1)) + 1;
+        string line = text[lineStart..offset];
+        int spaces = 0;
+        foreach (char c in line)
+        {
+            if (c == ' ') spaces++;
+            else if (c == '\t') spaces += 2;
+            else break;
+        }
+        return new(' ', spaces);
+    }
+
+    async Task ScrollSelectedIntoView()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("ce.scrollSelected", _dropdownRef, _selectedIndex);
+        }
+        catch
+        {
+        }
+    }
+
+    void ScheduleValidation()
+    {
+        _validationTimer?.Dispose();
+        _validationTimer = new(_ =>
+        {
+            RunValidation();
+            InvokeAsync(StateHasChanged);
+        }, null, 600, Timeout.Infinite);
+    }
+
+    void RunValidation()
+    {
+        _validationErrors = new();
+        if (string.IsNullOrWhiteSpace(Value))
+            return;
+
+        _validationErrors = ConfigValidator.ValidateWithSchema(Value);
+    }
+
+    void Dispose()
+    {
+        _validationTimer?.Dispose();
+    }
+
+    class CursorPos
+    {
+        public int Start { get; set; }
+        public int End { get; set; }
+    }
+}

@@ -1,0 +1,76 @@
+@inject UserService Users
+
+<MudDialog>
+    <TitleContent>
+        <StDialogTitle Icon="@Icons.Material.Filled.Edit" Title="Edit user" />
+    </TitleContent>
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <MudStack Spacing="3" Class="mt-2">
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+            <MudTextField @bind-Value="_username" Label="Username" Variant="Variant.Outlined" MaxLength="64" />
+            <MudSelect T="UserRole" @bind-Value="_role" Label="Role" Variant="Variant.Outlined" Disabled="@_isSelf">
+                <MudSelectItem Value="UserRole.User">User</MudSelectItem>
+                <MudSelectItem Value="UserRole.Admin">Administrator</MudSelectItem>
+            </MudSelect>
+            @if (_isSelf)
+            {
+                <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);">You cannot change your own role.</MudText>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="st-btn-gradient" StartIcon="@Icons.Material.Filled.Check" OnClick="SaveAsync" Disabled="@_busy">
+            <span class="st-btn-label">Save</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public StackarrUser User { get; set; } = null!;
+    [Parameter] public bool IsSelf { get; set; }
+
+    string _username = "";
+    UserRole _role;
+    string? _error;
+    bool _busy;
+
+    bool _isSelf;
+
+    protected override void OnInitialized()
+    {
+        _username = User.Username;
+        _role = User.Role;
+        _isSelf = IsSelf;
+    }
+
+    async Task SaveAsync()
+    {
+        if (_busy) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            if (!string.Equals(User.Username, _username, StringComparison.Ordinal))
+                await Users.UpdateProfileAsync(User.Id, _username, _username);
+
+            if (!_isSelf && _role != User.Role)
+                await Users.SetRoleAsync(User.Id, _role);
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _busy = false;
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

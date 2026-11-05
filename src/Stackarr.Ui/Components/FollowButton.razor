@@ -1,0 +1,128 @@
+@using Stackarr.Core.Notifications
+@using Stackarr.Media.Abstractions
+@inject NotificationSubscriptionService Subscriptions
+@inject AuthenticationStateProvider AuthProvider
+@inject ISnackbar Snackbar
+
+@* Per-entity follow toggle. Lives in the shared UI layer so TV, music and plugins use the same
+   subscription behaviour instead of each inventing its own "notify me" control. *@
+
+@if (_ready)
+{
+    if (AsButton)
+    {
+        <MudButton OnClick="ToggleAsync"
+                   Variant="@(_following ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary"
+                   StartIcon="@Icon"
+                   Class="@Class"
+                   title="@Tooltip"
+                   AriaLabel="@Tooltip"
+                   Disabled="@_changing">
+            <span class="st-btn-label">@(_following ? "Following" : "Notify me")</span>
+        </MudButton>
+    }
+    else
+    {
+        <MudTooltip Text="@Tooltip">
+            <MudIconButton OnClick="ToggleAsync"
+                           Icon="@Icon"
+                           Color="@(_following ? Color.Primary : Color.Default)"
+                           Size="Size.Small"
+                           Class="@Class"
+                           StopPropagation="@StopPropagation"
+                           title="@Tooltip"
+                           AriaLabel="@Tooltip"
+                           Disabled="@_changing" />
+        </MudTooltip>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public MediaEntityRef Entity { get; set; } = null!;
+
+    /// <summary>Follow every child of the entity (episodes under a series or season).</summary>
+    [Parameter] public bool IncludeDescendants { get; set; }
+
+    /// <summary>Render as a full-size action button instead of the compact icon.</summary>
+    [Parameter] public bool AsButton { get; set; }
+
+    [Parameter] public bool StopPropagation { get; set; } = true;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback<bool> FollowingChanged { get; set; }
+
+    int _userId;
+    bool _ready;
+    bool _following;
+    bool _changing;
+    string _loadedKey = "";
+
+    string Icon => _following
+        ? Icons.Material.Filled.NotificationsActive
+        : Icons.Material.Outlined.NotificationsNone;
+
+    string Tooltip => _following
+        ? $"Following {Entity?.Title ?? "this title"}. Click to stop notifications."
+        : $"Get notified about {Entity?.Title ?? "this title"}";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Entity is null || string.IsNullOrWhiteSpace(Entity.ItemKey))
+            return;
+
+        if (_ready && string.Equals(_loadedKey, Entity.ItemKey, StringComparison.Ordinal))
+            return;
+
+        await LoadAsync();
+    }
+
+    async Task LoadAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!int.TryParse(state.User.FindFirst(StackarrClaims.UserIdClaim)?.Value, out int userId))
+            return;
+
+        _userId = userId;
+        _loadedKey = Entity.ItemKey;
+        _following = await Subscriptions.IsSubscribedAsync(
+            _userId, Entity.ProviderKey, Entity.ItemKey);
+        _ready = true;
+    }
+
+    async Task ToggleAsync()
+    {
+        if (!_ready || _changing)
+            return;
+
+        _changing = true;
+        try
+        {
+            if (_following)
+            {
+                await Subscriptions.UnsubscribeAsync(_userId, Entity.ProviderKey, Entity.ItemKey);
+                _following = false;
+                Snackbar.Add($"Stopped notifications for {Entity.Title}.", Severity.Info);
+            }
+            else
+            {
+                await Subscriptions.SubscribeAsync(
+                    _userId,
+                    Entity,
+                    new NotificationSubscriptionOptions { IncludeDescendants = IncludeDescendants },
+                    source: "manual");
+                _following = true;
+                Snackbar.Add($"You'll be notified about {Entity.Title}.", Severity.Success);
+            }
+
+            await FollowingChanged.InvokeAsync(_following);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _changing = false;
+        }
+    }
+}

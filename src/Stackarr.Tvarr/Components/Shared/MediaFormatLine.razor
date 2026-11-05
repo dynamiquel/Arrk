@@ -1,0 +1,31 @@
+@* Compact "resolution · HDR · audio" subline, e.g. "1080p · SDR · Dolby Digital 5.1". The shared
+   <StFormatLine> owns the presentation so movie/TV and music format lines read as one design. *@
+
+@{
+    MediaFormatSummary.FormatSummaryParts summary = MediaFormatSummary.SummaryParts(Info, Quality, ShowAudio);
+    List<FormatLinePart> parts = [];
+    if (summary.Resolution.Length > 0)
+    {
+        parts.Add(new FormatLinePart(summary.Resolution, "resolution"));
+    }
+    if (summary.Hdr.Length > 0)
+    {
+        parts.Add(new FormatLinePart(summary.Hdr, "hdr", Slug(summary.Hdr)));
+    }
+    if (summary.Audio.Length > 0)
+    {
+        parts.Add(new FormatLinePart(summary.Audio, "audio"));
+    }
+}
+
+<StFormatLine Parts="parts" Class="@Class" Title="@MediaFormatSummary.SummaryLine(Info, Quality, ShowAudio)" />
+
+@code {
+    [Parameter] public MediaTechnicalInfo? Info { get; set; }
+    [Parameter] public QualityInfo? Quality { get; set; }
+    [Parameter] public bool ShowAudio { get; set; } = true;
+    [Parameter] public string Class { get; set; } = "";
+
+    static string Slug(string value) =>
+        value.Replace(" ", "-").Replace("+", "plus").ToLowerInvariant();
+}

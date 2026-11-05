@@ -1,0 +1,80 @@
+@inject DashboardSummaryCache SummaryCache
+@implements IDisposable
+
+<div class="st-hw-bars">
+    <UsageBar Label="CPU" Percent="_cpu" Text="@($"{_cpu:F1}%")" />
+    <UsageBar Label="MEM" Percent="_mem" Text="@($"{_mem:F1}%")" />
+</div>
+@if (Source == "host")
+{
+    <div class="st-stat-sub">@FormatHelper.FormatBytes(_memUsed) / @FormatHelper.FormatBytes(_memTotal)</div>
+}
+else
+{
+    <div class="st-stat-sub">@_runningContainers containers</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    /// <summary><c>host</c> or <c>docker</c>.</summary>
+    [Parameter] public string Source { get; set; } = "host";
+
+    const int RefreshSeconds = 2;
+
+    double _cpu;
+    double _mem;
+    long _memUsed;
+    long _memTotal;
+    int _runningContainers;
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(CancellationToken.None);
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAsync(CancellationToken ct)
+    {
+        try
+        {
+            DashboardSummary summary = await SummaryCache.GetAsync(ct);
+            if (Source == "host")
+            {
+                _cpu = summary.HostMetrics?.CpuPercent ?? 0;
+                _mem = summary.HostMetrics?.MemoryPercent ?? 0;
+                _memUsed = summary.HostMetrics?.MemoryUsedBytes ?? 0;
+                _memTotal = summary.HostMetrics?.MemoryTotalBytes ?? 0;
+            }
+            else
+            {
+                _cpu = summary.DockerMetrics.CpuPercent;
+                _mem = summary.DockerMetrics.MemoryPercent;
+                _runningContainers = summary.DockerMetrics.RunningContainers;
+            }
+        }
+        catch
+        {
+            // Keep the last known values.
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+}

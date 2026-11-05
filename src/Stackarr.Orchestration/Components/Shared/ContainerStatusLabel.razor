@@ -1,0 +1,21 @@
+@* Colored status text with dot indicator for container states *@
+
+<div class="d-flex align-center" style="gap:6px;">
+    <div class="status-dot status-dot--sm @CssClassHelper.GetContainerDotClass(State)"></div>
+    <span class="st-status-text @CssClassHelper.GetContainerStatusTextClass(State)">@GetDisplayText()</span>
+</div>
+
+@code {
+    [Parameter] public ContainerState State { get; set; }
+
+    string GetDisplayText() => State switch
+    {
+        ContainerState.Running => "Running",
+        ContainerState.Starting => "Starting",
+        ContainerState.Exited => "Stopped",
+        ContainerState.Stopped => "Stopped",
+        ContainerState.Paused => "Paused",
+        ContainerState.Restarting => "Restarting",
+        _ => State.ToString()
+    };
+}

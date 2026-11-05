@@ -1,0 +1,94 @@
+@* Reusable tab strip with overflow culling and smooth horizontal scrolling.
+   Variant="underline" (default) is the standard tab bar; Variant="segmented" is the pill switch. *@
+@typeparam T
+@inject IJSRuntime JS
+
+<div class="st-tabs-wrap st-tabs-wrap--@Variant @Class" @ref="_wrap">
+    <button type="button" class="st-tabs-scroll-btn st-tabs-scroll-btn--left" tabindex="-1" aria-label="Scroll tabs left" @onclick="() => ScrollAsync(-1)">
+        <MudIcon Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" />
+    </button>
+
+    <div class="st-tabs st-tabs--@Variant" role="tablist" @ref="_track">
+        @foreach (StTabItem<T> item in Items)
+        {
+            bool active = EqualityComparer<T>.Default.Equals(item.Value, Value);
+            <button type="button"
+                    role="tab"
+                    aria-selected="@active"
+                    title="@(string.IsNullOrEmpty(item.Title) ? null : item.Title)"
+                    class="st-tab @(active ? "active" : "")"
+                    disabled="@item.Disabled"
+                    @onclick="() => Select(item)">
+                @if (!string.IsNullOrEmpty(item.IconUrl))
+                {
+                    <span class="st-tab-icon st-brand-mask" style="--st-brand-url:url('@item.IconUrl')"></span>
+                }
+                else if (!string.IsNullOrEmpty(item.Icon))
+                {
+                    <MudIcon Icon="@item.Icon" Size="Size.Small" />
+                }
+                @if (!string.IsNullOrEmpty(item.Label))
+                {
+                    <span class="st-tab-label">@item.Label</span>
+                }
+                @if (!string.IsNullOrEmpty(item.Count))
+                {
+                    <span class="st-tab-count@(string.IsNullOrEmpty(item.CountVariant) ? "" : $" st-tab-count--{item.CountVariant}")">@item.Count</span>
+                }
+            </button>
+        }
+    </div>
+
+    <button type="button" class="st-tabs-scroll-btn st-tabs-scroll-btn--right" tabindex="-1" aria-label="Scroll tabs right" @onclick="() => ScrollAsync(1)">
+        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+    </button>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<StTabItem<T>> Items { get; set; } = [];
+    [Parameter] public T Value { get; set; } = default!;
+    [Parameter] public EventCallback<T> ValueChanged { get; set; }
+    [Parameter] public string Variant { get; set; } = "underline";
+    [Parameter] public string Class { get; set; } = "";
+
+    ElementReference _wrap;
+    ElementReference _track;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("stackarrTabs.init", _wrap, _track);
+        }
+        catch
+        {
+            /* JS scroll enhancement is non-critical */
+        }
+    }
+
+    async Task Select(StTabItem<T> item)
+    {
+        if (item.Disabled) return;
+        await ValueChanged.InvokeAsync(item.Value);
+        try
+        {
+            await JS.InvokeVoidAsync("stackarrTabs.focusActive", _wrap, _track);
+        }
+        catch
+        {
+            /* non-critical */
+        }
+    }
+
+    async Task ScrollAsync(int direction)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("stackarrTabs.scroll", _wrap, _track, direction);
+        }
+        catch
+        {
+            /* non-critical */
+        }
+    }
+}

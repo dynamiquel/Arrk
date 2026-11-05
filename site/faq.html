@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>FAQ — Stackarr</title>
+  <meta name="description" content="Common questions about Stackarr: project status, requirements, supported services, privacy, Docker, TLS, AI and troubleshooting.">
+  <meta name="theme-color" content="#0f0a18">
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="canonical" href="https://dynamiquel.github.io/Stackarr/faq.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Stackarr home">
+        <img src="assets/logo.svg" alt="" width="34" height="34">
+        <span>Stackarr</span>
+      </a>
+      <nav class="site-nav" id="site-nav" aria-label="Main navigation">
+        <a href="index.html">Overview</a>
+        <a href="features.html">Features</a>
+        <a href="setup.html">Setup</a>
+        <a href="guide.html">Guide</a>
+        <a href="how-it-works.html">How it works</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <div class="header-actions">
+        <a class="icon-link" href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="Stackarr on GitHub">
+          <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+        </a>
+        <a class="btn btn-primary" href="setup.html">Get started</a>
+        <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">
+          <svg class="menu-open" aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg>
+          <svg class="menu-close" aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <span class="pill pill--pink"><span class="pill-dot"></span> The honest answers</span>
+        <h1 style="margin-top: 18px">Questions,<br><span class="grad-text">answered plainly.</span></h1>
+        <p class="lead">
+          What Stackarr is, what it is not, what it needs, and what to expect while it is still
+          early. If something is missing, the source docs and GitHub issues are the next stop.
+        </p>
+        <div class="faq-search">
+          <svg aria-hidden="true"><use href="assets/icons.svg#i-search"></use></svg>
+          <input type="search" placeholder="Search the FAQ…" aria-label="Search the FAQ" data-faq-search>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--flush-top">
+      <div class="wrap--narrow">
+        <div class="faq-group">
+          <h2>Project &amp; philosophy</h2>
+
+          <details class="faq-item" id="project" open>
+            <summary>What is Stackarr? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Stackarr is one web UI and one YAML file for a self-hosted media stack. It
+                provisions and configures the services around your library — movies, shows,
+                music, downloads, subtitles, players — and gives you a single place to discover,
+                request, watch, listen and clean up.
+              </p>
+              <p>
+                It does not replace those services. They still do the heavy lifting. Stackarr
+                orchestrates them, talks to their APIs and smooths over the seams between them.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Is this stable enough to use? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                It is an early alpha, and it is a personal project. The core loop is used daily,
+                but features move, configuration keys evolve and rough edges exist. Treat it as a
+                labour of love rather than a commercial product: back up <code>/config</code>,
+                read release notes, and change one thing at a time.
+              </p>
+              <p>
+                If you need a frozen, support-backed platform, wait. If you enjoy shaping a stack
+                with the person building it, you are in the right place.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why does Stackarr exist? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Because a self-hosted media setup should not feel like a second job. The usual
+                stack solves each individual problem well, but the whole experience is a dozen
+                tabs, a dozen logins and configuration that drifts. Stackarr started as one
+                person's answer to those headaches.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Is it open source? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Yes — MIT licensed. You can read it, run it, modify it and build on it. Issues and
+                pull requests are welcome, though there is no support contract or response-time
+                promise. The project is shared because it might be useful, not because it is
+                finished.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Does it phone home? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                There is no telemetry or analytics built in. Stackarr talks to the services and
+                metadata providers you configure — for example TMDb, Deezer, OpenSubtitles, Discord,
+                MyAnimeList, indexers and your chosen AI provider. If you use a local AI endpoint,
+                even that traffic stays on your network.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>What does it run on? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                A Linux host with Docker. Stackarr needs the Docker socket to create sibling
+                containers and uses three host folders for config, downloads and media. Docker
+                Desktop on macOS or Windows is not a supported host; the container expects a real
+                Linux Docker daemon.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I run more than one instance? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Yes. Give each instance a unique <code>StackName</code>. Containers become
+                <code>stackarr-&lt;name&gt;-*</code> and each gets its own
+                <code>stackarr-&lt;name&gt;-net</code> network, so identical service names do not
+                collide. Give them separate storage roots and non-overlapping host ports.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-group">
+          <h2>Setup &amp; services</h2>
+
+          <details class="faq-item">
+            <summary>Do I need all the supported services? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                No. Modules can be disabled and their UI hides live. A sensible small setup can
+                start with movies/shows and downloads, add Jellyfin later, and leave music,
+                subtitles, MyAnimeList and AI off until you want them. Some infrastructure —
+                the reverse proxy, for example — is core to how Stackarr exposes things.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I keep my existing media library? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Your media folders are just folders: point the storage mounts at them and let the
+                library managers see the right paths. What Stackarr does not do yet is adopt an
+                existing stack's service configurations wholesale — it expects to provision and
+                own the containers it manages. Migrate in stages and keep a backup of the old
+                setup.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Do I need a domain or Cloudflare? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                No. Stackarr works on a LAN with a published port. Traefik is there for path-based
+                routing, and a Cloudflare tunnel is optional for remote access without opening host
+                ports. Set <code>routes.publicUrl</code> to whatever URL you actually use.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Does it handle HTTPS certificates? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Not automatically yet. Traefik routing and middleware exist, but certificate
+                provisioning is still a gap. Put Stackarr behind a TLS-terminating proxy or tunnel,
+                and enable <code>auth.requireHttps</code> once it is served over HTTPS.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Do I need a TMDb key? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Strongly recommended. TMDb powers discovery, artwork and descriptions. Without it,
+                Discover is limited and search falls back to what the library managers already
+                know. A free API key or v4 read token is enough.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I use qBittorrent, SABnzbd or Plex? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                The built-in paths are Transmission for torrents, slskd for Soulseek, and Jellyfin
+                for video playback. There is no Usenet client and no Plex integration today.
+                Because the service layer is modular, alternative implementations could be added
+                later — but treat that as a code contribution, not a config option.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Does it replace Jellyfin or the *arr apps? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                No. Jellyfin still produces the video stream; Radarr and Sonarr still own the movie
+                and show libraries; Prowlarr still owns indexers. Stackarr provisions them,
+                configures them through their APIs and puts a single UI in front. Their own UIs
+                stay reachable for advanced work.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-group">
+          <h2>Features</h2>
+
+          <details class="faq-item">
+            <summary>How does the music stack work? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Stackarr owns the library itself: artists, albums, tracks, playlists and
+                acquisition. Deezer supplies identity and metadata. Torrents and Soulseek bring the
+                files. Releases are identified before they are placed, so tags, artwork and folder
+                names match. Navidrome plays the result, both in-site and through Subsonic clients.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Is the AI required? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                No. It is off by default, opt-in per feature and provider-agnostic. The assistant,
+                release ranking and import matching all keep a deterministic fallback. Destructive
+                actions require explicit confirmation and run through the same services as the UI.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>What about anime? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Sonarr handles anime libraries, and the MyAnimeList module can link or sign in with
+                MAL, browse and edit your list, map MAL cours to local seasons, and sync completed
+                episodes and scores. Plan to Watch appears as a watchlist.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can users request media without admin access? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Yes. The request system supports movies, series, seasons, episodes, artists, albums
+                and tracks. Admins moderate, optionally blacklist on denial, and can auto-approve
+                specific users or roles. Requests go through the owning library module rather than
+                talking to Radarr, Sonarr or Deezer directly.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Does it clean up old media automatically? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Only if you enable it. Watch history drives staleness, but the defaults warn rather
+                than delete. Admins can review reclaimable space, pin anything that must never go
+                stale, and turn on automatic cleanup per media type when they are comfortable.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>What notifications are supported? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                A durable event log, an in-app inbox and feed, Discord delivery and generic JSON
+                webhooks. Routing is per category, and each channel can exclude topics without
+                hiding them from the in-app feed. More channels can be added through the
+                notification channel contract.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-group">
+          <h2>Privacy &amp; safety</h2>
+
+          <details class="faq-item">
+            <summary>Is mounting the Docker socket safe? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                It is powerful. Anyone who controls the Stackarr container can control the Docker
+                daemon, which is effectively root on the host. Run Stackarr on a dedicated media
+                host, keep the UI behind authentication and HTTPS, and do not expose the Docker
+                socket or the Stackarr container to untrusted users.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I expose Stackarr to the internet? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                You can, but only the sign-in surface is meant to be public. Put it behind HTTPS,
+                keep registration on approval or admin-only, use strong admin credentials, and
+                consider a VPN or tunnel rather than opening raw ports. The reverse proxy and tunnel
+                exist for this; use them deliberately.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>How are accounts managed? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Stackarr is the account authority and can act as an OpenID Connect provider for
+                players. Registration can be open, approval-based or admin-only. Discord and
+                MyAnimeList can federate in. Jellyfin and Navidrome keep their own credentials,
+                which Stackarr can provision for clients without OIDC.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>What does the AI provider see? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Only what a feature sends to the model you configure. Library state comes from
+                tools, not the model's imagination, and prompt text is not stored by default. If
+                that matters to you, point <code>ai.baseUrl</code> at a local OpenAI-compatible
+                server and keep everything on your network.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-group">
+          <h2>If something goes wrong</h2>
+
+          <details class="faq-item">
+            <summary>Where do I look first? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Start with <code>docker logs -f stackarr</code>, then the in-app
+                <code>/events</code> feed and <code>/logs</code>. The service's own UI is still
+                available for a deeper view. Most first-run issues are permissions, ports or a
+                public URL that does not match the browser.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why do ports 80 or 443 conflict? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Traefik publishes them by default. Change <code>routes.httpPort</code> and
+                <code>routes.httpsPort</code>, or set both to <code>0</code> for a tunnel-only
+                deployment. The direct Stackarr port is <code>5186</code>.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why does sign-in loop or redirect to the wrong host? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Set <code>routes.publicUrl</code> to the exact URL in your browser, including the
+                scheme. If TLS terminates in front of Stackarr, enable
+                <code>auth.requireHttps</code> and make sure forwarded headers are trusted from
+                your proxy network. Changing the public URL can invalidate cookies; sign in again.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>How do I update safely? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Back up <code>/config</code>, pull the new image, then re-create the container with
+                the same mounts and <code>StackName</code>. Watch the first boot logs. If a config
+                key changed, the validator will tell you; use the Config page's version history to
+                compare.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Where can I ask for help? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <div class="accordion-body">
+              <p>
+                Open an issue on GitHub with the relevant logs, your Stackarr version, host setup
+                and what you expected to happen. Please remove API keys, passwords and personal
+                paths before posting. There is no guaranteed response time, but clear reports are
+                genuinely appreciated.
+              </p>
+            </div>
+          </details>
+        </div>
+
+        <p class="faq-empty">No questions match that search. Try a broader word, or browse the setup guide.</p>
+
+        <div class="cta cta--left" style="margin-top: 40px">
+          <span class="pill pill--green" style="margin-bottom: 16px"><span class="pill-dot"></span> Still curious?</span>
+          <h2>Read the parts that go deeper.</h2>
+          <p>The setup guide handles configuration; the architecture page explains the machine underneath; the source docs hold the detail.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="guide.html">Setup guide <svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></a>
+            <a class="btn btn-ghost" href="https://github.com/dynamiquel/Stackarr/tree/main/docs" target="_blank" rel="noopener">Source documentation</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a class="brand" href="index.html">
+            <img src="assets/logo.svg" alt="" width="34" height="34">
+            <span>Stackarr</span>
+          </a>
+          <p>One web UI and one YAML file for a self-hosted media stack. Movies, shows, music and the services behind them.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="features.html">Features</a></li>
+            <li><a href="how-it-works.html">How it works</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Get started</h4>
+          <ul>
+            <li><a href="setup.html">Install</a></li>
+            <li><a href="guide.html">Setup guide</a></li>
+            <li><a href="setup.html#troubleshooting">Troubleshooting</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Stackarr. Built for the self-hosted corner of the internet.</span>
+        <span class="footer-note"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg> Early alpha — expect changes.</span>
+        <div class="footer-social">
+          <a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/site.js"></script>
+</body>
+</html>

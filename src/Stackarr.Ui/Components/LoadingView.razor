@@ -1,0 +1,14 @@
+@* Centered loading spinner *@
+
+<div class="st-loading">
+    <MudProgressCircular Indeterminate="true" Size="@Size" />
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <MudText Typo="Typo.body2" Class="ml-2">@Message</MudText>
+    }
+</div>
+
+@code {
+    [Parameter] public Size Size { get; set; } = Size.Medium;
+    [Parameter] public string Message { get; set; } = "";
+}

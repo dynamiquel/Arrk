@@ -1,0 +1,30 @@
+@* The one compact "format" subline shared by movie/TV and music cards and dialogs: a coloured
+   dot-separated row of technical tokens ("1080p · HDR10 · Dolby Atmos", "Dolby Atmos · FLAC · 24bit")
+   that scrolls itself when it overflows. Domain components map their own metadata onto the parts. *@
+
+@if (Parts.Count > 0)
+{
+    <AutoScroll Class="@Class" InnerClass="st-format-line" Title="@Title">
+        @for (int i = 0; i < Parts.Count; i++)
+        {
+            if (i > 0)
+            {
+                <span class="st-format-line-sep">·</span>
+            }
+            FormatLinePart part = Parts[i];
+            <span class="@PartClass(part)">@part.Text</span>
+        }
+    </AutoScroll>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<FormatLinePart> Parts { get; set; } = [];
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string? Title { get; set; }
+
+    static string PartClass(FormatLinePart part)
+    {
+        string modifier = string.IsNullOrEmpty(part.Modifier) ? "" : $" st-format-line--{part.Variant}-{part.Modifier}";
+        return $"st-format-line-part st-format-line--{part.Variant}{modifier}";
+    }
+}

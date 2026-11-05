@@ -1,0 +1,37 @@
+@* Reusable multi-select filter chips. Each chip is an independent toggle (on/off) rather than a
+   single-selection tab strip, so callers can hide any subset of categories. *@
+@typeparam T
+
+<div class="st-toggle-chips @Class" role="group" aria-label="@AriaLabel">
+    @foreach (StToggleChipItem<T> item in Items)
+    {
+        bool isOn = Values.Contains(item.Value);
+        <button type="button"
+                class="st-toggle-chip @(isOn ? "st-toggle-chip--on" : "st-toggle-chip--off")"
+                aria-pressed="@(isOn ? "true" : "false")"
+                title="@(item.Title ?? item.Label)"
+                disabled="@item.Disabled"
+                @onclick="() => OnToggleAsync(item)">
+            @if (!string.IsNullOrEmpty(item.Icon))
+            {
+                <MudIcon Icon="@item.Icon" Size="Size.Small" Class="st-toggle-chip-icon" />
+            }
+            <span class="st-toggle-chip-label">@item.Label</span>
+            @if (!string.IsNullOrEmpty(item.Count))
+            {
+                <span class="st-toggle-chip-count">@item.Count</span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<StToggleChipItem<T>> Items { get; set; } = [];
+    [Parameter] public IReadOnlySet<T> Values { get; set; } = new HashSet<T>();
+    [Parameter] public EventCallback<T> ValueToggled { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Filters";
+    [Parameter] public string Class { get; set; } = "";
+
+    Task OnToggleAsync(StToggleChipItem<T> item) =>
+        item.Disabled ? Task.CompletedTask : ValueToggled.InvokeAsync(item.Value);
+}

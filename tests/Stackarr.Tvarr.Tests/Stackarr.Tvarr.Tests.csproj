@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableTestingSupport>true</EnableTestingSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hangfire.InMemory" Version="0.10.0" />
+    <PackageReference Include="TUnit" Version="1.56.35" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.TestSupport\Stackarr.TestSupport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Stackarr.Tvarr\Stackarr.Tvarr.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Prowlarr\Stackarr.Prowlarr.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Core\Stackarr.Core.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Media.Abstractions\Stackarr.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Downloads.Abstractions\Stackarr.Downloads.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Tv.Abstractions\Stackarr.Tv.Abstractions.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Stackarr.Media.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Stackarr.Downloads.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Stackarr.Tv.Abstractions" />
+  </ItemGroup>
+</Project>

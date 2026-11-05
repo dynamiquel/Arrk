@@ -1,0 +1,121 @@
+@page "/scheduler"
+@attribute [Authorize(Policy = StackarrPolicies.AdminOnly)]
+@using CronExpressionDescriptor
+@inject SchedulerViewModelService SchedulerService
+
+<PageTitle>Stackarr - Scheduler</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Schedule" Title="Scheduler" />
+
+@if (_jobs == null)
+{
+    <LoadingView />
+}
+else if (_jobs.Count == 0)
+{
+    <EmptyState Message="No scheduled jobs found." Icon="@Icons.Material.Filled.Schedule" />
+}
+else
+{
+    <div class="st-card-grid">
+        @foreach (JobViewModel job in _jobs)
+        {
+            <div class="st-scheduler-card">
+                <div class="st-scheduler-card-head">
+                    <div class="st-scheduler-card-icon">
+                        <MudIcon Icon="@Icons.Material.Filled.Functions" Size="Size.Small" />
+                    </div>
+                    <div class="st-scheduler-card-title">
+                        <div class="st-scheduler-card-name">@job.DisplayName</div>
+                        <div class="st-scheduler-card-id" title="@job.JobId">@job.JobId</div>
+                    </div>
+                    <StChip Variant="@job.StatusVariant">@job.StatusLabel</StChip>
+                </div>
+
+                <div class="st-scheduler-card-body">
+                    <div class="st-scheduler-card-row">
+                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size:0.9rem;color:var(--st-pink);" />
+                        <span>@CronExpressionToHumanReadable(job.CronExpression)</span>
+                    </div>
+                    <div class="st-scheduler-card-row">
+                        <span class="st-info-label">Cron</span>
+                        <MudTooltip Text="@CronExpressionToHumanReadable(job.CronExpression)">
+                            <span class="st-scheduler-card-cron">@job.CronExpression</span>
+                        </MudTooltip>
+                    </div>
+                    <div class="st-scheduler-card-row">
+                        <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Style="font-size:0.9rem;" />
+                        <span>@job.LastRunDisplay</span>
+                        @if (!string.IsNullOrEmpty(job.LastError))
+                        {
+                            <MudTooltip Text="@job.LastError">
+                                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Small" Color="Color.Error" Style="margin-left:auto;" />
+                            </MudTooltip>
+                        }
+                    </div>
+                </div>
+
+                <div class="st-scheduler-card-foot">
+                    <StIconButton Icon="@Icons.Material.Filled.PlayArrow" Title="Run now" Variant="ActionVariant.Neutral"
+                                  Disabled="@job.IsRunning"
+                                  OnClick="@(() => TriggerJob(job))" />
+                    <StIconButton Icon="@(job.IsEnabled ? Icons.Material.Filled.Pause : Icons.Material.Filled.PlayArrow)"
+                                  Title="@(job.IsEnabled ? "Disable" : "Enable")"
+                                  Variant="ActionVariant.Neutral"
+                                  OnClick="@(() => ToggleJob(job))" />
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    List<JobViewModel>? _jobs;
+
+    protected override void OnInitialized()
+    {
+        LoadJobs();
+    }
+
+    void LoadJobs()
+    {
+        _jobs = SchedulerService.GetJobs();
+    }
+
+    void TriggerJob(JobViewModel job)
+    {
+        SchedulerService.TriggerJob(job.JobId);
+        LoadJobs();
+    }
+
+    void ToggleJob(JobViewModel job)
+    {
+        SchedulerService.ToggleJob(job.JobId);
+        LoadJobs();
+    }
+
+    static readonly CronExpressionDescriptor.Options _cronOptions = new()
+    {
+        ThrowExceptionOnParseError = false,
+        Use24HourTimeFormat = true,
+        DayOfWeekStartIndexZero = true
+    };
+
+    static string CronExpressionToHumanReadable(string cron)
+    {
+        if (string.IsNullOrWhiteSpace(cron))
+        {
+            return cron;
+        }
+
+        try
+        {
+            return ExpressionDescriptor.GetDescription(cron, _cronOptions);
+        }
+        catch
+        {
+            // Fall back to the raw expression if it can't be parsed.
+            return cron;
+        }
+    }
+}

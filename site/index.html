@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Stackarr — your media stack, finally in one place</title>
+  <meta name="description" content="Stackarr is one web UI and one YAML file for a self-hosted media stack. Movies, shows, music, downloads, players and the services behind them, managed together.">
+  <meta name="theme-color" content="#0f0a18">
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="canonical" href="https://dynamiquel.github.io/Stackarr/">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://dynamiquel.github.io/Stackarr/">
+  <meta property="og:title" content="Stackarr — your media stack, finally in one place">
+  <meta property="og:description" content="One web UI and one YAML file for a self-hosted media stack. Discover, request, watch, listen and clean up without visiting a dozen tabs.">
+  <meta property="og:image" content="https://dynamiquel.github.io/Stackarr/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Stackarr — your entire media stack, one calm place.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Stackarr — your media stack, finally in one place">
+  <meta name="twitter:description" content="One web UI and one YAML file for a self-hosted media stack. Discover, request, watch, listen and clean up without visiting a dozen tabs.">
+  <meta name="twitter:image" content="https://dynamiquel.github.io/Stackarr/assets/og.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Stackarr",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "Linux, Docker",
+    "description": "One web UI and one YAML file for a self-hosted media stack.",
+    "license": "https://opensource.org/licenses/MIT",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Stackarr home">
+        <img src="assets/logo.svg" alt="" width="34" height="34">
+        <span>Stackarr</span>
+      </a>
+      <nav class="site-nav" id="site-nav" aria-label="Main navigation">
+        <a href="index.html">Overview</a>
+        <a href="features.html">Features</a>
+        <a href="setup.html">Setup</a>
+        <a href="guide.html">Guide</a>
+        <a href="how-it-works.html">How it works</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <div class="header-actions">
+        <a class="icon-link" href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="Stackarr on GitHub">
+          <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+        </a>
+        <a class="btn btn-primary" href="setup.html">Get started</a>
+        <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">
+          <svg class="menu-open" aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg>
+          <svg class="menu-close" aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-glow"></div>
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <div class="hero-badge">
+            <span class="pill pill--pink"><span class="pill-dot"></span> Early alpha · self-hosted · MIT</span>
+          </div>
+          <h1>
+            <span class="line">Your entire media stack.</span>
+            <span class="line grad-text">One calm place.</span>
+          </h1>
+          <p class="lead">
+            Stackarr brings movies, shows, music, downloads and the services behind them into
+            one web UI — then manages the plumbing with a single YAML file. Keep the tools you
+            like. Lose the tab-hopping.
+          </p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="setup.html">
+              Set up Stackarr
+              <svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg>
+            </a>
+            <a class="btn btn-ghost" href="features.html">See what it does</a>
+          </div>
+          <div class="hero-proof">
+            <span><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> One dashboard</span>
+            <span><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> One config file</span>
+            <span><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Runs on your hardware</span>
+            <span><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Docker-native</span>
+          </div>
+        </div>
+
+        <div class="preview-shell">
+          <div class="app-frame" aria-hidden="true">
+            <div class="app-chrome">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="app-url">stackarr.local</span>
+            </div>
+            <div class="app-window">
+              <aside class="app-side">
+                <div class="app-brand">
+                  <img src="assets/logo.svg" alt="">
+                  <span>Stackarr</span>
+                </div>
+                <div class="app-nav-group">
+                  <span class="app-nav-label">Overview</span>
+                  <div class="app-nav-item is-active"><svg aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg> Dashboard</div>
+                </div>
+                <div class="app-nav-group">
+                  <span class="app-nav-label">Browse</span>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-search"></use></svg> Discover</div>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-movie"></use></svg> Movies</div>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-tv"></use></svg> Shows</div>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-music"></use></svg> Music</div>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-download"></use></svg> Downloads</div>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-inbox"></use></svg> Requests</div>
+                </div>
+                <div class="app-nav-group">
+                  <span class="app-nav-label">System</span>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-history"></use></svg> History</div>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-broom"></use></svg> Stale media</div>
+                  <div class="app-nav-item"><svg aria-hidden="true"><use href="assets/icons.svg#i-settings"></use></svg> Configuration</div>
+                </div>
+                <div class="app-user">
+                  <span class="app-avatar">D</span>
+                  <div><b>dynamiquel</b><small>Admin</small></div>
+                </div>
+              </aside>
+              <div class="app-main">
+                <div class="app-top">
+                  <div>
+                    <p class="app-greeting">Good evening</p>
+                    <h3>Your stack is healthy.</h3>
+                  </div>
+                  <div class="app-top-actions">
+                    <span class="app-search"><svg aria-hidden="true"><use href="assets/icons.svg#i-search"></use></svg> Search everything</span>
+                    <span class="app-appbar-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-bell"></use></svg></span>
+                  </div>
+                </div>
+                <div class="app-health">
+                  <span class="status-dot"></span> 9 services online
+                  <span class="sep">·</span> 2.4 TB free
+                  <span class="sep">·</span> 4 downloads
+                </div>
+                <div class="app-grid">
+                  <div class="app-card app-card-wide">
+                    <div class="app-card-head"><span>Continue watching</span><span>View all</span></div>
+                    <div class="poster-row">
+                      <div class="poster poster--one" data-title="Neon Divide"><span class="poster-progress" style="--progress: 62%"></span></div>
+                      <div class="poster poster--two" data-title="The Quiet"><span class="poster-progress" style="--progress: 28%"></span></div>
+                      <div class="poster poster--three" data-title="Orbit"><span class="poster-progress" style="--progress: 84%"></span></div>
+                      <div class="poster poster--four" data-title="Low Tide"><span class="poster-progress" style="--progress: 41%"></span></div>
+                    </div>
+                  </div>
+                  <div class="app-card">
+                    <div class="app-card-head"><span>Storage</span><span>Healthy</span></div>
+                    <div class="app-storage">
+                      <div class="storage-ring" style="--p: 68"><span>68%</span></div>
+                      <div class="storage-meta"><b>2.4 TB free</b>of 3.5 TB<br>downloads 412 GB</div>
+                    </div>
+                  </div>
+                  <div class="app-card app-side-card">
+                    <div class="app-card-head"><span>Downloads</span><span>3 active</span></div>
+                    <div class="app-downloads">
+                      <div class="download-row">
+                        <div class="download-label"><span>Neon Divide</span><span>72%</span></div>
+                        <div class="download-track"><i style="--w: 72%"></i></div>
+                      </div>
+                      <div class="download-row">
+                        <div class="download-label"><span>Selected ambient</span><span>45%</span></div>
+                        <div class="download-track"><i style="--w: 45%"></i></div>
+                      </div>
+                      <div class="download-row">
+                        <div class="download-label"><span>The Quiet S02</span><span>18%</span></div>
+                        <div class="download-track"><i style="--w: 18%"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="app-card app-card-wide">
+                    <div class="app-card-head"><span>Recently added</span><span>Open library</span></div>
+                    <div class="recent-grid">
+                      <div class="recent-item"><span class="recent-thumb"></span><div><b>Neon Divide</b><small>Movie · 4K</small></div></div>
+                      <div class="recent-item"><span class="recent-thumb recent-thumb--two"></span><div><b>Orbit</b><small>Show · S03</small></div></div>
+                      <div class="recent-item"><span class="recent-thumb recent-thumb--three"></span><div><b>Low Tide</b><small>Album · FLAC</small></div></div>
+                      <div class="recent-item"><span class="recent-thumb recent-thumb--four"></span><div><b>The Quiet</b><small>Show · S02</small></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="preview-caption">
+            <svg aria-hidden="true"><use href="assets/icons.svg#i-sparkles"></use></svg>
+            An illustrative preview of the Stackarr dashboard — your whole stack, at a glance.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="integrations" aria-label="Services Stackarr works with">
+      <div class="wrap">
+        <div class="integrations-inner">
+          <span class="integrations-label">Built around</span>
+          <span class="integration-name">Radarr</span>
+          <span class="integration-name">Sonarr</span>
+          <span class="integration-name">Prowlarr</span>
+          <span class="integration-name">Transmission</span>
+          <span class="integration-name">Jellyfin</span>
+          <span class="integration-name">Navidrome</span>
+          <span class="integration-name">slskd</span>
+          <span class="integration-name">Gluetun</span>
+          <span class="integration-name">Traefik</span>
+          <span class="integration-name">Cloudflare</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">Why Stackarr</span>
+          <h2>The stack should feel like one product.</h2>
+          <p>
+            A great self-hosted media setup is usually a dozen containers, a dozen logins and a
+            config you are afraid to touch. Stackarr keeps the services that do the work and
+            smooths over the seams between them.
+          </p>
+        </div>
+
+        <div class="compare reveal">
+          <div class="compare-card compare-card--before">
+            <div class="compare-title">
+              <span class="badge"><svg aria-hidden="true"><use href="assets/icons.svg#i-alert"></use></svg></span>
+              The usual evening
+            </div>
+            <ul class="compare-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> Five tabs just to find out whether a download finished.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> Different logins for every app, and another one for the family.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> Quality profiles and indexers configured in three places.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> A stalled torrent sits there for days, quietly wasting space.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> Cleanup is a manual job you never quite get around to.</li>
+            </ul>
+          </div>
+          <div class="compare-card compare-card--after">
+            <div class="compare-title">
+              <span class="badge"><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg></span>
+              With Stackarr
+            </div>
+            <ul class="compare-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> One dashboard for discovery, requests, playback and downloads.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> One account for the whole household, with OIDC for players.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> One YAML file defines quality, indexers and download clients.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Slow, stalled and failed downloads clean themselves up.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Watch history drives watchlists, warnings and optional cleanup.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="stats reveal" style="margin-top: 30px">
+          <div class="stat"><b>1</b><span>web UI for the whole stack</span></div>
+          <div class="stat"><b>1</b><span>YAML file, hot-reloaded</span></div>
+          <div class="stat"><b>0</b><span>extra database containers</span></div>
+          <div class="stat"><b>MIT</b><span>free and open source</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">What you get</span>
+          <h2>Everything in one place, without flattening everything.</h2>
+          <p>
+            Stackarr does not replace the tools that do the heavy lifting. It provisions them,
+            configures them through their APIs and gives you a single, friendly surface on top.
+          </p>
+        </div>
+
+        <div class="bento">
+          <article class="bento-card bento-card--accent span-7 reveal">
+            <div class="icon-bubble icon-bubble--pink"><svg aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg></div>
+            <h3>A dashboard that knows your stack</h3>
+            <p>
+              Continue watching, storage, service health, downloads and recent additions in one
+              place. Arrange the tiles the way you think, with per-account layouts and text sizes.
+            </p>
+            <ul class="mini-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Module-contributed tiles and a visual tile editor</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Live status for services, storage and the network</li>
+            </ul>
+          </article>
+
+          <article class="bento-card span-5 reveal">
+            <div class="icon-bubble"><svg aria-hidden="true"><use href="assets/icons.svg#i-movie"></use></svg></div>
+            <h3>Movies &amp; shows, without the maze</h3>
+            <p>
+              Discover, request, add and upgrade films and series through one catalogue. Quality
+              profiles, indexers and missing-content searches are handled for you.
+            </p>
+            <ul class="mini-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Trending, popular, upcoming and seasonal anime</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Failed-download recovery and retries</li>
+            </ul>
+          </article>
+
+          <article class="bento-card span-5 reveal">
+            <div class="icon-bubble icon-bubble--indigo"><svg aria-hidden="true"><use href="assets/icons.svg#i-music"></use></svg></div>
+            <h3>A music library that feels native</h3>
+            <p>
+              Stackarr owns the music library itself. Deezer provides identity and metadata;
+              torrents and Soulseek bring the files; Navidrome plays them.
+            </p>
+            <ul class="mini-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Albums, artists, playlists and synced lyrics</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Identify-first imports with real tags and cover art</li>
+            </ul>
+          </article>
+
+          <article class="bento-card span-7 reveal">
+            <div class="icon-bubble icon-bubble--green"><svg aria-hidden="true"><use href="assets/icons.svg#i-download"></use></svg></div>
+            <h3>Downloads that clean up after themselves</h3>
+            <p>
+              Transmission and slskd share one downloads page. Seeding goals, storage limits and
+              slow, stalled or errored torrents are monitored — and cleaned up without nuking a
+              degraded connection.
+            </p>
+            <ul class="mini-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Speed-aware slow/stalled detection with recovery</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Optional VPN routing for downloads and Soulseek</li>
+            </ul>
+          </article>
+
+          <article class="bento-card span-6 reveal">
+            <div class="icon-bubble icon-bubble--yellow"><svg aria-hidden="true"><use href="assets/icons.svg#i-users"></use></svg></div>
+            <h3>People, requests and permissions</h3>
+            <p>
+              Invite the household. Give everyone their own watch history and watchlists, let
+              them request media, and keep the admin controls with the admins.
+            </p>
+            <ul class="mini-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Invite-only accounts with approval and roles</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> OIDC, Discord and MyAnimeList sign-in</li>
+            </ul>
+          </article>
+
+          <article class="bento-card span-6 reveal">
+            <div class="icon-bubble icon-bubble--pink"><svg aria-hidden="true"><use href="assets/icons.svg#i-broom"></use></svg></div>
+            <h3>A stack that looks after itself</h3>
+            <p>
+              Watch history becomes a lifecycle. Bookmark something to keep it longer, pin it to
+              keep it forever, or let Stackarr suggest what to reclaim when storage gets tight.
+            </p>
+            <ul class="mini-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Stale warnings, reclaimable-space view and pins</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Automatic deletion is opt-in, never a surprise</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap split split--wide-left">
+        <div class="reveal">
+          <span class="eyebrow">From request to ready</span>
+          <h2>The quiet work happens in the background.</h2>
+          <p class="lead">
+            You add a title once. Stackarr takes it from there: the right service, the right
+            quality, the right folder, the right player.
+          </p>
+          <div class="timeline" style="margin-top: 28px">
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-search"></use></svg></span>
+              <div><b>Find it</b><span>Browse trending titles, search, or upload a file you already own.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-inbox"></use></svg></span>
+              <div><b>Ask for it</b><span>Requests go to the right library with the quality and scope you chose.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-download"></use></svg></span>
+              <div><b>Let it fetch</b><span>Indexers, download clients and failed-download recovery do their thing.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-play"></use></svg></span>
+              <div><b>Watch or listen</b><span>It appears in the library and plays in-site, with subtitles and continue watching.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-broom"></use></svg></span>
+              <div><b>Keep it tidy</b><span>Unwatched media ages out only when you ask it to. Pins protect the rest.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-visual feature-visual--pink reveal">
+          <div class="visual-head"><span>Tonight</span><b>3 things need you</b></div>
+          <div class="visual-list">
+            <div class="visual-row">
+              <span class="thumb"></span>
+              <div class="text"><b>Neon Divide</b><small>Requested by Sam · Best Available</small></div>
+              <span class="status status--ok">Ready</span>
+            </div>
+            <div class="visual-row">
+              <span class="thumb thumb--indigo"></span>
+              <div class="text"><b>Orbit · S03E04</b><small>Continue from 18:42</small></div>
+              <span class="status status--info">In progress</span>
+            </div>
+            <div class="visual-row">
+              <span class="thumb thumb--orange"></span>
+              <div class="text"><b>Low Tide</b><small>Downloading · 45% · 8.2 MB/s</small></div>
+              <span class="status status--warn">Working</span>
+            </div>
+            <div class="visual-row">
+              <span class="thumb thumb--green"></span>
+              <div class="text"><b>The Quiet · S02</b><small>Not watched for 34 days</small></div>
+              <span class="status status--warn">Stale soon</span>
+            </div>
+          </div>
+          <div class="callout callout--green" style="margin-top: 18px">
+            <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-shield"></use></svg></span>
+            <div>
+              <h4>No surprise deletions</h4>
+              <p>Cleanup defaults to warnings only. Automatic deletion is a deliberate opt-in.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap">
+        <div class="split reveal">
+          <div>
+            <span class="eyebrow">Built to be extended</span>
+            <h2>Modular underneath. Approachable on top.</h2>
+            <p class="lead">
+              Every service is a self-contained module. Built-in features and drop-in plugins use
+              the same contracts for navigation, pages, jobs, endpoints and dashboard tiles.
+            </p>
+            <ul class="mini-list" style="margin-top: 22px">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> One module per concern, loaded at startup</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Plugins can contribute full pages and UI regions</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> The shell never references a feature module directly</li>
+            </ul>
+            <div class="btn-row" style="margin-top: 26px">
+              <a class="text-link" href="how-it-works.html">See how it fits together <svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></a>
+            </div>
+          </div>
+          <div class="code-block">
+            <div class="code-head">
+              <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> MyModule.cs</span>
+              <button class="copy-btn" type="button" data-copy>
+                <svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span>
+              </button>
+            </div>
+            <pre><code>public sealed class MyModule : IStackarrModule
+{
+    public string ModuleName =&gt; "MyPlugin";
+
+    public IReadOnlyList&lt;Service&gt; GetServices() =&gt; [];
+
+    public void ConfigureServices(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddSingleton&lt;INavigationProvider, MyNavigation&gt;();
+        services.AddSingleton&lt;IHeadAssetProvider, MyHeadAssets&gt;();
+    }
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap">
+        <div class="disclaimer reveal">
+          <span class="disclaimer-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-alert"></use></svg></span>
+          <div>
+            <h3>A personal project, shared early</h3>
+            <p>
+              Stackarr started as one person's answer to the headaches of stitching together
+              self-hosted media tools. It is still an early, actively changing project: features
+              move, configuration evolves and rough edges exist. Treat it as a labour of love, not
+              a commercial product — read the docs, back up your config, and expect the occasional
+              change. <a href="faq.html#project">More about the project</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap">
+        <div class="cta reveal">
+          <span class="pill pill--pink" style="margin-bottom: 18px"><span class="pill-dot pill-dot--pink"></span> Docker · Linux · MIT</span>
+          <h2>Give your stack a front door.</h2>
+          <p>
+            One container, one config file and a dashboard that actually understands the services
+            behind it. Start with the quick setup, then shape it to your library.
+          </p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="setup.html">
+              Set up Stackarr
+              <svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg>
+            </a>
+            <a class="btn btn-ghost" href="guide.html">Read the setup guide</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a class="brand" href="index.html">
+            <img src="assets/logo.svg" alt="" width="34" height="34">
+            <span>Stackarr</span>
+          </a>
+          <p>One web UI and one YAML file for a self-hosted media stack. Movies, shows, music and the services behind them.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="features.html">Features</a></li>
+            <li><a href="how-it-works.html">How it works</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Get started</h4>
+          <ul>
+            <li><a href="setup.html">Install</a></li>
+            <li><a href="guide.html">Setup guide</a></li>
+            <li><a href="setup.html#troubleshooting">Troubleshooting</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Stackarr. Built for the self-hosted corner of the internet.</span>
+        <span class="footer-note"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg> Early alpha — expect changes.</span>
+        <div class="footer-social">
+          <a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/site.js"></script>
+</body>
+</html>

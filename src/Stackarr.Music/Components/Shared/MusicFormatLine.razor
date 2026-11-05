@@ -1,0 +1,27 @@
+@* Compact music format subline (e.g. "Dolby Atmos" or "Lossless"). The presentation lives in the
+   shared <StFormatLine> so music, movies and TV read as one design; this maps the audio metadata. *@
+
+@{
+    List<FormatLinePart> parts = [];
+    if (Technical is { HasInfo: true })
+    {
+        if (!string.IsNullOrEmpty(Technical.Spatial))
+        {
+            parts.Add(new FormatLinePart(Technical.Spatial, "hdr", Slug(Technical.Spatial)));
+        }
+        else if (Technical.IsLossless)
+        {
+            parts.Add(new FormatLinePart("Lossless", "audio"));
+        }
+    }
+}
+
+<StFormatLine Parts="parts" Class="@Class" Title="@(Technical?.Badge ?? "")" />
+
+@code {
+    [Parameter] public MusicTechnical? Technical { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    static string Slug(string value) =>
+        value.Replace(" ", "-").Replace(":", "").ToLowerInvariant();
+}

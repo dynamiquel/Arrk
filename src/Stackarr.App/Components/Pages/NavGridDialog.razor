@@ -1,0 +1,14 @@
+@* Mobile navigation: a categorized grid of glass buttons shown in a card sheet. *@
+
+<StCardSheetDialog Icon="@Icons.Material.Filled.GridView"
+                   Title="Navigation"
+                   Subtitle="Jump to any section"
+                   Class="st-nav-card-sheet">
+    <NavMenu Variant="grid" />
+</StCardSheetDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    void Close() => MudDialog.Close();
+}

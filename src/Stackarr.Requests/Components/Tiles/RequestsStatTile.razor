@@ -1,0 +1,93 @@
+@inject RequestService Requests
+@using Stackarr.Requests
+@implements IDisposable
+
+@if (_loading)
+{
+    <MudSkeleton Width="70px" Height="32px" />
+}
+else
+{
+    <div class="st-stat-value st-stat-value--@ValueColor">@Value</div>
+    <div class="st-stat-sub">@Sub</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    /// <summary>One of <c>open</c>, <c>accepted</c>, <c>denied</c>, <c>blacklisted</c> or <c>total</c>.</summary>
+    [Parameter] public string Metric { get; set; } = "open";
+
+    const int RefreshSeconds = 30;
+
+    RequestsSummary _summary = new(0, 0, 0, 0, 0);
+    bool _loading = true;
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    int Value => Metric switch
+    {
+        "accepted" => _summary.Accepted,
+        "denied" => _summary.Denied,
+        "blacklisted" => _summary.Blacklisted,
+        "total" => _summary.Total,
+        _ => _summary.Open
+    };
+
+    string ValueColor => Metric switch
+    {
+        "open" => "yellow",
+        "accepted" => "green",
+        "denied" or "blacklisted" => "red",
+        _ => "purple"
+    };
+
+    string Sub => Metric switch
+    {
+        "open" => "Awaiting review",
+        "accepted" => "Added to library",
+        "denied" => "Rejected",
+        "blacklisted" => "Cannot be requested",
+        _ => "All time"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(CancellationToken.None);
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAsync(CancellationToken ct)
+    {
+        try
+        {
+            _summary = await Requests.GetSummaryAsync(ct);
+            _loading = false;
+        }
+        catch
+        {
+            // Keep the last known summary.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+}

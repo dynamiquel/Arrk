@@ -1,0 +1,66 @@
+@* Add an album to the music library with a chosen quality profile. *@
+@inject MusicCatalogService Catalog
+@inject ISnackbar Snackbar
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-request-dialog">
+            <MudText Typo="Typo.h6" Class="mb-3">Add @Album.Title</MudText>
+            <MudText Typo="Typo.body2" Class="mb-3">@Album.ArtistName</MudText>
+
+            <MudSelect T="int" Label="Quality profile" @bind-Value="_profileId" Variant="Variant.Outlined" Dense="false">
+                @foreach ((int Id, string Name) profile in _profiles)
+                {
+                    <MudSelectItem T="int" Value="@profile.Id">@profile.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_error</MudAlert>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Add" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                   Disabled="@_busy" StartIcon="@Icons.Material.Filled.LibraryAdd">
+            <span class="st-btn-label">@(_busy ? "Adding…" : "Add")</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public MusicItem Album { get; set; } = new();
+
+    List<(int Id, string Name)> _profiles = [];
+    int _profileId;
+    bool _busy;
+    string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _profiles = await Catalog.GetQualityProfilesAsync();
+        (int Id, string Name) preferred = _profiles.FirstOrDefault(p => p.Name == "Best Available");
+        _profileId = preferred.Id != 0 ? preferred.Id : _profiles.FirstOrDefault().Id;
+    }
+
+    async Task Add()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Catalog.AddAlbumToLibraryAsync(Album, _profileId > 0 ? _profileId : null);
+            Snackbar.Add($"Added {Album.Title}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _busy = false;
+        }
+    }
+}

@@ -1,0 +1,76 @@
+@* Create or rename a personal watchlist. Matches PlaylistDialog so all name prompts share one
+   dialog shell and action layout. *@
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-request-dialog">
+            <MudText Typo="Typo.h6" Class="mb-3">@(WatchlistId > 0 ? "Rename watchlist" : "New watchlist")</MudText>
+            <MudTextField T="string" @bind-Value="_name" Label="Name" Variant="Variant.Outlined"
+                          Placeholder="e.g. Weekend movies" MaxLength="@WatchlistLimits.MaxNameLength"
+                          Counter="@WatchlistLimits.MaxNameLength"
+                          AutoFocus="true" Immediate="true" OnKeyDown="OnKeyDown" Class="mb-2" />
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">@_error</MudAlert>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CreateAsync" Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@(WatchlistId > 0 ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                   Disabled="@(_saving || string.IsNullOrWhiteSpace(_name))" Class="st-btn-gradient">
+            <span class="st-btn-label">@(WatchlistId > 0 ? "Rename" : "Create")</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public int WatchlistId { get; set; }
+    [Parameter] public string InitialName { get; set; } = "";
+
+    [Inject] WatchlistService Watchlists { get; set; } = null!;
+    [Inject] AuthenticationStateProvider AuthProvider { get; set; } = null!;
+
+    string _name = "";
+    string? _error;
+    bool _saving;
+
+    protected override void OnInitialized() => _name = InitialName;
+
+    async Task CreateAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!int.TryParse(state.User.FindFirst(StackarrClaims.UserIdClaim)?.Value, out int userId))
+            return;
+
+        _saving = true;
+        _error = null;
+        try
+        {
+            WatchlistDetail? list = WatchlistId > 0
+                ? await Watchlists.RenameAsync(userId, WatchlistId, _name)
+                : await Watchlists.CreateAsync(userId, _name);
+            if (list is not null)
+            {
+                MudDialog.Close(DialogResult.Ok(list));
+                return;
+            }
+
+            _error = WatchlistId > 0
+                ? "Could not rename this watchlist."
+                : $"You can have at most {WatchlistLimits.MaxListsPerUser} watchlists.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !string.IsNullOrWhiteSpace(_name))
+            await CreateAsync();
+    }
+}

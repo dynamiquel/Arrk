@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.Core\Stackarr.Core.csproj" />
+    <ProjectReference Include="..\Stackarr.Ai\Stackarr.Ai.csproj" />
+    <ProjectReference Include="..\Stackarr.Ui\Stackarr.Ui.csproj" />
+    <ProjectReference Include="..\Stackarr.Configuration\Stackarr.Configuration.csproj" />
+    <ProjectReference Include="..\Stackarr.Docker\Stackarr.Docker.csproj" />
+    <ProjectReference Include="..\Stackarr.Tvarr\Stackarr.Tvarr.csproj" />
+    <ProjectReference Include="..\Stackarr.Music\Stackarr.Music.csproj" />
+    <ProjectReference Include="..\Stackarr.Slskd\Stackarr.Slskd.csproj" />
+    <ProjectReference Include="..\Stackarr.Prowlarr\Stackarr.Prowlarr.csproj" />
+    <ProjectReference Include="..\Stackarr.Subtitles\Stackarr.Subtitles.csproj" />
+    <ProjectReference Include="..\Stackarr.Subtitles.OpenSubtitles\Stackarr.Subtitles.OpenSubtitles.csproj" />
+    <ProjectReference Include="..\Stackarr.Bazarr\Stackarr.Bazarr.csproj" />
+    <ProjectReference Include="..\Stackarr.Cloudflared\Stackarr.Cloudflared.csproj" />
+    <ProjectReference Include="..\Stackarr.Transmission\Stackarr.Transmission.csproj" />
+    <ProjectReference Include="..\Stackarr.Jellyfin\Stackarr.Jellyfin.csproj" />
+    <ProjectReference Include="..\Stackarr.Navidrome\Stackarr.Navidrome.csproj" />
+    <ProjectReference Include="..\Stackarr.Orchestration\Stackarr.Orchestration.csproj" />
+    <ProjectReference Include="..\Stackarr.DownloadManagement\Stackarr.DownloadManagement.csproj" />
+    <ProjectReference Include="..\Stackarr.Notifications\Stackarr.Notifications.csproj" />
+    <ProjectReference Include="..\Stackarr.Speedtest\Stackarr.Speedtest.csproj" />
+    <ProjectReference Include="..\Stackarr.Requests\Stackarr.Requests.csproj" />
+    <ProjectReference Include="..\Stackarr.WatchActivity\Stackarr.WatchActivity.csproj" />
+    <ProjectReference Include="..\Stackarr.MediaLifecycle\Stackarr.MediaLifecycle.csproj" />
+    <ProjectReference Include="..\Stackarr.Mal\Stackarr.Mal.csproj" />
+    <ProjectReference Include="..\Stackarr.Auth\Stackarr.Auth.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CronExpressionDescriptor" Version="2.51.0" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.*" />
+    <PackageReference Include="Hangfire.Storage.SQLite" Version="0.4.*" />
+    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+    <PackageReference Include="Pondhawk.Monaco" Version="1.0.2" />
+    <PackageReference Include="NetEscapades.Configuration.Yaml" Version="3.1.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Jobs\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Stackarr.Ui.Components" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

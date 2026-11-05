@@ -1,0 +1,42 @@
+@* Compact music detail header (album / artist / playlist). Square art + title/meta + actions,
+   with no full-bleed backdrop — music never uses that space. Shared so the discovery and library
+   playlist popups look the same. *@
+
+<div class="st-music-detail-head">
+    <DialogCloseButton Class="st-dialog-close--floating" OnClick="OnClose" />
+    <div class="st-music-playlist-art">
+        @if (!string.IsNullOrEmpty(ArtUrl))
+        {
+            <img src="@ArtUrl" alt="@Title" />
+        }
+        else
+        {
+            <span class="st-music-playlist-art-placeholder"><MudIcon Icon="@Icon" /></span>
+        }
+    </div>
+    <div class="st-music-detail-meta">
+        <MudText Typo="Typo.h6" Class="st-music-detail-title">@Title</MudText>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <MudText Typo="Typo.caption" Style="color:var(--st-text-secondary);">@Subtitle</MudText>
+        }
+        @if (Badges is not null)
+        {
+            <div class="st-detail-hero-badges st-music-detail-badges">@Badges</div>
+        }
+    </div>
+    @if (Actions is not null)
+    {
+        <div class="st-music-detail-actions">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; } = "";
+    [Parameter] public string ArtUrl { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Album;
+    [Parameter] public RenderFragment? Badges { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

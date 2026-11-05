@@ -1,0 +1,28 @@
+@* Reusable section container with header icon + title and body *@
+
+<div class="st-section @Class">
+    <div class="st-section-header">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <MudIcon Icon="@Icon" Size="Size.Small" Color="Color.Primary" />
+        }
+        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">@Title</MudText>
+        @if (HeaderRight != null)
+        {
+            <div style="margin-left:auto;">@HeaderRight</div>
+        }
+    </div>
+    <div class="st-section-body @BodyClass" style="@BodyStyle">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string BodyClass { get; set; } = "";
+    [Parameter] public string BodyStyle { get; set; } = "";
+    [Parameter] public RenderFragment? HeaderRight { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

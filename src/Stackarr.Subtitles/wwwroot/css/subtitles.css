@@ -1,0 +1,38 @@
+/* Subtitle status and language search inside the shared search popup. */
+
+.st-subtitle-status {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 0 12px;
+}
+
+.st-subtitle-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.st-subtitle-status-label {
+    min-width: 66px;
+    color: var(--st-text-secondary);
+    font-size: .8125rem;
+}
+
+.st-subtitle-search-row {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    padding: 4px 0 12px;
+}
+
+.st-subtitle-language {
+    min-width: 220px;
+    flex: 1 1 220px;
+}
+
+.st-subtitle-hint {
+    color: var(--st-text-secondary);
+    padding: 2px 0 12px;
+}

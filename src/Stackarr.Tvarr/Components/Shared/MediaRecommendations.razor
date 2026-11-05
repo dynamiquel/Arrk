@@ -1,0 +1,86 @@
+@* "More like this", TMDB recommendations for the current movie/show. *@
+@inject MediaCatalogService Catalog
+@inject IDialogService DialogService
+
+@if (_items.Count > 0)
+{
+    <div class="st-reco">
+        <div class="st-detail-section-label">
+            <MudIcon Icon="@Icons.Material.Filled.Recommend" Size="Size.Small" /> More like this
+        </div>
+        <ScrollRow TrackClass="st-reco-row">
+            @foreach (MediaItem item in _items)
+            {
+                <div class="st-reco-item">
+                    <MediaPosterCard Item="item" CardSize="MediaCardSize.Small"
+                                     ShowActions="false" ShowLibraryBadge="false" OnClick="Open" />
+                </div>
+            }
+        </ScrollRow>
+    </div>
+}
+
+@code {
+    [Parameter] public string MediaType { get; set; } = TmdbMediaType.Movie;
+    [Parameter] public int TmdbId { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    bool _isAdmin;
+
+    List<MediaItem> _items = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthStateTask is not null)
+            _isAdmin = (await AuthStateTask).User.IsInRole(StackarrRoles.Admin);
+
+        if (TmdbId <= 0) return;
+        try
+        {
+            _items = await Catalog.GetRecommendationsAsync(MediaType, TmdbId);
+        }
+        catch
+        {
+            _items = [];
+        }
+    }
+
+    static DialogOptions Options() => new()
+    {
+        FullWidth = true,
+        MaxWidth = MaxWidth.Medium,
+        CloseOnEscapeKey = true,
+        Position = DialogPosition.Center
+    };
+
+    async Task Open(MediaItem item)
+    {
+        if (item.IsInLibrary)
+        {
+            if (string.Equals(MediaType, TmdbMediaType.Tv, StringComparison.OrdinalIgnoreCase))
+            {
+                Stackarr.Tv.Abstractions.TvSeries? series = await Catalog.GetLibrarySeriesAsync(item.TmdbId);
+                if (series != null)
+                {
+                    DialogParameters<SeriesDetailDialog> p = new() { { x => x.Series, series }, { x => x.IsAdmin, _isAdmin } };
+                    await (await DialogService.ShowAsync<SeriesDetailDialog>(series.Title, p, Options())).Result;
+                    return;
+                }
+            }
+            else
+            {
+                Stackarr.Tv.Abstractions.TvMovie? movie = await Catalog.GetLibraryMovieAsync(item.TmdbId);
+                if (movie != null)
+                {
+                    DialogParameters<MovieDetailDialog> p = new() { { x => x.Movie, movie }, { x => x.IsAdmin, _isAdmin } };
+                    await (await DialogService.ShowAsync<MovieDetailDialog>(movie.Title, p, Options())).Result;
+                    return;
+                }
+            }
+        }
+
+        DialogParameters<RemoteMediaDialog> parameters = new() { { x => x.Item, item } };
+        await (await DialogService.ShowAsync<RemoteMediaDialog>(item.Title, parameters, Options())).Result;
+        Catalog.InvalidateLibraryCache();
+    }
+}

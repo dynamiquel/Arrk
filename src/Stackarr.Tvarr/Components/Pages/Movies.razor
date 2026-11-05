@@ -1,0 +1,459 @@
+@page "/movies"
+@attribute [Authorize]
+@inject RadarrService RadarrService
+@inject MediaCatalogService Catalog
+@inject TmdbService Tmdb
+@inject ActivityService Activity
+@inject WatchStateEnricher WatchState
+@inject StaleMediaEnricher Stale
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+@inject UiRegistry Ui
+@implements IDisposable
+
+<PageTitle>Stackarr - Movies</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Movie" Title="Movies">
+    <Actions>
+        @if (_isAdmin)
+        {
+            <MudButton OnClick="OpenUpload" Variant="Variant.Outlined" Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.CloudUpload" title="Upload a movie from this computer"
+                       AriaLabel="Upload a movie from this computer">
+                <span class="st-btn-label">Upload Movie</span>
+            </MudButton>
+        }
+        <MudButton Href="/discover/movies" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                   StartIcon="@Icons.Material.Filled.Explore" title="Discover movies" AriaLabel="Discover movies">
+            <span class="st-btn-label">Discover Movies</span>
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+@if (!Ui.IsAvailable("services:tv"))
+{
+    <ServiceDisabledNotice Title="Movies"
+                           Detail="Movies are turned off. Set services.tv.enabled to true (Configuration → TV) to use the movie library." />
+}
+else
+{
+
+<ContinueWatchingShelf Limit="12" Domain="@TvMediaDomains.Movie" />
+<WatchlistSections Domain="@TvMediaDomains.Movie" LibraryItems="_libraryItems" OnItemClick="OpenDetail" />
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close"
+              OnClose="() => _errorMessage = null">@_errorMessage</MudAlert>
+}
+
+<MudGrid Class="mb-4">
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="movies.library" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="movies.downloaded" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="movies.missing" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="movies.downloading" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="movies.ondisk" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="movies.monitored" Placement="TilePlacement.Page" />
+    </MudItem>
+</MudGrid>
+
+<div class="st-library-toolbar">
+    <SearchBox @bind-Value="_searchTerm" Placeholder="Search your movies..." DebounceInterval="350"
+               OnSearch="OnSearchDebounced" Class="st-discover-search st-library-search" />
+</div>
+
+@if (!_loaded)
+{
+    <LoadingView />
+}
+else
+{
+    @if (_remoteSearching)
+    {
+        <div class="st-inline-status">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            <span>Searching TMDB for more results…</span>
+        </div>
+    }
+
+    bool searching = !string.IsNullOrWhiteSpace(_searchTerm);
+
+    @if (searching)
+    {
+        @if (_libraryMatches.Count > 0)
+        {
+            <StCollapsibleSection Icon="@Icons.Material.Filled.LibraryBooks" Title="Library"
+                                  Count="@_libraryMatches.Count" Accent="pink">
+                <MediaCardGrid Size="MediaCardSize.Medium">
+                    @foreach (MediaItem item in _libraryMatches)
+                    {
+                        <MediaPosterCard ShowInLibraryBadge="false" Item="item"
+                                         CardSize="MediaCardSize.Medium"
+                                         IsAdmin="_isAdmin"
+                                         OnClick="OpenDetail"
+                                         OnMonitorToggle="ToggleMonitored"
+                                         OnDelete="DeleteMovie" />
+                    }
+                </MediaCardGrid>
+            </StCollapsibleSection>
+        }
+
+        @if (_remoteResults.Count > 0)
+        {
+            <StCollapsibleSection Icon="@Icons.Material.Filled.Explore" Title="Discover"
+                                  Count="@_remoteResults.Count" Accent="purple">
+                <MediaCardGrid Size="MediaCardSize.Medium">
+                    @foreach (MediaItem item in _remoteResults)
+                    {
+                        <MediaPosterCard ShowInLibraryBadge="false" Item="item" CardSize="MediaCardSize.Medium"
+                                         OnClick="OpenDetail" OnAdd="OpenDetail" />
+                    }
+                </MediaCardGrid>
+            </StCollapsibleSection>
+        }
+        else if (!_remoteSearching && _libraryMatches.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.SearchOff" Message="@($"No results for \"{_searchTerm}\"")" />
+        }
+    }
+    else
+    {
+        IReadOnlyList<StatusGroup<MediaItem>> groups = LibraryGroups;
+
+        @if (groups.Count > 0)
+        {
+            @foreach (StatusGroup<MediaItem> group in groups)
+            {
+                <StCollapsibleSection @key="group.Kind" Icon="@group.Icon" Title="@group.Title"
+                                      Count="@group.Count" Accent="@group.Accent">
+                    <MediaCardGrid Size="MediaCardSize.Medium">
+                        @foreach (MediaItem item in group.Items)
+                        {
+                            <MediaPosterCard ShowInLibraryBadge="false" Item="item"
+                                             CardSize="MediaCardSize.Medium"
+                                             IsAdmin="_isAdmin"
+                                             OnClick="OpenDetail"
+                                             OnMonitorToggle="ToggleMonitored"
+                                             OnDelete="DeleteMovie" />
+                        }
+                    </MediaCardGrid>
+                </StCollapsibleSection>
+            }
+        }
+        else
+        {
+            <EmptyState Icon="@Icons.Material.Filled.Movie" Message="No movies in your library" />
+        }
+    }
+}
+}
+
+@code {
+    List<TvMovie> _library = [];
+    List<MediaItem> _libraryItems = [];
+    List<MediaItem> _libraryMatches = [];
+    List<MediaItem> _remoteResults = [];
+    List<QualityProfile> _rawProfiles = [];
+    List<RadarrQueueItemDto> _queueItems = [];
+    bool _loaded;
+    bool _remoteSearching;
+    string? _errorMessage;
+    string _searchTerm = "";
+    CancellationTokenSource? _cts;
+    Timer? _refreshTimer;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    bool _isAdmin;
+    string _username = "";
+
+    IReadOnlyList<StatusGroup<MediaItem>> LibraryGroups => MediaStatusGrouping.ForMovies(_libraryMatches);
+
+    async Task<bool> IsAdminAsync()
+    {
+        if (AuthStateTask is null) return false;
+        AuthenticationState state = await AuthStateTask;
+        _username = state.User.Identity?.Name ?? "";
+        return state.User.IsInRole(StackarrRoles.Admin);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // A disabled module's page neither loads data nor runs any action (no refresh timer).
+        if (!Ui.IsAvailable("services:tv"))
+            return;
+
+        _cts = new();
+        _isAdmin = await IsAdminAsync();
+        try
+        {
+            _rawProfiles = await RadarrService.GetQualityProfiles();
+        }
+        catch { /* non-critical */ }
+        await RefreshData();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await RefreshData();
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(2),
+            TimeSpan.FromSeconds(10));
+        _refreshTimer = result.Timer;
+    }
+
+    async Task RefreshData()
+    {
+        try
+        {
+            _library = await RadarrService.GetAllMovies();
+            try { _queueItems = await RadarrService.GetQueue(); } catch { /* non-critical */ }
+            _errorMessage = null;
+            RebuildItemList();
+            await EnrichWatchStateAsync();
+            await EnrichStaleAsync();
+            ApplySearch();
+            _loaded = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load movies: {ex.Message}";
+            _loaded = true;
+        }
+    }
+
+    void RebuildItemList()
+    {
+        Dictionary<int, RadarrQueueItemDto> queueByMovieId = _queueItems
+            .GroupBy(q => q.MovieId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        _libraryItems = _library.Select(m =>
+        {
+            MediaItem item = MediaItem.FromMovie(m);
+            if (!item.HasFile && queueByMovieId.TryGetValue(m.Id, out RadarrQueueItemDto? q))
+            {
+                return item with
+                {
+                    IsDownloading = true,
+                    DownloadSize = q.Size,
+                    DownloadSizeLeft = (long)q.Sizeleft,
+                    DownloadStatus = q.Status,
+                    DownloadTitle = q.Title
+                };
+            }
+            return item;
+        }).ToList();
+        ApplySearch();
+    }
+
+    async Task EnrichWatchStateAsync()
+    {
+        if (!WatchState.IsAvailable || _libraryItems.Count == 0)
+            return;
+
+        try
+        {
+            _libraryItems = await WatchState.EnrichAsync(_username, _libraryItems, _cts?.Token ?? default);
+        }
+        catch
+        {
+            /* watch state is non-critical */
+        }
+    }
+
+    async Task EnrichStaleAsync()
+    {
+        if (!Stale.IsAvailable || _libraryItems.Count == 0)
+            return;
+
+        try
+        {
+            IReadOnlyDictionary<string, Stackarr.Core.Lifecycle.StaleMediaItem> statuses =
+                await Stale.LoadAsync(_cts?.Token ?? default);
+            _libraryItems = Stale.Enrich(_libraryItems, statuses);
+        }
+        catch
+        {
+            /* lifecycle status is non-critical */
+        }
+    }
+
+    void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _libraryMatches = _libraryItems.ToList();
+            return;
+        }
+
+        string term = _searchTerm.Trim();
+        IEnumerable<MediaItem> matches = _libraryItems.Where(i =>
+            i.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            i.Overview.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+        _libraryMatches = MediaStatusGrouping.OrderBySearchRelevance(matches, term).ToList();
+    }
+
+    async Task OnSearchDebounced(string term)
+    {
+        _searchTerm = term;
+        ApplySearch();
+
+        if (string.IsNullOrWhiteSpace(term) || term.Trim().Length < 2)
+        {
+            _remoteResults = [];
+            _remoteSearching = false;
+            return;
+        }
+
+        await SearchRemote(term.Trim());
+    }
+
+    async Task SearchRemote(string query)
+    {
+        _remoteSearching = true;
+        StateHasChanged();
+        ActivityHandle handle = Activity.Begin($"Searching movies", query, Icons.Material.Filled.Search);
+        try
+        {
+            List<MediaItem> results = await Catalog.SearchMoviesAsync(query, 1, _cts?.Token ?? default);
+            _remoteResults = results.Where(r => !r.IsInLibrary).Take(40).ToList();
+            handle.Complete($"{_remoteResults.Count} results");
+        }
+        catch (OperationCanceledException)
+        {
+            handle.Info("Cancelled");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Search failed: {ex.Message}";
+            handle.Fail(ex.Message);
+        }
+        _remoteSearching = false;
+        StateHasChanged();
+    }
+
+    async Task ToggleMonitored(MediaItem item)
+    {
+        if (!_isAdmin && item.IsMonitored)
+        {
+            _errorMessage = "Only administrators can unmonitor content.";
+            return;
+        }
+
+        try
+        {
+            await RadarrService.ToggleMonitored(item.Id, !item.IsMonitored);
+            Catalog.InvalidateLibraryCache();
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to toggle monitoring: {ex.Message}";
+        }
+    }
+
+    async Task DeleteMovie(MediaItem item)
+    {
+        if (!_isAdmin)
+        {
+            _errorMessage = "Only administrators can delete content.";
+            return;
+        }
+
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete Movie",
+            $"Are you sure you want to delete \"{item.Title}\"? This will also delete all downloaded files.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirm != true)
+        {
+            return;
+        }
+
+        ActivityHandle handle = Activity.Begin($"Deleting {item.Title}", null, Icons.Material.Filled.Delete);
+        try
+        {
+            await RadarrService.DeleteMovie(item.Id, deleteFiles: true);
+            Catalog.InvalidateLibraryCache();
+            handle.Complete("Deleted");
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to delete: {ex.Message}";
+            handle.Fail(ex.Message);
+        }
+    }
+
+    async Task OpenUpload()
+    {
+        DialogParameters<TvUploadDialog> parameters = new()
+        {
+            { x => x.IsAdmin, true },
+            { x => x.AutoDetect, true },
+            { x => x.MediaType, "movie" },
+        };
+
+        DialogOptions options = new()
+        {
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium,
+            CloseOnEscapeKey = true
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<TvUploadDialog>("Upload Movie", parameters, options);
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Catalog.InvalidateLibraryCache();
+            await RefreshData();
+        }
+    }
+
+    async Task OpenDetail(MediaItem item)
+    {
+        if (item.IsInLibrary)
+        {
+            TvMovie? movie = _library.FirstOrDefault(m => m.Id == item.Id);
+            if (movie == null) return;
+            DialogParameters<MovieDetailDialog> parameters = new() { { x => x.Movie, movie }, { x => x.IsAdmin, _isAdmin } };
+            DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+            IDialogReference dialog = await DialogService.ShowAsync<MovieDetailDialog>(movie.Title, parameters, options);
+            await dialog.Result;
+            Catalog.InvalidateLibraryCache();
+            await RefreshData();
+        }
+        else
+        {
+            DialogParameters<RemoteMediaDialog> parameters = new() { { x => x.Item, item } };
+            DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+            IDialogReference dialog = await DialogService.ShowAsync<RemoteMediaDialog>(item.Title, parameters, options);
+            DialogResult result = await dialog.Result;
+            if (result is { Canceled: false })
+            {
+                _remoteResults.RemoveAll(r => r.TmdbId == item.TmdbId);
+                Catalog.InvalidateLibraryCache();
+                await RefreshData();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+}

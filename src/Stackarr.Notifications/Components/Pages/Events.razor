@@ -1,0 +1,442 @@
+@page "/events"
+@attribute [Authorize]
+@inject IEventStore EventStore
+@inject NotificationSubscriptionService Subscriptions
+@inject UserNotificationChannelService UserChannels
+@inject IExternalIdentityStore Identities
+@inject DiscordNotificationChannel Discord
+@inject AuthenticationStateProvider AuthProvider
+@inject ISnackbar Snackbar
+@using Stackarr.Core.Events
+@implements IDisposable
+
+<PageTitle>Stackarr - Events</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.EventNote" Title="Events">
+    <Actions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                   OnClick="() => LoadEvents(resetPaging: true)" Disabled="@_loading"
+                   StartIcon="@Icons.Material.Filled.Refresh" title="Refresh" AriaLabel="Refresh events">
+            <span class="st-btn-label">Refresh</span>
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close"
+              OnClose="() => _errorMessage = null">@_errorMessage</MudAlert>
+}
+
+<SectionContainer Icon="@Icons.Material.Filled.NotificationsActive" Title="Notifications" Class="mb-4">
+    <div class="st-notif-compact">
+        <span class="st-discord-logo st-brand-mask"
+              style="--st-brand-url:url('/img/discord-logo.svg')"></span>
+        <div class="st-notif-compact-text">
+            <div class="st-notif-compact-title">Discord</div>
+            <div class="st-notif-compact-state">@DiscordState</div>
+        </div>
+        <div class="st-notif-compact-actions">
+            @if (_dmConfigured && !_discordLinked)
+            {
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Href="/account"
+                           StartIcon="@Icons.Material.Filled.Link">
+                    Link Discord
+                </MudButton>
+            }
+            else if (_dmConfigured && _discordLinked)
+            {
+                <MudSwitch T="bool" Value="_dmEnabled" ValueChanged="SetDmEnabledAsync"
+                           Color="Color.Primary" />
+                <StIconButton Icon="@Icons.Material.Filled.Send" Title="Send test message"
+                              OnClick="SendTestAsync" Disabled="@_testing" />
+            }
+        </div>
+    </div>
+
+    @if (_subscriptions.Count > 0)
+    {
+        <div class="st-notif-follow-list">
+            @foreach (NotificationSubscription subscription in _subscriptions)
+            {
+                <StMediaRow Title="@subscription.Title"
+                            ImageUrl="@(subscription.PosterUrl ?? "")"
+                            Icon="@Icons.Material.Filled.Movie"
+                            Class="st-notif-follow-row">
+                    <Info>
+                        @subscription.Subtitle
+                        @if (subscription.Source == "request") { <text> · from a request</text> }
+                        @if (subscription.LastNotifiedAt is { } last)
+                        {
+                            <text> · last event @FormatHelper.FormatRelativeTime(last)</text>
+                        }
+                    </Info>
+                    <Actions>
+                        <MudMenu Icon="@Icons.Material.Filled.Tune" IconSize="Size.Small"
+                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                            <MudMenuItem OnClick="@(() => ToggleAsync(subscription, NotificationSubscriptionCategory.Status))"
+                                         Icon="@(subscription.NotifyStatus ? Icons.Material.Filled.CheckBox : Icons.Material.Outlined.CheckBoxOutlineBlank)">
+                                Status updates
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => ToggleAsync(subscription, NotificationSubscriptionCategory.Download))"
+                                         Icon="@(subscription.NotifyDownload ? Icons.Material.Filled.CheckBox : Icons.Material.Outlined.CheckBoxOutlineBlank)">
+                                Download started / finished
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => ToggleAsync(subscription, NotificationSubscriptionCategory.NewContent))"
+                                         Icon="@(subscription.NotifyNewContent ? Icons.Material.Filled.CheckBox : Icons.Material.Outlined.CheckBoxOutlineBlank)">
+                                Imports &amp; new episodes
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => ToggleAsync(subscription, NotificationSubscriptionCategory.Problems))"
+                                         Icon="@(subscription.NotifyProblems ? Icons.Material.Filled.CheckBox : Icons.Material.Outlined.CheckBoxOutlineBlank)">
+                                Problems &amp; failures
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => ToggleAsync(subscription, NotificationSubscriptionCategory.Lifecycle))"
+                                         Icon="@(subscription.NotifyLifecycle ? Icons.Material.Filled.CheckBox : Icons.Material.Outlined.CheckBoxOutlineBlank)">
+                                Deletion warnings
+                            </MudMenuItem>
+                            <MudDivider />
+                            <MudMenuItem Icon="@Icons.Material.Filled.NotificationsOff" OnClick="@(() => UnfollowAsync(subscription))">
+                                Stop following
+                            </MudMenuItem>
+                        </MudMenu>
+                    </Actions>
+                </StMediaRow>
+            }
+        </div>
+    }
+</SectionContainer>
+
+<SectionContainer Icon="@Icons.Material.Filled.FilterAlt" Title="Filters" Class="mb-4">
+    <StToggleChips T="string" Class="mb-3" Items="CategoryToggles"
+                   Values="_enabledFilters" ValueToggled="ToggleCategory"
+                   AriaLabel="Event categories" />
+
+    <div class="st-controls-row mt-3">
+        <SearchBox Value="@_search" ValueChanged="OnSearchChanged"
+                   Placeholder="Search events or topics..."
+                   Class="st-control-search" DebounceInterval="300" Clearable="true" Dense="true" />
+
+        <MudSelect T="EventSeverity?" Value="@_minSeverity" ValueChanged="OnSeverityChanged"
+                   Label="Severity" OuterClass="st-control-select" Dense="true"
+                   Variant="Variant.Outlined" Clearable="true">
+            <MudSelectItem T="EventSeverity?" Value="@((EventSeverity?)null)">All</MudSelectItem>
+            <MudSelectItem T="EventSeverity?" Value="@EventSeverity.Info">Info+</MudSelectItem>
+            <MudSelectItem T="EventSeverity?" Value="@EventSeverity.Success">Success+</MudSelectItem>
+            <MudSelectItem T="EventSeverity?" Value="@EventSeverity.Warning">Warning+</MudSelectItem>
+            <MudSelectItem T="EventSeverity?" Value="@EventSeverity.Error">Error</MudSelectItem>
+        </MudSelect>
+
+        <MudSelect T="int" Value="@_sinceMinutes" ValueChanged="OnSinceChanged"
+                   Label="Time range" OuterClass="st-control-select" Dense="true"
+                   Variant="Variant.Outlined">
+            <MudSelectItem T="int" Value="0">All time</MudSelectItem>
+            <MudSelectItem T="int" Value="15">Last 15 min</MudSelectItem>
+            <MudSelectItem T="int" Value="60">Last hour</MudSelectItem>
+            <MudSelectItem T="int" Value="1440">Last 24 hours</MudSelectItem>
+            <MudSelectItem T="int" Value="10080">Last 7 days</MudSelectItem>
+            <MudSelectItem T="int" Value="43200">Last 30 days</MudSelectItem>
+        </MudSelect>
+
+        @if (HasActiveFilters)
+        {
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="ClearFilters"
+                       StartIcon="@Icons.Material.Filled.DeleteSweep" title="Clear filters">
+                <span class="st-btn-label">Clear</span>
+            </MudButton>
+        }
+    </div>
+</SectionContainer>
+
+<SectionContainer Icon="@Icons.Material.Filled.History" Title="Event Log">
+    <HeaderRight>
+        <MudText Typo="Typo.caption" Class="st-event-count">
+            @if (HasMore)
+            {
+                <text>@VisibleCount of @_filtered.Count shown</text>
+            }
+            else
+            {
+                <text>@_filtered.Count shown</text>
+            }
+            @if (_notificationCount > 0)
+            {
+                <text> · @_notificationCount notification@( _notificationCount == 1 ? "" : "s")</text>
+            }
+        </MudText>
+    </HeaderRight>
+
+    <ChildContent>
+        <EventFeed Items="VisibleEvents"
+                   Loading="_loading"
+                   EmptyMessage="@EventEmptyMessage" />
+
+        @if (HasMore)
+        {
+            <InfiniteScroll OnReached="LoadMore" Enabled="@(HasMore && !_loading)" />
+        }
+    </ChildContent>
+
+</SectionContainer>
+
+@code {
+    const int MaxEvents = 1000;
+
+    List<EventFeedItem> _raw = [];
+    List<EventFeedItem> _filtered = [];
+    bool _loading;
+    string? _errorMessage;
+
+    readonly HashSet<string> _enabledFilters = EventFeedFilter.CreateDefaultSelection();
+    string? _search;
+    EventSeverity? _minSeverity;
+    int _sinceMinutes;
+    int _shown = EventFeedPaging.PageSize;
+
+    IReadOnlyList<StToggleChipItem<string>> CategoryToggles =>
+        EventFeedFilter.Filters
+            .Select(f => new StToggleChipItem<string>(f.Id, f.Label, f.Icon, FilterCount(f.Id).ToString(), f.Title))
+            .ToList();
+
+    int VisibleCount => EventFeedPaging.Visible(_shown, _filtered.Count);
+
+    bool HasMore => VisibleCount < _filtered.Count;
+
+    IReadOnlyList<EventFeedItem> VisibleEvents =>
+        _filtered.Take(VisibleCount).ToList();
+
+    string EventEmptyMessage => _enabledFilters.Count == 0
+        ? "All event categories are hidden. Turn at least one category back on."
+        : _raw.Count > 0
+            ? "No events match the current filters. Try turning a category back on or clearing the search."
+            : "Events will appear here as Stackarr services report activity.";
+
+    Timer? _refreshTimer;
+    CancellationTokenSource? _cts;
+    CancellationTokenSource? _timerCts;
+
+    int _notificationCount;
+
+    int _userId;
+    bool _discordLinked;
+    bool _dmConfigured;
+    bool _dmEnabled;
+    bool _testing;
+    List<NotificationSubscription> _subscriptions = [];
+
+    string DiscordState
+    {
+        get
+        {
+            if (!_dmConfigured)
+                return "Direct messages are not enabled.";
+            if (!_discordLinked)
+                return "Link Discord to receive direct messages.";
+            return _dmEnabled ? "On." : "Off.";
+        }
+    }
+
+    bool HasActiveFilters =>
+        _enabledFilters.Count != EventFeedFilter.Filters.Count
+        || !string.IsNullOrWhiteSpace(_search)
+        || _minSeverity is not null
+        || _sinceMinutes > 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new CancellationTokenSource();
+        await LoadNotificationSettingsAsync();
+        await LoadEvents();
+
+        (_refreshTimer, _timerCts) = AsyncTimerHelper.Create(
+            async _ =>
+            {
+                await LoadEvents();
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(10));
+    }
+
+    async Task LoadEvents(bool resetPaging = false)
+    {
+        if (resetPaging)
+            _shown = EventFeedPaging.PageSize;
+
+        _loading = true;
+        try
+        {
+            using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_cts?.Token ?? default);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(15));
+
+            IReadOnlyList<Stackarr.Core.Models.SystemEvent> events = await EventStore.QueryAsync(new SystemEventQuery
+            {
+                MinSeverity = _minSeverity,
+                Search = _search,
+                Since = _sinceMinutes > 0 ? DateTime.UtcNow.AddMinutes(-_sinceMinutes) : null,
+                Limit = MaxEvents
+            }, timeoutCts.Token);
+
+            _raw = events.Select(EventFeedItem.FromEvent).ToList();
+            _errorMessage = null;
+            ApplyFilters();
+        }
+        catch (OperationCanceledException)
+        {
+            _errorMessage = "Loading events timed out.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load events: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task LoadNotificationSettingsAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!int.TryParse(state.User.FindFirst(StackarrClaims.UserIdClaim)?.Value, out _userId))
+            return;
+
+        _dmConfigured = Discord.SupportsDirectDelivery;
+        IReadOnlyList<Microsoft.AspNetCore.Identity.UserLoginInfo> logins =
+            await Identities.GetExternalLoginsAsync(_userId);
+        _discordLinked = logins.Any(login =>
+            string.Equals(login.LoginProvider, ExternalLoginSchemes.Discord, StringComparison.OrdinalIgnoreCase));
+
+        await ReloadSubscriptionsAsync();
+        UserNotificationChannel? binding = await UserChannels.GetAsync(
+            _userId, DiscordNotificationChannel.ChannelName);
+        _dmEnabled = binding is null || binding.Enabled;
+    }
+
+    async Task ReloadSubscriptionsAsync() =>
+        _subscriptions = [.. await Subscriptions.GetForUserAsync(_userId)];
+
+    async Task SetDmEnabledAsync(bool enabled)
+    {
+        _dmEnabled = enabled;
+        try
+        {
+            await UserChannels.SetEnabledAsync(_userId, DiscordNotificationChannel.ChannelName, enabled);
+        }
+        catch (Exception ex)
+        {
+            _dmEnabled = !enabled;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    async Task SendTestAsync()
+    {
+        _testing = true;
+        try
+        {
+            NotificationDeliveryResult result = await Discord.SendTestAsync(_userId);
+            Snackbar.Add(
+                result.Success ? "Test message sent. Check your Discord DMs." : result.Error ?? "Could not send the test message.",
+                result.Success ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _testing = false;
+        }
+    }
+
+    async Task ToggleAsync(NotificationSubscription subscription, NotificationSubscriptionCategory category)
+    {
+        NotificationSubscriptionOptions options = new()
+        {
+            IncludeDescendants = subscription.IncludeDescendants,
+            Status = subscription.NotifyStatus,
+            Download = subscription.NotifyDownload,
+            NewContent = subscription.NotifyNewContent,
+            Problems = subscription.NotifyProblems,
+            Lifecycle = subscription.NotifyLifecycle
+        };
+
+        options = category switch
+        {
+            NotificationSubscriptionCategory.Status => options with { Status = !options.Status },
+            NotificationSubscriptionCategory.Download => options with { Download = !options.Download },
+            NotificationSubscriptionCategory.NewContent => options with { NewContent = !options.NewContent },
+            NotificationSubscriptionCategory.Problems => options with { Problems = !options.Problems },
+            NotificationSubscriptionCategory.Lifecycle => options with { Lifecycle = !options.Lifecycle },
+            _ => options
+        };
+
+        await Subscriptions.UpdateOptionsAsync(subscription.Id, _userId, options);
+        await ReloadSubscriptionsAsync();
+    }
+
+    async Task UnfollowAsync(NotificationSubscription subscription)
+    {
+        await Subscriptions.UnsubscribeAsync(_userId, subscription.ProviderKey, subscription.ItemKey);
+        await ReloadSubscriptionsAsync();
+        Snackbar.Add($"Stopped following {subscription.Title}.", Severity.Info);
+    }
+
+    void ApplyFilters(bool resetPaging = false)
+    {
+        if (resetPaging)
+            _shown = EventFeedPaging.PageSize;
+
+        _filtered = _raw.Where(i => EventFeedFilter.IsVisible(i, _enabledFilters)).ToList();
+        _notificationCount = _filtered.Count(i => i.IsNotification);
+    }
+
+    int FilterCount(string filterId) => _raw.Count(i => EventFeedFilter.MatchesCategory(i, filterId));
+
+    void ToggleCategory(string id)
+    {
+        if (!_enabledFilters.Remove(id))
+            _enabledFilters.Add(id);
+
+        ApplyFilters(resetPaging: true);
+    }
+
+    void LoadMore() => _shown = EventFeedPaging.NextBatch(_shown, _filtered.Count);
+
+    Task OnSearchChanged(string? value)
+    {
+        _search = value;
+        return LoadEvents(resetPaging: true);
+    }
+
+    Task OnSeverityChanged(EventSeverity? value)
+    {
+        _minSeverity = value;
+        return LoadEvents(resetPaging: true);
+    }
+
+    Task OnSinceChanged(int value)
+    {
+        _sinceMinutes = value;
+        return LoadEvents(resetPaging: true);
+    }
+
+    void ClearFilters()
+    {
+        _enabledFilters.Clear();
+        _enabledFilters.UnionWith(EventFeedFilter.CreateDefaultSelection());
+        _search = null;
+        _minSeverity = null;
+        _sinceMinutes = 0;
+        _ = LoadEvents(resetPaging: true);
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timerCts?.Cancel();
+        _timerCts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+}

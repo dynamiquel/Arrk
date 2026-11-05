@@ -1,0 +1,102 @@
+@inject IDialogService DialogService
+@inject IDbContextFactory<StackarrDbContext> DbContextFactory
+@using Microsoft.EntityFrameworkCore
+@using Stackarr.Core
+@using Stackarr.Core.Models
+@implements IDisposable
+
+@* The speedtest tile body: the shared frame supplies the title and icon. *@
+
+@if (_latest is not null && _latest.ErrorMessage is null)
+{
+    <div class="st-speedtest-values" style="display:flex;gap:1rem;margin:0.25rem 0;cursor:pointer;" @onclick="OpenHistory">
+        <div>
+            <div class="st-tile-metric-label">Down</div>
+            <div class="st-speedtest-value" style="font-size:1.1rem;font-weight:700;color:var(--st-green);">@((_latest.DownloadMbps / 8.0).ToString("F1"))<span class="st-tile-unit"> MB/s</span></div>
+        </div>
+        <div>
+            <div class="st-tile-metric-label">Up</div>
+            <div class="st-speedtest-value" style="font-size:1.1rem;font-weight:700;color:var(--st-blue);">@((_latest.UploadMbps / 8.0).ToString("F1"))<span class="st-tile-unit"> MB/s</span></div>
+        </div>
+        <div>
+            <div class="st-tile-metric-label">Ping</div>
+            <div class="st-speedtest-value" style="font-size:1.1rem;font-weight:700;color:var(--st-purple);">@_latest.PingMs.ToString("F0")<span class="st-tile-unit"> ms</span></div>
+        </div>
+    </div>
+    <div class="st-stat-sub">@GetTimeAgo(_latest.TestedAt)</div>
+}
+else if (_latest?.ErrorMessage is not null)
+{
+    <div class="st-tile-error" style="margin:0.25rem 0;">Test failed</div>
+    <div class="st-stat-sub">@GetTimeAgo(_latest.TestedAt)</div>
+}
+else
+{
+    <div class="st-stat-sub" style="margin:0.25rem 0;">No results yet</div>
+    <div class="st-stat-sub">Waiting for first test</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    /// <summary>Result target to display: "network" (default) or "vpn".</summary>
+    [Parameter] public string Target { get; set; } = "network";
+
+    SpeedtestResult? _latest;
+    CancellationTokenSource? _cts;
+    Timer? _refreshTimer;
+
+    string Title => Context?.Definition.Title ?? "Speedtest";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLatest();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadLatest();
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(30));
+        _refreshTimer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadLatest()
+    {
+        try
+        {
+            await using StackarrDbContext db = await DbContextFactory.CreateDbContextAsync();
+            _latest = await db.SpeedtestResults
+                .Where(x => x.Target == Target)
+                .OrderByDescending(x => x.TestedAt)
+                .FirstOrDefaultAsync();
+        }
+        catch { }
+    }
+
+    async Task OpenHistory()
+    {
+        DialogOptions options = new() { MaxWidth = MaxWidth.Large, FullWidth = true };
+        DialogParameters parameters = new() { [nameof(SpeedtestHistoryDialog.Target)] = Target };
+        await DialogService.ShowAsync<SpeedtestHistoryDialog>($"{Title} History", parameters, options);
+    }
+
+    static string GetTimeAgo(DateTime testedAt)
+    {
+        TimeSpan elapsed = DateTime.UtcNow - testedAt;
+        if (elapsed.TotalMinutes < 1) return "just now";
+        if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
+        if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";
+        return $"{(int)elapsed.TotalDays}d ago";
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+}

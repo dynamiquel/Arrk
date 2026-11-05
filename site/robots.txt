@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dynamiquel.github.io/Stackarr/sitemap.xml

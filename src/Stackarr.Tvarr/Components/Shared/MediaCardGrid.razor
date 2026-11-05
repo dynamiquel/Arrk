@@ -1,0 +1,14 @@
+@* Responsive poster-card grid. The size selects the minimum card width, so Discover can stay
+   large while the library uses a denser Medium layout and watchlist shelves use Small cards. *@
+
+<div class="st-media-grid st-media-grid--@SizeClass @Class">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public MediaCardSize Size { get; set; } = MediaCardSize.Large;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    string SizeClass => Size.ToString().ToLowerInvariant();
+}

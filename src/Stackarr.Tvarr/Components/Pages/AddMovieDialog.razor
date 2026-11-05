@@ -1,0 +1,75 @@
+@inject RadarrService RadarrService
+
+<MudDialog>
+    <TitleContent>
+        <StDialogTitle Icon="@Icons.Material.Filled.AddCircle" Title="@($"Add \"{Title}\"")" />
+    </TitleContent>
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close"
+                       OnClose="() => _errorMessage = null">@_errorMessage</MudAlert>
+        }
+        <MudSelect T="int" Label="Quality Profile" @bind-Value="_selectedProfileId"
+                   Variant="Variant.Outlined" Dense="true" Class="mb-4">
+            @foreach (QualityProfile profile in _profiles)
+            {
+                <MudSelectItem T="int" Value="@profile.Id">@profile.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Add" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" Disabled="@_adding"
+                   title="Add movie" AriaLabel="Add movie">
+            @if (_adding)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" Class="mr-1" />
+            }
+            <span class="st-btn-label">Add Movie</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public int TmdbId { get; set; }
+    [Parameter] public List<QualityProfile> Profiles { get; set; } = [];
+
+    int _selectedProfileId;
+    bool _adding;
+    string? _errorMessage;
+
+    List<QualityProfile> _profiles => Profiles;
+
+    protected override void OnInitialized()
+    {
+        if (_profiles.Count > 0)
+            _selectedProfileId = _profiles.First().Id;
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Add()
+    {
+        _adding = true;
+        _errorMessage = null;
+        StateHasChanged();
+        try
+        {
+            await RadarrService.SearchAndAddMovie(TmdbId, _selectedProfileId);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to add movie: {ex.Message}";
+            _adding = false;
+        }
+        StateHasChanged();
+    }
+}

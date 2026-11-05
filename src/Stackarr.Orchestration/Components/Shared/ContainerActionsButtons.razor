@@ -1,0 +1,29 @@
+@* Container start/stop/restart button group *@
+
+<MudButtonGroup Size="Size.Small">
+    @if (State != ContainerState.Running)
+    {
+        <MudButton StartIcon="@Icons.Material.Filled.PlayArrow" Color="Color.Success"
+            OnClick="OnStart" title="Start" AriaLabel="Start">
+            <span class="st-btn-label">Start</span>
+        </MudButton>
+    }
+    else
+    {
+        <MudButton StartIcon="@Icons.Material.Filled.Stop" Color="Color.Warning"
+            OnClick="OnStop" title="Stop" AriaLabel="Stop">
+            <span class="st-btn-label">Stop</span>
+        </MudButton>
+        <MudButton StartIcon="@Icons.Material.Filled.Refresh" Color="Color.Info"
+            OnClick="OnRestart" title="Restart" AriaLabel="Restart">
+            <span class="st-btn-label">Restart</span>
+        </MudButton>
+    }
+</MudButtonGroup>
+
+@code {
+    [Parameter] public ContainerState State { get; set; }
+    [Parameter] public EventCallback OnStart { get; set; }
+    [Parameter] public EventCallback OnStop { get; set; }
+    [Parameter] public EventCallback OnRestart { get; set; }
+}

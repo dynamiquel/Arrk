@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Configuration owns config validation, the JSON schema, autocomplete and the config-editor UI
+    (Razor class library): the Config page, the form/YAML editors and the configEditor.js script,
+    contributed to the shell through the Stackarr.Ui contracts.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.Core\Stackarr.Core.csproj" />
+    <ProjectReference Include="..\Stackarr.Ui\Stackarr.Ui.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

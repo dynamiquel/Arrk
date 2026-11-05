@@ -1,0 +1,66 @@
+@* Reusable collapsible section: a header (accent icon, title, optional subtitle, count,
+   chevron) that expands/collapses its body. Used to group library/download content by
+   primary status so everything is visible but sections can be tucked away. *@
+
+<section class="st-collapsible @AccentClass @Class">
+    <div class="st-collapsible-header-row">
+        <button type="button"
+                class="st-collapsible-header"
+                aria-expanded="@(_expanded ? "true" : "false")"
+                @onclick="Toggle">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <MudIcon Icon="@Icon" Size="Size.Small" Class="st-collapsible-icon" />
+            }
+            <span class="st-collapsible-heading">
+                <span class="st-collapsible-title">@Title</span>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <span class="st-collapsible-subtitle">@Subtitle</span>
+                }
+            </span>
+            @if (Count.HasValue)
+            {
+                <span class="st-collapsible-count">@Count.Value</span>
+            }
+            <MudIcon Icon="@(_expanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                     Size="Size.Small" Class="st-collapsible-chevron" />
+        </button>
+        @if (Actions is not null)
+        {
+            <div class="st-collapsible-actions">@Actions</div>
+        }
+    </div>
+
+    @if (_expanded)
+    {
+        <div class="st-collapsible-body @BodyClass">
+            @ChildContent
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public int? Count { get; set; }
+
+    /// <summary>Accent token name (pink/purple/blue/green/yellow/red) for the icon + count.</summary>
+    [Parameter] public string Accent { get; set; } = "";
+    [Parameter] public bool DefaultExpanded { get; set; } = true;
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string BodyClass { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Optional actions rendered beside the header (e.g. a watchlist rename/delete menu).</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    bool _expanded;
+
+    string AccentClass => string.IsNullOrEmpty(Accent) ? "" : $"st-collapsible--{Accent}";
+
+    protected override void OnInitialized() => _expanded = DefaultExpanded;
+
+    void Toggle() => _expanded = !_expanded;
+}

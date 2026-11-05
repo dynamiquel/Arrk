@@ -1,0 +1,55 @@
+@using Pondhawk.Monaco
+
+@* The shared Monaco YAML editor. Callers supply the JSON schema so autocomplete and validation
+   match the document being edited: the stackarr config editor and the Tile Editor both use it. *@
+
+<div style="height:100%;width:100%;">
+    <Pondhawk.Monaco.CodeEditor Value="@Value"
+                                ValueChanged="OnEditorValueChanged"
+                                Language="yaml"
+                                Schema="@Schema"
+                                Theme="vs-dark"
+                                EditorOptions="_editorOptions"
+                                Style="height:100%;width:100%;"
+                                TabSize="2"
+                                FontSize="13"
+                                DebounceMs="300" />
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = "";
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>JSON schema supplied by the owning feature (config, dashboard layout, ...).</summary>
+    [Parameter] public string Schema { get; set; } = "{}";
+
+    /// <summary>
+    /// Forwards the editor's content change to the parent, so <c>@bind-Value</c> reflects typed and
+    /// pasted YAML immediately.
+    /// </summary>
+    async Task OnEditorValueChanged(string value)
+    {
+        if (value == Value)
+            return;
+
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    readonly Dictionary<string, object> _editorOptions = new()
+    {
+        ["quickSuggestions"] = new Dictionary<string, bool>
+        {
+            ["other"] = true,
+            ["comments"] = false,
+            ["strings"] = true
+        },
+        ["suggest"] = new Dictionary<string, object>
+        {
+            ["showKeywords"] = true,
+            ["showSnippets"] = true
+        },
+        ["wordBasedSuggestions"] = false
+    };
+}

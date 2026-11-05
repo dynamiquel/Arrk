@@ -1,0 +1,202 @@
+@* Artist detail, mirrors MovieDetailDialog (MediaDetailHero + st-detail-body + DialogActions). *@
+@inject MusicCatalogService Catalog
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        @if (_loading)
+        {
+            <div style="padding:32px;"><LoadingView /></div>
+        }
+        else
+        {
+            <StMusicDetailHeader Title="@Artist.Title" ArtUrl="@Artist.ArtUrl" Icon="@Icons.Material.Filled.Person"
+                                 Subtitle="@string.Join(" · ", Artist.Genres.Take(3))"
+                                 OnClose="() => MudDialog.Cancel()">
+                <Badges>
+                    @if (Artist.IsInLibrary)
+                    {
+                        <StatusPill Variant="success" Icon="@Icons.Material.Filled.CheckCircle" Label="In Library" />
+                    }
+                    else
+                    {
+                        <StatusPill Variant="remote" Icon="@Icons.Material.Filled.AddCircleOutline" Label="Not in Library" />
+                    }
+                    @if (Artist.Listeners is > 0)
+                    {
+                        <StatusPill Variant="neutral" Icon="@Icons.Material.Filled.People" Label="@($"{Artist.Listeners.Value:N0} listeners")" />
+                    }
+                </Badges>
+            </StMusicDetailHeader>
+
+            <div class="st-detail-body">
+                @if (_topTracks.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Top Songs</MudText>
+                    <div class="st-music-tracklist">
+                        @for (int i = 0; i < _topTracks.Count; i++)
+                        {
+                            MusicItem t = _topTracks[i];
+                            <StTrackRow Number="@(i + 1)" Title="@t.Title">
+                                <Actions>
+                                    @if (!string.IsNullOrEmpty(t.PreviewUrl))
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Primary" title="Preview" AriaLabel="Preview" OnClick="() => PlayPreview(t)" />
+                                    }
+                                </Actions>
+                            </StTrackRow>
+                        }
+                    </div>
+                }
+
+                <MusicShelf Title="Albums" Items="_albums" />
+                <MusicShelf Title="Related Artists" Items="_related" />
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (Artist.IsInLibrary)
+        {
+            @if (IsAdmin)
+            {
+                <MudButton OnClick="Retry" Variant="Variant.Outlined" Color="Color.Default" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Refresh">
+                    <span class="st-btn-label">Retry</span>
+                </MudButton>
+            }
+            <MudButton OnClick="Search" Variant="Variant.Outlined" Color="Color.Primary" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Search">
+                <span class="st-btn-label">Search</span>
+            </MudButton>
+            @if (IsAdmin)
+            {
+                <MudButton OnClick="Delete" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Delete">
+                    <span class="st-btn-label">Delete</span>
+                </MudButton>
+            }
+        }
+        else if (IsAdmin)
+        {
+            <MudButton OnClick="Add" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Add">
+                <span class="st-btn-label">Add to Library</span>
+            </MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="Request" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" StartIcon="@Icons.Material.Filled.Inbox">
+                <span class="st-btn-label">Request</span>
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    [Parameter] public MusicItem Artist { get; set; } = new();
+    [Parameter] public bool IsAdmin { get; set; }
+
+    bool _loading = true;
+    bool _busy;
+    List<MusicItem> _topTracks = [];
+    List<MusicItem> _albums = [];
+    List<MusicItem> _related = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthStateTask is not null)
+            IsAdmin = (await AuthStateTask).User.IsInRole(StackarrRoles.Admin);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        if (Artist.DeezerId > 0)
+        {
+            try
+            {
+                MusicItem? detail = await Catalog.GetArtistAsync(Artist.DeezerId);
+                if (detail is not null)
+                    Artist = detail with { LibraryId = Artist.LibraryId, IsInLibrary = Artist.IsInLibrary };
+                _topTracks = await Catalog.GetArtistTopTracksAsync(Artist.DeezerId);
+                _albums = await Catalog.GetArtistAlbumsAsync(Artist.DeezerId);
+                _related = await Catalog.GetArtistRelatedAsync(Artist.DeezerId);
+            }
+            catch { /* show what we have */ }
+        }
+        else if (Artist.LibraryId > 0)
+        {
+            try { _albums = await Catalog.GetLibraryArtistAlbumsAsync(Artist.LibraryId); }
+            catch { /* show what we have */ }
+        }
+        _loading = false;
+    }
+
+    async Task PlayPreview(MusicItem track)
+    {
+        if (string.IsNullOrEmpty(track.PreviewUrl)) return;
+        var queue = new[]
+        {
+            new { id = "", title = track.Title, artist = Artist.Title, albumArtist = Artist.Title, album = track.AlbumName, cover = Artist.ArtUrl, stream = track.PreviewUrl, artistDeezerId = Artist.DeezerId, albumDeezerId = track.AlbumDeezerId }
+        };
+        // A one-off queue: prev/next never reach a preview.
+        try { await JS.InvokeVoidAsync("stackarrMusic.play", queue, 0); }
+        catch { /* player is an enhancement */ }
+    }
+
+    async Task Add()
+    {
+        DialogParameters<AddArtistDialog> p = new() { { x => x.Artist, Artist } };
+        IDialogReference dialog = await DialogService.ShowAsync<AddArtistDialog>($"Add {Artist.Title}", p,
+            new DialogOptions { MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true });
+        DialogResult result = await dialog.Result;
+        if (result is { Canceled: false })
+            MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    async Task Search()
+    {
+        if (Artist.LibraryId <= 0) return;
+        _busy = true;
+        try { await Catalog.SearchArtistAsync(Artist.LibraryId); Snackbar.Add("Search triggered.", Severity.Info); }
+        catch (Exception ex) { Snackbar.Add($"Search failed: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task Retry()
+    {
+        if (Artist.LibraryId <= 0) return;
+        _busy = true;
+        try { await Catalog.SearchArtistAsync(Artist.LibraryId); Snackbar.Add("Retrying search.", Severity.Info); }
+        catch (Exception ex) { Snackbar.Add($"Retry failed: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task Delete()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync("Remove artist",
+            $"Remove \"{Artist.Title}\" and delete all files?", yesText: "Remove", cancelText: "Cancel");
+        if (confirm != true) return;
+        _busy = true;
+        try
+        {
+            await Catalog.RemoveArtistAsync(Artist);
+            Snackbar.Add($"Removed {Artist.Title}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); _busy = false; }
+    }
+
+    async Task Request()
+    {
+        DialogParameters<RequestMusicDialog> p = new()
+        {
+            { x => x.Item, Artist },
+            { x => x.Kind, Stackarr.Core.Requests.RequestKind.Artist }
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<RequestMusicDialog>($"Request {Artist.Title}", p);
+        DialogResult result = await dialog.Result;
+        if (result is { Canceled: false })
+            MudDialog.Close(DialogResult.Ok(true));
+    }
+}

@@ -1,0 +1,209 @@
+/* Local media upload dialog. Reuses the shared token palette so it reads as a first-party surface. */
+
+.st-upload-dialog {
+    padding: var(--st-space-md) var(--st-space-lg) var(--st-space-lg);
+}
+
+.st-upload-dialog .st-dialog-title {
+    margin-bottom: var(--st-space-md);
+}
+
+.st-upload-dialog .st-dialog-title + * {
+    margin-top: 0;
+}
+
+.st-upload-file-input {
+    display: none;
+}
+
+.st-upload-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--st-space-sm);
+    width: 100%;
+    min-height: 152px;
+    padding: var(--st-space-lg);
+    border: 1.5px dashed var(--st-border-strong, rgba(255, 255, 255, 0.18));
+    border-radius: var(--st-radius-lg, 16px);
+    background: var(--st-surface-2, rgba(255, 255, 255, 0.03));
+    color: var(--st-text-secondary);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+
+.st-upload-drop:hover {
+    border-color: var(--st-pink, #ff5fa2);
+    background: var(--st-surface-3, rgba(255, 255, 255, 0.055));
+}
+
+.st-upload-drop-title {
+    font-weight: 600;
+    color: var(--st-text-primary);
+}
+
+.st-upload-hint {
+    font-size: 0.78rem;
+    color: var(--st-text-muted);
+    line-height: 1.45;
+}
+
+.st-upload-files {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: var(--st-space-sm);
+}
+
+.st-upload-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 0.85rem;
+}
+
+.st-upload-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.st-upload-file-meta {
+    color: var(--st-text-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.st-upload-progress {
+    margin-top: var(--st-space-md);
+}
+
+.st-upload-match {
+    display: flex;
+    gap: var(--st-space-md);
+    align-items: flex-start;
+    padding: var(--st-space-md);
+    border: 1px solid var(--st-border, rgba(255, 255, 255, 0.10));
+    border-radius: var(--st-radius-md, 12px);
+    background: var(--st-surface-2, rgba(255, 255, 255, 0.03));
+}
+
+.st-upload-match-art {
+    width: 58px;
+    height: 87px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: var(--st-surface-3);
+    flex: 0 0 auto;
+}
+
+.st-upload-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.st-upload-score--high {
+    background: color-mix(in srgb, var(--st-green, #43d17c) 18%, transparent);
+    color: var(--st-green, #43d17c);
+}
+
+.st-upload-score--medium {
+    background: color-mix(in srgb, var(--st-amber, #ffb648) 18%, transparent);
+    color: var(--st-amber, #ffb648);
+}
+
+.st-upload-score--low {
+    background: color-mix(in srgb, var(--st-red, #ff5d5d) 18%, transparent);
+    color: var(--st-red, #ff5d5d);
+}
+
+.st-upload-ai {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--st-text-muted);
+}
+
+.st-upload-candidates {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: var(--st-space-sm);
+}
+
+.st-upload-candidate {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.st-upload-candidate:hover {
+    background: var(--st-surface-3);
+}
+
+.st-upload-candidate.is-selected {
+    border-color: var(--st-pink, #ff5fa2);
+    background: color-mix(in srgb, var(--st-pink, #ff5fa2) 10%, transparent);
+}
+
+.st-upload-candidate-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.st-upload-candidate-sub {
+    font-size: 0.75rem;
+    color: var(--st-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.st-upload-map-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--st-border, rgba(255, 255, 255, 0.08));
+}
+
+.st-upload-map-row:last-child {
+    border-bottom: none;
+}
+
+.st-upload-result {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--st-border, rgba(255, 255, 255, 0.08));
+}
+
+.st-upload-result:last-child {
+    border-bottom: none;
+}
+
+.st-upload-result-msg {
+    font-size: 0.78rem;
+    color: var(--st-text-secondary);
+}

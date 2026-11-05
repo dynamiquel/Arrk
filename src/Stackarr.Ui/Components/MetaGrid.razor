@@ -1,0 +1,10 @@
+@* Responsive grid container for media metadata. Pair with <MetaItem>. *@
+
+<div class="st-meta-grid" style="grid-template-columns:@GridTemplate;">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string GridTemplate { get; set; } = "repeat(auto-fit, minmax(140px, 1fr))";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,370 @@
+@using System.Globalization
+
+@* Recursive renderer for a single schema-driven config field. *@
+
+@if (Node is ConfigScalarNode scalar)
+{
+    <div class="st-form-field">
+        @switch (Node.FieldType)
+        {
+            case ConfigFormFieldType.Boolean:
+                <MudSwitch T="bool" Value="@BoolValue" ValueChanged="@OnBoolChanged"
+                           Color="Color.Primary" Label="@Node.Title" Disabled="@ReadOnly"
+                           LabelPlacement="Placement.Start" />
+                break;
+
+            case ConfigFormFieldType.Enum:
+                <MudSelect T="string" Value="@StringValue" ValueChanged="@OnStringChanged"
+                           Label="@Node.Title" HelperText="@HelperText" Required="@Node.Required"
+                           Error="@HasError()" ErrorText="@FirstError()"
+                           Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense"
+                           Disabled="@ReadOnly">
+                    @foreach (string option in Node.EnumValues)
+                    {
+                        <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                    }
+                </MudSelect>
+                break;
+
+            case ConfigFormFieldType.Integer:
+            case ConfigFormFieldType.Number:
+                <MudNumericField T="decimal" Value="@DecimalValue" ValueChanged="@OnDecimalChanged"
+                                 Label="@Node.Title" HelperText="@HelperText" Required="@Node.Required"
+                                 Error="@HasError()" ErrorText="@FirstError()"
+                                 Min="@(MinValue ?? decimal.MinValue)" Max="@(MaxValue ?? decimal.MaxValue)"
+                                 Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense"
+                                 Disabled="@ReadOnly" />
+                break;
+
+            default:
+                <MudTextField T="string" Value="@StringValue" ValueChanged="@OnStringChanged"
+                              Label="@Node.Title" HelperText="@HelperText" Required="@Node.Required"
+                              Error="@HasError()" ErrorText="@FirstError()"
+                              InputType="@(Node.IsSecret && !_reveal ? InputType.Password : InputType.Text)"
+                              Adornment="@(Node.IsSecret ? Adornment.End : Adornment.None)"
+                              AdornmentIcon="@(_reveal ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                              OnAdornmentClick="@(() => _reveal = !_reveal)"
+                              Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense"
+                              DebounceInterval="400" Immediate="true"
+                              Disabled="@ReadOnly" />
+                break;
+        }
+    </div>
+}
+else if (Node is ConfigObjectNode obj)
+{
+    bool isSection = Node is ConfigFormSection;
+    @if (!isSection && (!string.IsNullOrEmpty(Node.Title) || !string.IsNullOrEmpty(Node.Description)))
+    {
+        <div class="st-form-subheader">
+            <MudText Typo="Typo.subtitle2">@Node.Title</MudText>
+            @if (!string.IsNullOrEmpty(Node.Description))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">@Node.Description</MudText>
+            }
+        </div>
+    }
+    <div class="st-form-grid">
+        @foreach (ConfigFormNode child in obj.Children)
+        {
+            <div class="st-form-item @(IsWide(child) ? "st-form-item--wide" : "")">
+                <ConfigFormNodeEditor Node="child" OnChanged="OnChanged" Errors="Errors" ReadOnly="ReadOnly" />
+            </div>
+        }
+    </div>
+}
+else if (Node is ConfigArrayNode array)
+{
+    <div class="st-form-complex">
+        @if (!string.IsNullOrEmpty(Node.Title))
+        {
+            <div class="st-form-subheader">
+                <MudText Typo="Typo.subtitle2">@Node.Title</MudText>
+                @if (!string.IsNullOrEmpty(Node.Description))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@Node.Description</MudText>
+                }
+            </div>
+        }
+        @if (array.Items.Count == 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="st-form-empty">No items yet.</MudText>
+        }
+        else if (IsScalarPrototype(array.ItemPrototype))
+        {
+            <div class="st-form-array">
+                @for (int i = 0; i < array.Items.Count; i++)
+                {
+                    int index = i;
+                    <div class="st-form-array-row">
+                        <div class="st-form-array-value">
+                            <ConfigFormNodeEditor Node="array.Items[index]" OnChanged="OnChanged" Errors="Errors" ReadOnly="ReadOnly" />
+                        </div>
+                        @if (!ReadOnly)
+                        {
+                            <StIconButton Icon="@Icons.Material.Filled.Delete" Title="Remove item" Variant="ActionVariant.Danger"
+                                          OnClick="@(() => RemoveArrayItem(array, index))" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            @for (int i = 0; i < array.Items.Count; i++)
+            {
+                int index = i;
+                <div class="st-form-array-card">
+                    <div class="st-form-array-card-header">
+                        <MudText Typo="Typo.subtitle2">@ItemTitle(array.Items[index], index)</MudText>
+                        @if (!ReadOnly)
+                        {
+                            <StIconButton Icon="@Icons.Material.Filled.Delete" Title="Remove item" Variant="ActionVariant.Danger"
+                                          OnClick="@(() => RemoveArrayItem(array, index))" />
+                        }
+                    </div>
+                    <ConfigFormNodeEditor Node="array.Items[index]" OnChanged="OnChanged" Errors="Errors" ReadOnly="ReadOnly" />
+                </div>
+            }
+        }
+        @if (!ReadOnly)
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Outlined"
+                       Color="Color.Primary" Class="st-form-add-btn" OnClick="@(() => AddArrayItem(array))">
+                Add @Node.Title
+            </MudButton>
+        }
+    </div>
+}
+else if (Node is ConfigDictionaryNode dict)
+{
+    <div class="st-form-complex">
+        @if (!string.IsNullOrEmpty(Node.Title))
+        {
+            <div class="st-form-subheader">
+                <MudText Typo="Typo.subtitle2">@Node.Title</MudText>
+                @if (!string.IsNullOrEmpty(Node.Description))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@Node.Description</MudText>
+                }
+            </div>
+        }
+        @if (dict.Entries.Count == 0)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="st-form-empty">No entries yet.</MudText>
+        }
+        else
+        {
+            <div class="st-form-dict">
+                @for (int i = 0; i < dict.Entries.Count; i++)
+                {
+                    int index = i;
+                    <div class="st-form-dict-row">
+                        <MudTextField T="string" Value="@dict.Entries[index].Key"
+                                      ValueChanged="@(v => OnDictionaryKeyChanged(dict, index, v))"
+                                      Placeholder="key" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense"
+                                      Class="st-form-dict-key" Disabled="@ReadOnly" />
+                        <div class="st-form-dict-value">
+                            <ConfigFormNodeEditor Node="dict.Entries[index].Value" OnChanged="OnChanged" Errors="Errors" ReadOnly="ReadOnly" />
+                        </div>
+                        @if (!ReadOnly)
+                        {
+                            <StIconButton Icon="@Icons.Material.Filled.Delete" Title="Remove entry" Variant="ActionVariant.Danger"
+                                          OnClick="@(() => RemoveDictionaryEntry(dict, index))" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+        @if (!ReadOnly)
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Outlined"
+                       Color="Color.Primary" Class="st-form-add-btn" OnClick="@(() => AddDictionaryEntry(dict))">
+                Add entry
+            </MudButton>
+        }
+    </div>
+}
+else if (Node is ConfigRawNode raw)
+{
+    <div class="st-form-complex">
+        @if (!string.IsNullOrEmpty(Node.Title))
+        {
+            <div class="st-form-subheader">
+                <MudText Typo="Typo.subtitle2">@Node.Title</MudText>
+                @if (!string.IsNullOrEmpty(Node.Description))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@Node.Description</MudText>
+                }
+            </div>
+        }
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+            Advanced value — edit this in the YAML view.
+        </MudAlert>
+        <pre class="mono-block" style="margin:0;">@ConfigYaml(raw.Value)</pre>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ConfigFormNode Node { get; set; } = new ConfigScalarNode();
+    [Parameter] public EventCallback<ConfigFormNode> OnChanged { get; set; }
+    [Parameter] public IReadOnlyList<ConfigValidationError> Errors { get; set; } = [];
+    [Parameter] public bool ReadOnly { get; set; }
+
+    bool _reveal;
+
+    bool BoolValue => Node is ConfigScalarNode s && s.Value is bool b && b;
+    string? StringValue => (Node as ConfigScalarNode)?.Value?.ToString();
+
+    decimal DecimalValue => (Node as ConfigScalarNode)?.Value switch
+    {
+        long l => l,
+        int i => i,
+        double d => (decimal)d,
+        decimal m => m,
+        _ => 0m
+    };
+
+    decimal? MinValue => Node.Minimum.HasValue ? (decimal)Node.Minimum.Value : null;
+    decimal? MaxValue => Node.Maximum.HasValue ? (decimal)Node.Maximum.Value : null;
+
+    string HelperText
+    {
+        get
+        {
+            List<string> parts = [];
+            if (!string.IsNullOrEmpty(Node.Description))
+                parts.Add(Node.Description);
+
+            if (Node.DefaultValue != null && !string.IsNullOrEmpty(Node.DefaultValue.ToString()))
+                parts.Add($"Default: {Node.DefaultValue}");
+
+            List<string> constraints = [];
+            if (Node.Minimum.HasValue) constraints.Add($">= {Node.Minimum}");
+            if (Node.ExclusiveMinimum.HasValue) constraints.Add($"> {Node.ExclusiveMinimum}");
+            if (Node.Maximum.HasValue) constraints.Add($"<= {Node.Maximum}");
+            if (Node.ExclusiveMaximum.HasValue) constraints.Add($"< {Node.ExclusiveMaximum}");
+            if (Node.MinLength is > 0) constraints.Add($"min {Node.MinLength} chars");
+            if (constraints.Count > 0) parts.Add(string.Join(", ", constraints));
+
+            return string.Join(" • ", parts);
+        }
+    }
+
+    bool HasError() => Node is ConfigScalarNode && Errors.Any(e => PathMatches(Node.Path, e.Path));
+    string? FirstError() => Errors.FirstOrDefault(e => PathMatches(Node.Path, e.Path))?.Message;
+
+    static bool PathMatches(string nodePath, string errorPath)
+    {
+        if (string.IsNullOrEmpty(errorPath))
+            return false;
+
+        return nodePath.Equals(errorPath, StringComparison.OrdinalIgnoreCase) ||
+               errorPath.StartsWith(nodePath + ".", StringComparison.OrdinalIgnoreCase) ||
+               errorPath.StartsWith(nodePath + "[", StringComparison.OrdinalIgnoreCase);
+    }
+
+    static bool IsWide(ConfigFormNode node) =>
+        node is ConfigObjectNode or ConfigArrayNode or ConfigDictionaryNode or ConfigRawNode;
+
+    static bool IsScalarPrototype(ConfigFormNode? prototype) => prototype is ConfigScalarNode;
+
+    static string ItemTitle(ConfigFormNode node, int index)
+    {
+        if (node is ConfigObjectNode obj)
+        {
+            ConfigFormNode? name = obj.Children.FirstOrDefault(c =>
+                c.Key.Equals("name", StringComparison.OrdinalIgnoreCase) ||
+                c.Key.Equals("title", StringComparison.OrdinalIgnoreCase));
+
+            string? value = (name as ConfigScalarNode)?.Value?.ToString();
+            if (!string.IsNullOrEmpty(value))
+                return value;
+        }
+
+        return $"Item {index + 1}";
+    }
+
+    async Task ScalarChanged()
+    {
+        await OnChanged.InvokeAsync(Node);
+    }
+
+    async Task OnBoolChanged(bool value)
+    {
+        if (Node is ConfigScalarNode s)
+            s.Value = value;
+        await ScalarChanged();
+    }
+
+    async Task OnStringChanged(string? value)
+    {
+        if (Node is ConfigScalarNode s)
+            s.Value = value ?? "";
+        await ScalarChanged();
+    }
+
+    async Task OnDecimalChanged(decimal value)
+    {
+        if (Node is ConfigScalarNode s)
+        {
+            s.Value = Node.FieldType == ConfigFormFieldType.Integer ? (long)value : (double)value;
+        }
+        await ScalarChanged();
+    }
+
+    async Task AddArrayItem(ConfigArrayNode array)
+    {
+        if (array.ItemPrototype == null)
+            return;
+
+        array.Items.Add(array.ItemPrototype.Clone());
+        await ScalarChanged();
+    }
+
+    async Task RemoveArrayItem(ConfigArrayNode array, int index)
+    {
+        if (index < 0 || index >= array.Items.Count)
+            return;
+
+        array.Items.RemoveAt(index);
+        await ScalarChanged();
+    }
+
+    async Task AddDictionaryEntry(ConfigDictionaryNode dict)
+    {
+        string key = NextDictionaryKey(dict);
+        ConfigFormNode value = dict.ValuePrototype?.Clone() ?? new ConfigScalarNode();
+        dict.Entries.Add(new ConfigDictionaryEntry { Key = key, Value = value });
+        await ScalarChanged();
+    }
+
+    async Task RemoveDictionaryEntry(ConfigDictionaryNode dict, int index)
+    {
+        if (index < 0 || index >= dict.Entries.Count)
+            return;
+
+        dict.Entries.RemoveAt(index);
+        await ScalarChanged();
+    }
+
+    async Task OnDictionaryKeyChanged(ConfigDictionaryNode dict, int index, string? value)
+    {
+        if (index < 0 || index >= dict.Entries.Count)
+            return;
+
+        dict.Entries[index].Key = value ?? "";
+        await ScalarChanged();
+    }
+
+    static string NextDictionaryKey(ConfigDictionaryNode dict)
+    {
+        const string prefix = "key";
+        int i = 1;
+        while (dict.Entries.Any(e => e.Key.Equals($"{prefix}{i}", StringComparison.OrdinalIgnoreCase)))
+            i++;
+        return $"{prefix}{i}";
+    }
+
+    static string ConfigYaml(object? value) => value == null ? "null" : YamlConfigSerializer.Serialize(value);
+}

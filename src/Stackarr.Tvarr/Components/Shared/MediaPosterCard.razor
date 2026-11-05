@@ -1,0 +1,440 @@
+@* Unified, reusable poster card for movies, shows and anime (library + remote). *@
+@inject MediaCatalogService Catalog
+
+<div class="st-media-card st-media-card--@SizeClass @CardStateClass @Class"
+     @onclick="HandleClick"
+     @onmouseenter="OnEnter"
+     @onmouseleave="() => _hovered = false"
+     @onfocus="() => _focused = true"
+     @onblur="() => _focused = false"
+     tabindex="0"
+     role="button"
+     aria-label="@Item.Title"
+     style="cursor:pointer;outline:none;">
+
+    <div class="st-media-card-poster">
+        @if (!string.IsNullOrEmpty(Item.PosterUrl))
+        {
+            <img src="@Item.PosterUrl" alt="@Item.Title" loading="lazy" />
+        }
+        else
+        {
+            <div class="st-media-card-poster-placeholder">
+                <MudIcon Icon="@Icons.Material.Filled.BrokenImage" Size="Size.Large" />
+            </div>
+        }
+
+        @* Preload the title logo alongside the poster so the hover overlay never pops it in late. *@
+        @if (!string.IsNullOrEmpty(_logoUrl))
+        {
+            <img src="@_logoUrl" alt="" aria-hidden="true" class="st-media-card-logo-preload" />
+        }
+
+        @* Watch progress from the configured player. *@
+        @if (Item.IsWatched)
+        {
+            <div class="st-watch-badge" title="Watched">
+                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Style="font-size:0.8rem;" />
+                <span>WATCHED</span>
+            </div>
+        }
+        else if (Item.WatchProgress > 0.001)
+        {
+            <div class="st-watch-progress" title="@($"{(int)Math.Round(Item.WatchProgress * 100)}% watched")">
+                <div class="st-watch-progress-fill" style="@($"width:{Math.Round(Item.WatchProgress * 100)}%")"></div>
+            </div>
+        }
+
+        @if (Item.HasStaleWarning)
+        {
+            <div class="st-media-card-stale">
+                <StaleBadge Level="Item.Staleness" DaysRemaining="Item.DaysRemaining"
+                            ShowBookmarked="Item.IsBookmarked" BookmarkLabel="Item.BookmarkLabel"
+                            IsPinned="Item.IsPinned" />
+            </div>
+        }
+
+        @* Library/request indicator. A request state replaces the library badge (mutually exclusive). *@
+        @if ((Item.HasRequestState && !Item.IsInLibrary) || ShowLibraryBadge || (Item.NotYetReleased && !Item.IsInLibrary))
+        {
+            <div class="st-media-card-badges">
+                @if (Item.HasRequestState && !Item.IsInLibrary)
+                {
+                    <div class="st-media-card-badge st-media-card-badge--@Item.RequestState" title="@RequestLabel">
+                        <MudIcon Icon="@RequestIcon" Size="Size.Small" Style="font-size:0.8rem;" />
+                        <span>@RequestLabel</span>
+                    </div>
+                }
+                else if (ShowLibraryBadge && (ShowInLibraryBadge || !Item.IsInLibrary))
+                {
+                    <div class="st-media-card-badge st-media-card-badge--@(Item.IsInLibrary ? "library" : "remote")">
+                        <MudIcon Icon="@(Item.IsInLibrary ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.AddCircleOutline)"
+                                 Size="Size.Small" Style="font-size:0.8rem;" />
+                        <span>@(Item.IsInLibrary ? "In Library" : "Not in Library")</span>
+                    </div>
+                }
+                @if (Item.NotYetReleased && !Item.IsInLibrary)
+                {
+                    <div class="st-media-card-badge st-media-card-badge--unreleased" title="Not released yet">
+                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size:0.8rem;" />
+                        <span>Not Released</span>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (Item.IsAnime)
+        {
+            <div class="st-media-card-badge st-media-card-badge--anime">
+                <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Style="font-size:0.75rem;" />
+                <span>Anime</span>
+            </div>
+        }
+
+        @* Hover actions *@
+        @if (ShowActions && Expanded)
+        {
+            <div class="st-media-card-poster-actions">
+                @if (Item.IsInLibrary)
+                {
+                    @if (IsAdmin)
+                    {
+                        <StIconButton Overlay StopPropagation
+                                      Icon="@(Item.IsMonitored ? Icons.Material.Filled.Visibility : Icons.Material.Outlined.VisibilityOff)"
+                                      Title="@(Item.IsMonitored ? "Unmonitor" : "Monitor")" Variant="ActionVariant.Neutral"
+                                      OnClick="HandleMonitorToggle" />
+                        <StIconButton Overlay StopPropagation Icon="@Icons.Material.Filled.Delete"
+                                      Title="Remove from library" Variant="ActionVariant.Danger"
+                                      OnClick="HandleDelete" />
+                    }
+                }
+                else if (CanRequest && !Item.HasRequestState)
+                {
+                    <StIconButton Overlay StopPropagation Icon="@Icons.Material.Filled.Inbox"
+                                  Title="Request" Variant="ActionVariant.Neutral" OnClick="HandleRequest" />
+                }
+                else if (IsAdmin)
+                {
+                    <StIconButton Overlay StopPropagation Icon="@Icons.Material.Filled.Add"
+                                  Title="Add to library" Variant="ActionVariant.Neutral" OnClick="HandleAdd" />
+                }
+                @if (ShowWatchlistAction)
+                {
+                    <WatchlistButton ProviderKey="@WatchActivityServices.Tv"
+                                     Domain="@(Item.MediaType == "tv" ? TvMediaDomains.Tv : TvMediaDomains.Movie)"
+                                     ItemKey="@StaleMediaEnricher.KeyFor(Item)"
+                                     Title="@Item.Title"
+                                     Subtitle="@(Item.Year > 0 ? Item.Year.ToString() : null)"
+                                     PosterUrl="@Item.PosterUrl"
+                                     Year="@Item.Year"
+                                     TmdbId="@Item.TmdbId"
+                                     TvdbId="@Item.TvdbId"
+                                     OpenChanged="OnWatchlistOpenChanged" />
+                }
+            </div>
+        }
+
+        @* Hover overlay: artwork + synopsis + genres. Small shelf cards keep the logo,
+           certificate and genres but omit the synopsis. *@
+        @if (Expanded)
+        {
+            <div class="st-media-card-poster-overlay">
+                <div class="st-media-card-poster-overlay-content">
+                    @if (!string.IsNullOrEmpty(_logoUrl))
+                    {
+                        <img src="@_logoUrl" class="st-media-card-overlay-logo" alt="@Item.Title" />
+                    }
+                    @if (!string.IsNullOrEmpty(Item.Certification))
+                    {
+                        <div class="st-media-card-overlay-head">
+                            <span class="st-media-card-cert">@FormatHelper.ToUkCertification(Item.Certification)</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Item.OriginalTitle))
+                    {
+                        <div class="st-media-card-original-title">@Item.OriginalTitle</div>
+                    }
+                    @if (CardSize != MediaCardSize.Small && !string.IsNullOrEmpty(Item.Overview))
+                    {
+                        <div class="st-media-card-overview">@Item.Overview</div>
+                    }
+                    @if (Item.Genres.Count > 0)
+                    {
+                        <div class="st-media-card-genres">
+                            @foreach (string genre in Item.Genres.Take(3))
+                            {
+                                <StChip Variant="neutral">@genre</StChip>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="st-media-card-info">
+        <div class="st-media-card-title" title="@Item.Title">@Item.Title</div>
+
+        <div class="st-media-card-meta">
+            @if (Item.Year > 0)
+            {
+                <span>@Item.Year@if (Item.EndYear > 0 && Item.EndYear != Item.Year) { @($"–{Item.EndYear}") }</span>
+            }
+            @if (Item.TotalEpisodes > 0 && Item.SeasonCount is > 0)
+            {
+                <span class="st-meta-sep">·</span>
+                <span>@Item.SeasonCount season@(Item.SeasonCount == 1 ? "" : "s")</span>
+            }
+            else if (Item.RuntimeMinutes is > 0)
+            {
+                <span class="st-meta-sep">·</span>
+                <span>@FormatRuntime(Item.RuntimeMinutes.Value)</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(Item.SeasonLabel))
+            {
+                <span class="st-meta-sep">·</span>
+                <span class="st-media-card-season">@Item.SeasonLabel</span>
+            }
+            @if (Item.Rating is > 0)
+            {
+                <span class="st-meta-sep">·</span>
+                <span class="st-media-card-meta-rating">
+                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Color="Color.Warning" Style="font-size:0.72rem;" />
+                    @Item.Rating.Value.ToString("F1")
+                </span>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Item.FormatSummary))
+        {
+            <MediaFormatLine Info="Item.Technical" Quality="Item.Quality" ShowAudio="false" Class="st-media-card-format" />
+        }
+
+        @if (Item.SeasonStatuses.Count > 0)
+        {
+            <div class="st-season-bubbles">                @foreach (SeasonStatusInfo s in Item.SeasonStatuses.Take(14))
+                {
+                    <MudTooltip Placement="Placement.Top" Inline="false">
+                        <ChildContent>
+                            <span class="st-season-bubble st-season-bubble--@s.Status">@($"S{s.SeasonNumber}")</span>
+                        </ChildContent>
+                        <TooltipContent>
+                            <div class="st-season-tooltip">
+                                <div style="font-weight:600;">Season @s.SeasonNumber</div>
+                                <div>@s.StatusLabel</div>
+                                @if (s.IsMonitored)
+                                {
+                                    <div style="display:flex;align-items:center;gap:4px;">
+                                        <span style="display:flex;align-items:center;gap:2px;">
+                                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="font-size:0.75rem;color:var(--st-green);" />@s.DownloadedCount
+                                        </span>
+                                        @if (s.DownloadingCount > 0)
+                                        {
+                                            <span style="display:flex;align-items:center;gap:2px;">
+                                                <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Small" Style="font-size:0.75rem;color:var(--st-blue);" />@s.DownloadingCount
+                                            </span>
+                                        }
+                                        <span>/ @s.TotalCount</span>
+                                    </div>
+                                }
+                            </div>
+                        </TooltipContent>
+                    </MudTooltip>
+                }
+            </div>
+        }
+
+        @if (Item.IsDownloading)
+        {
+            <div class="st-media-card-download">
+                <div class="st-media-card-download-row">
+                    <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Small" Style="font-size:0.85rem;color:var(--st-blue);" />
+                    <span>Downloading</span>
+                    <span class="st-media-card-download-pct">@ProgressLabel</span>
+                </div>
+                @if (Item.DownloadSize > 0)
+                {
+                    <MudProgressLinear Value="@ProgressPercent" Color="Color.Info" Size="Size.Small" Rounded="true" Style="height:4px;" />
+                }
+            </div>
+        }
+        else if (Item.IsInLibrary && !IsFullyDownloaded)
+        {
+            <div class="st-media-card-status st-media-card-status--@StatusVariant">
+                <MudIcon Icon="@StatusIcon" Size="Size.Small" Style="font-size:0.85rem;" />
+                <span>@StatusLabel</span>
+                @if (Item.TotalEpisodes > 0)
+                {
+                    <span class="st-media-card-status-count">@Item.DownloadedEpisodes/@Item.TotalEpisodes</span>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public MediaItem Item { get; set; } = new();
+    [Parameter] public MediaCardSize CardSize { get; set; } = MediaCardSize.Large;
+    [Parameter] public bool ShowLibraryBadge { get; set; } = true;
+
+    /// <summary>Set false on a library page so in-library cards do not repeat the obvious.</summary>
+    [Parameter] public bool ShowInLibraryBadge { get; set; } = true;
+
+    [Parameter] public bool ShowActions { get; set; } = true;
+    [Parameter] public bool ShowWatchlistAction { get; set; }
+    [Parameter] public bool IsAdmin { get; set; } = true;
+    [Parameter] public bool CanRequest { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback<MediaItem> OnClick { get; set; }
+    [Parameter] public EventCallback<MediaItem> OnAdd { get; set; }
+    [Parameter] public EventCallback<MediaItem> OnRequest { get; set; }
+    [Parameter] public EventCallback<MediaItem> OnMonitorToggle { get; set; }
+    [Parameter] public EventCallback<MediaItem> OnDelete { get; set; }
+
+    bool _hovered;
+    bool _focused;
+    bool _watchlistOpen;
+    int _logoTmdbId;
+    string _logoUrl = "";
+    bool Expanded => _hovered || _focused || _watchlistOpen;
+
+    string SizeClass => CardSize.ToString().ToLowerInvariant();
+
+    protected override void OnParametersSet()
+    {
+        // Fetch the title logo up front, alongside the poster, so the hover overlay never
+        // pops the artwork in a moment after the pointer arrives.
+        if (Item.TmdbId > 0 && Item.TmdbId != _logoTmdbId && Catalog.IsTmdbConfigured)
+        {
+            _logoTmdbId = Item.TmdbId;
+            _ = EnsureLogoAsync(Item.MediaType, Item.TmdbId);
+        }
+    }
+
+    void OnEnter() => _hovered = true;
+
+    void OnWatchlistOpenChanged(bool open) => _watchlistOpen = open;
+
+    async Task EnsureLogoAsync(string mediaType, int tmdbId)
+    {
+        try
+        {
+            string logo = await Catalog.GetLogoUrlAsync(mediaType, tmdbId);
+            if (!string.IsNullOrEmpty(logo) && _logoTmdbId == tmdbId)
+            {
+                _logoUrl = logo;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch
+        {
+            /* non-critical card artwork */
+        }
+    }
+
+    double ProgressPercent
+    {
+        get
+        {
+            if (Item.DownloadSize <= 0) return 0;
+            if (Item.DownloadSizeLeft <= 0) return 100;
+            return Math.Clamp((double)(Item.DownloadSize - Item.DownloadSizeLeft) / Item.DownloadSize * 100, 0, 100);
+        }
+    }
+
+    // Download progress is a percentage, so show it as a whole number.
+    string ProgressLabel => $"{Math.Round(ProgressPercent)}%";
+
+    // A "Missing" item whose source has no web/physical release yet uses the same orange
+    // "Not Released" colour and clock icon as the media-popup badge. It stays in the Missing
+    // group; only the colour/icon differ.
+    bool NotYetReleased => Item.LibraryStatus == "Missing" && Item.NotYetReleased;
+
+    string StatusVariant => NotYetReleased ? "unreleased" : Item.LibraryStatus switch
+    {
+        "Downloaded" => "success",
+        "Downloaded Monitored" => "success",
+        "Partial" => "warning",
+        "Missing" => "error",
+        "Downloading" => "info",
+        _ => "neutral"
+    };
+
+    string StatusIcon => NotYetReleased ? Icons.Material.Filled.Schedule : Item.LibraryStatus switch
+    {
+        "Downloaded" or "Downloaded Monitored" => Icons.Material.Filled.CheckCircle,
+        "Partial" => Icons.Material.Filled.IncompleteCircle,
+        "Missing" => Icons.Material.Filled.ErrorOutline,
+        _ => Icons.Material.Filled.LibraryAddCheck
+    };
+
+    string StatusLabel => Item.LibraryStatus switch
+    {
+        // A "Missing" item whose source has no web/physical release yet reads better as
+        // "Not Released"; it stays in the Missing category (orange icon, unreleased variant).
+        "Missing" when Item.NotYetReleased => "Not Released",
+        "" => "In Library",
+        _ => Item.LibraryStatus
+    };
+
+    // A fully downloaded item needs no status line on the card: "In Library" already implies
+    // it is downloaded, and hovering reveals per-season detail. Only surface exceptional states
+    // (Missing / Partial / Downloading) to cut down on visual noise.
+    bool IsFullyDownloaded => Item.LibraryStatus is "Downloaded" or "Downloaded Monitored";
+
+    string RequestLabel => Item.RequestState switch
+    {
+        "pending" => "Requested",
+        "approved" => "Approved",
+        "denied" => "Denied",
+        "blacklisted" => "Blacklisted",
+        _ => ""
+    };
+
+    string CardStateClass => Item.IsInLibrary
+        ? "st-media-card--library"
+        : Item.HasRequestState
+            ? $"st-media-card--request st-media-card--request-{Item.RequestState}"
+            : "st-media-card--remote";
+
+    string RequestIcon => Item.RequestState switch
+    {
+        "approved" => Icons.Material.Filled.CheckCircle,
+        "denied" or "blacklisted" => Icons.Material.Filled.Block,
+        _ => Icons.Material.Filled.HourglassTop
+    };
+
+    static string FormatRuntime(int minutes)
+    {
+        if (minutes <= 0) return "";
+        if (minutes < 60) return $"{minutes}m";
+        int h = minutes / 60;
+        int m = minutes % 60;
+        return m == 0 ? $"{h}h" : $"{h}h {m}m";
+    }
+
+    async Task HandleClick()
+    {
+        if (OnClick.HasDelegate) await OnClick.InvokeAsync(Item);
+    }
+
+    async Task HandleMonitorToggle()
+    {
+        if (OnMonitorToggle.HasDelegate) await OnMonitorToggle.InvokeAsync(Item);
+    }
+
+    async Task HandleDelete()
+    {
+        if (OnDelete.HasDelegate) await OnDelete.InvokeAsync(Item);
+    }
+
+    async Task HandleAdd()
+    {
+        if (OnAdd.HasDelegate) await OnAdd.InvokeAsync(Item);
+    }
+
+    async Task HandleRequest()
+    {
+        if (OnRequest.HasDelegate) await OnRequest.InvokeAsync(Item);
+    }
+}

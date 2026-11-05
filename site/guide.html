@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Setup guide — Stackarr</title>
+  <meta name="description" content="A practical, step-by-step guide to configuring Stackarr: storage, metadata, quality profiles, indexers, downloads, VPN, players, subtitles, remote access, users and notifications.">
+  <meta name="theme-color" content="#0f0a18">
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="canonical" href="https://dynamiquel.github.io/Stackarr/guide.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Stackarr home">
+        <img src="assets/logo.svg" alt="" width="34" height="34">
+        <span>Stackarr</span>
+      </a>
+      <nav class="site-nav" id="site-nav" aria-label="Main navigation">
+        <a href="index.html">Overview</a>
+        <a href="features.html">Features</a>
+        <a href="setup.html">Setup</a>
+        <a href="guide.html">Guide</a>
+        <a href="how-it-works.html">How it works</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <div class="header-actions">
+        <a class="icon-link" href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="Stackarr on GitHub">
+          <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+        </a>
+        <a class="btn btn-primary" href="setup.html">Install first</a>
+        <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">
+          <svg class="menu-open" aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg>
+          <svg class="menu-close" aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <span class="pill pill--indigo"><svg aria-hidden="true"><use href="assets/icons.svg#i-star"></use></svg> The practical guide</span>
+        <h1 style="margin-top: 18px">Set up your stack,<br><span class="grad-text">properly.</span></h1>
+        <p class="lead">
+          Installing Stackarr is the easy part. This guide walks through the choices that make a
+          media stack pleasant to live with: where the files go, how quality is decided, what
+          routes through the VPN, who gets in, and what happens when storage fills up.
+        </p>
+        <div class="page-hero-meta">
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-clock"></use></svg> About 30–45 minutes</span>
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-settings"></use></svg> Config editor or YAML</span>
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-shield"></use></svg> Safe defaults</span>
+        </div>
+        <div class="callout callout--warn" style="margin-top: 26px; max-width: 860px">
+          <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-alert"></use></svg></span>
+          <div>
+            <h4>Do this before you change anything</h4>
+            <p>
+              Back up <code>/config</code> (or at least <code>stackarr.yaml</code>) and note your
+              current ports. Stackarr is early software and configuration can change between
+              releases. The Config page keeps version history, but a real backup is still your
+              friend.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--flush-top">
+      <div class="wrap guide-layout">
+        <aside class="guide-sidebar">
+          <h4>On this page</h4>
+          <nav class="guide-nav" aria-label="Setup guide sections">
+            <a href="#identity">Identity &amp; admin</a>
+            <a href="#storage">Storage &amp; folders</a>
+            <a href="#metadata">Metadata</a>
+            <a href="#quality">Quality profiles</a>
+            <a href="#indexers">Indexers</a>
+            <a href="#downloads">Downloads &amp; VPN</a>
+            <a href="#players">Players</a>
+            <a href="#subtitles">Subtitles</a>
+            <a href="#remote">Remote access</a>
+            <a href="#people">Users &amp; requests</a>
+            <a href="#notifications">Notifications</a>
+            <a href="#lifecycle">Lifecycle</a>
+            <a href="#ai">Optional AI</a>
+            <a href="#day-two">Day two</a>
+          </nav>
+        </aside>
+
+        <div class="guide-content">
+          <div class="callout callout--info" style="margin-bottom: 40px">
+            <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg></span>
+            <div>
+              <h4>Two ways to edit configuration</h4>
+              <p>
+                Open <strong>Configuration</strong> in Stackarr for a validated visual editor with
+                schema autocomplete and version history, or edit
+                <code>/config/stackarr.yaml</code> directly. Changes hot-reload without a restart.
+                The generated JSON schema is the authoritative list of options; this guide covers
+                the ones worth understanding.
+              </p>
+            </div>
+          </div>
+
+          <section class="guide-section" id="identity">
+            <h2><span class="num">01</span> Identity &amp; admin</h2>
+            <p>
+              Stackarr is the account authority for the stack. Start by replacing the bootstrap
+              administrator and deciding how new accounts are created.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>auth:
+  adminUsername: admin
+  adminPassword: change-me-now
+  sessionDays: 14
+  requireHttps: false
+  allowPasswordLogin: true
+  allowLocalSignUp: true
+  registrationMode: Approval   # Open | Approval | AdminOnly</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Change the password after the first sign-in. The default is intentionally obvious.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Keep <code>Approval</code> for a household: new accounts wait for you.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Set <code>requireHttps</code> once the instance is only reachable over TLS.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Add Discord or MyAnimeList sign-in later from <code>/account</code>.</li>
+            </ul>
+            <div class="guide-note">
+              <b>Good to know:</b> Jellyfin and Navidrome keep their own credentials, but Stackarr
+              can provision accounts and passwords for them. That is separate from whether
+              Stackarr itself allows password login.
+            </div>
+          </section>
+
+          <section class="guide-section" id="storage">
+            <h2><span class="num">02</span> Storage &amp; folders</h2>
+            <p>
+              Stackarr uses three storage roots: configuration, downloads and media. Relative paths
+              are anchored to the data root; absolute paths are passed directly to Docker. Get this
+              right once and the rest of the setup is calmer.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>storage:
+  config: /srv/stackarr/config
+  downloads: /srv/stackarr/downloads
+  media: /srv/stackarr/media
+  tv: $media/tv
+  music: $media/music</code></pre>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Path</th><th>Use it for</th><th>Advice</th></tr></thead>
+                <tbody>
+                  <tr><td><code>tv</code></td><td><code>tv/movies</code> and <code>tv/shows</code> underneath.</td><td>Keep movies and shows on one filesystem for hard-links and fast imports.</td></tr>
+                  <tr><td><code>music</code></td><td>The native music library.</td><td>Stackarr writes <code>Artist/Album/NN - Title</code> with tags and cover art.</td></tr>
+                  <tr><td><code>downloads</code></td><td>Incomplete, complete, Soulseek and staged uploads.</td><td>Same filesystem as media is strongly preferred; imports can then link instead of copy.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout callout--warn">
+              <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-alert"></use></svg></span>
+              <div>
+                <h4>Do not move folders after provisioning</h4>
+                <p>Library managers remember root folders. If you must move storage, update the config and then re-point the libraries in the service UIs. Avoid mixing network shares with local disks for the download staging path.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="guide-section" id="metadata">
+            <h2><span class="num">03</span> Metadata</h2>
+            <p>
+              TMDb powers discovery, artwork and descriptions for movies and shows. A free API key
+              or v4 read token is enough. Without it, Discover is limited and search falls back to
+              what the library managers already know.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>metadata:
+  tmdbApiKey: ""
+  tmdbReadToken: ""</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Prefer the v4 read token if you have one.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Keep the key out of screenshots and issue reports.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Music metadata comes from Deezer and does not need a key.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="quality">
+            <h2><span class="num">04</span> Quality profiles</h2>
+            <p>
+              Quality is defined once in Stackarr and applied to the library managers. The default
+              profiles are Best Available, FHD and UHD. Bitrate floors stop a “4K” release from
+              being smaller than a good 1080p one.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>qualityProfiles:
+  profiles:
+    - name: Best Available
+      minResolution: 1080p
+      maxResolution: 2160p
+      allowUpgrade: true
+    - name: FHD
+      minResolution: 1080p
+      maxResolution: 1080p
+      allowUpgrade: true
+    - name: UHD
+      minResolution: 2160p
+      maxResolution: 2160p
+      allowUpgrade: true
+  minimumBitratesMbps:
+    1080p: 3
+    2160p: 12</code></pre>
+            </div>
+            <div class="guide-note">
+              <b>One source of truth:</b> the configured profiles are authoritative. Stackarr
+              creates and syncs them into the library managers rather than asking you to maintain
+              copies in each app.
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Set a tier to <code>0</code> to leave it unmanaged.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Use <code>allowUpgrade</code> deliberately; upgrades are extra download traffic.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Requests and uploads pick from these profiles.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="indexers">
+            <h2><span class="num">05</span> Indexers</h2>
+            <p>
+              Prowlarr is the indexer hub and syncs its apps into the library managers. You can add
+              indexers in Stackarr's config or in Prowlarr's own UI (proxy it temporarily if you
+              prefer). Keep credentials in the config, not in screenshots.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>indexers:
+  proxy: false
+  solver:
+    enabled: false             # Byparr for Cloudflare-protected indexers
+    tag: cf
+  entries:
+    - name: Example Torrents
+      implementation: example
+      enabled: true
+      url: https://tracker.example
+      categories: [2000, 5000]
+      search:
+        movieSearch: true
+        tvSearch: true
+        musicSearch: true
+      settings:
+        username: ""
+        password: ""</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Use the Cardigann definition name (for example <code>1337x</code>, <code>nyaasi</code>) or a native implementation name.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Enable <code>solver</code> if a protected indexer needs a challenge solver; tag it <code>cf</code>.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Set <code>indexers.proxy: true</code> only while configuring; keep it private afterwards.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Test one search from Discover before adding a pile of indexers.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="downloads">
+            <h2><span class="num">06</span> Downloads &amp; VPN</h2>
+            <p>
+              Transmission handles torrents; slskd handles Soulseek for music. Both are provisioned
+              by Stackarr and appear on one Downloads page. The VPN is opt-in per service.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>vpn:
+  enabled: false
+  provider: protonvpn        # provider name understood by Gluetun
+  type: wireguard
+  wireguardPrivateKey: ""
+  wireguardAddresses: ""
+  serverCountries: ""
+  portForwarding: false
+  restart:
+    enabled: true
+    downloadThreshold: 5.0
+    uploadThreshold: 5.0
+    cooldownMinutes: 60
+
+services:
+  torrentDownloader:
+    proxy: false
+    vpn: true                # provisions the tunnel even with vpn.enabled false
+    seeding:
+      maxRatio: 2.0
+      maxTimeMinutes: 1440
+      minTimeMinutes: 30
+    management:
+      slow:
+        enabled: true
+        thresholdMbps: 1.0
+        limitMinutes: 30
+      stalled:
+        enabled: true
+        limitMinutes: 20
+      storage:
+        pauseDownloadsAtPercent: 90
+        cleanupSeedingAtPercent: 85
+        cleanupStrategy: oldest</code></pre>
+            </div>
+            <div class="callout callout--info">
+              <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg></span>
+              <div>
+                <h4>The VPN is for the downloader, not everything</h4>
+                <p>Routing is per service. Enabling the tunnel does not silently push your players or the whole stack through it.</p>
+              </div>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Use a provider and credentials Gluetun understands.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> With ProtonVPN/PIA port forwarding, enable <code>portForwarding</code>.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Leave slow/stalled cleanup on. It is speed-aware and holds off when the line is unhealthy.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Set <code>monitoring.speedtest.minHealthyDownloadMbps</code> to match your connection.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="players">
+            <h2><span class="num">07</span> Players</h2>
+            <p>
+              Jellyfin plays video and can be fully managed by Stackarr; Navidrome plays the music
+              library. Both are proxied by default, and Stackarr can sign users in with OIDC where
+              the client supports it.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>services:
+  jellyfin:
+    enabled: true
+    proxy: true
+    nvidia: false             # true for NVENC / HDR tone mapping
+    serverName: Stackarr
+    metadataLanguage: en
+    metadataCountry: US
+    manageUsers: true
+    oidcSso: true
+    webPlayer:
+      enabled: true
+
+  navidrome:
+    enabled: true
+    proxy: true
+    webPlayer: true</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Jellyfin libraries are created and kept linked automatically.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> The in-site player keeps the Stackarr look; disable it to use Jellyfin's own web client.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> With NVIDIA enabled, pass the GPU to the Jellyfin container and let Stackarr configure transcoding.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Keep Navidrome's <code>webPlayer</code> on unless you only want external Subsonic clients.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="subtitles">
+            <h2><span class="num">08</span> Subtitles</h2>
+            <p>
+              One dispatcher covers every subtitle request. OpenSubtitles works in-process and is
+              enabled by default; Bazarr is optional and useful when you want more providers or
+              non-English catalogues.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>services:
+  subtitles:
+    enabled: true
+    languages: [en]
+    autoDownload: true
+    minScore: 70
+    maxDownloadsPerRun: 10
+    opensubtitles:
+      enabled: true
+      apiKey: ""
+      username: ""            # optional; raises the free quota
+      password: ""
+      includeMachineTranslated: false
+    bazarr:
+      enabled: false
+      providers: [gestdown, subf2m]</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Register a free OpenSubtitles API key under Profile → API Consumers.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Add your languages in priority order; the first is the default.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> New imports are covered automatically; older items use “Get missing” or a manual search.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Keep Bazarr's own wanted search out of the way; the shared dispatcher owns automatic downloads.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="remote">
+            <h2><span class="num">09</span> Remote access</h2>
+            <p>
+              Traefik runs the reverse proxy. Path-based routes are on by default, the Stackarr UI
+              is at <code>/</code>, and players are proxied at <code>/jellyfin</code> and
+              <code>/navidrome</code>. A Cloudflare tunnel can expose Traefik without opening host
+              ports.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>routes:
+  baseUrl: http://localhost
+  publicUrl: https://media.example.com
+  proxy: true
+  httpPort: 80
+  httpsPort: 443
+  cloudflared:
+    enabled: false           # enable after adding a tunnel token
+    tunnelToken: ""</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Set <code>publicUrl</code> to the exact external URL; it is used for deep links and OIDC.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> For a tunnel-only host, set both ports to <code>0</code>.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Enable <code>auth.requireHttps</code> when TLS terminates in front of Stackarr.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> TLS certificate automation is not there yet; use your proxy or tunnel for HTTPS.</li>
+            </ul>
+            <div class="guide-note">
+              <b>Several stacks, one host:</b> give each instance a unique <code>StackName</code>
+              and non-overlapping host ports. Each gets its own
+              <code>stackarr-&lt;name&gt;-net</code> network, so identical service names never
+              collide.
+            </div>
+          </section>
+
+          <section class="guide-section" id="people">
+            <h2><span class="num">10</span> Users &amp; requests</h2>
+            <p>
+              Decide who can sign in and what they can do. Stackarr supports admin/user roles,
+              invite-only approval, OIDC for players, and a Seerr-style request flow for people who
+              should not add media directly.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>auth:
+  registrationMode: Approval
+  provider:
+    enabled: true
+    issuer: ""                # defaults to routes.publicUrl
+  external:
+    discord:
+      enabled: false
+      clientId: ""
+      clientSecret: ""
+      callbackPath: /signin-discord
+  players:
+    provisionAccounts: true
+    provisionPasswords: true
+
+requests:
+  enabled: true
+  allowSeriesRequests: true
+  allowSeasonRequests: true
+  allowEpisodeRequests: true
+  maxOpenPerUser: 0
+  blacklistOnDeny: false
+  autoApproveRoles: [Admin]</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Register the Discord redirect URI in the Discord developer portal if you enable it.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Pending accounts cannot sign in until an admin approves them.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Keep <code>maxOpenPerUser</code> at <code>0</code> only if you trust the household.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Requests are moderated at <code>/requests</code>; admins can add media directly.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="notifications">
+            <h2><span class="num">11</span> Notifications</h2>
+            <p>
+              Stackarr records every notable event, shows it in the in-app inbox and can deliver a
+              subset to Discord or a generic webhook. Routing is per topic, so TV noise and system
+              failures can go to different places.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>notifications:
+  retentionDays: 90
+  showJobActivity: false
+  discord:
+    enabled: true
+    webhookUrl: "https://discord.com/api/webhooks/..."
+    username: Stackarr
+    routing:
+      media.#: "https://discord.com/api/webhooks/.../media"
+      system.#: "https://discord.com/api/webhooks/.../system"
+    exclude:
+      - downloads.progress
+  webhook:
+    enabled: false
+    url: ""
+    authHeader: ""
+  topics:
+    downloads.progress: false
+    system.health: true</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Start with one Discord webhook and the default topic set.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Use <code>exclude</code> to silence a channel without hiding the event in-app.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Turn on <code>showJobActivity</code> only when debugging scheduled jobs.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="lifecycle">
+            <h2><span class="num">12</span> Lifecycle</h2>
+            <p>
+              Watch history drives staleness. The defaults are conservative: warn after a period,
+              give bookmarked items longer, and never delete automatically unless you explicitly
+              enable it.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>monitoring:
+  tv:
+    stale:
+      upperThreshold: 30       # days without consumption
+      lowerThreshold: 0        # early warning; 0 disables
+      autoCleanup: false       # opt in deliberately
+      keepThreshold: 45        # bookmarked titles
+      keepLowerThreshold: 0
+  music:
+    stale:
+      upperThreshold: 30
+      lowerThreshold: 0
+      autoCleanup: false
+      keepThreshold: 45
+      keepLowerThreshold: 0</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> TV staleness is per season; movies and music albums are single items.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Consuming an item — or anything in its season/album — resets the clock.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Pin anything an admin never wants considered stale.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Review <code>/stale</code> for a while before enabling automatic cleanup.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="ai">
+            <h2><span class="num">13</span> Optional AI</h2>
+            <p>
+              AI is off by default, provider-agnostic and advisory. Every feature has its own
+              toggle and falls back to the deterministic path. Bring any OpenAI-compatible
+              endpoint, including a local model.
+            </p>
+            <div class="code-block">
+              <div class="code-head">
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+              </div>
+              <pre><code>ai:
+  enabled: false
+  provider: gemini            # or openai, ollama, custom, ...
+  apiKey: ""
+  baseUrl: ""                 # set for a custom OpenAI-compatible host
+  models:
+    chat: gemini-3.6-flash
+    fast: gemini-3.5-flash-lite
+  features:
+    assistant:
+      enabled: true
+      maxMessagesPerHour: 30
+    releaseRanking:
+      enabled: true
+      mode: shadow             # off | shadow | ambiguous | always
+    importMatching:
+      enabled: true
+      mode: ambiguous
+    style:
+      enabled: true
+  privacy:
+    storePromptText: false</code></pre>
+            </div>
+            <ul class="checklist">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Start in <code>shadow</code> mode to compare choices without changing behaviour.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Destructive actions require explicit confirmation and run through the same services as the UI.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Leave prompt storage off unless you are actively debugging.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Check <code>/ai</code> for usage, spend and feature health.</li>
+            </ul>
+          </section>
+
+          <section class="guide-section" id="day-two">
+            <h2><span class="num">14</span> Day two</h2>
+            <p>
+              A stack is a living thing. The boring maintenance habits are what keep it pleasant.
+            </p>
+            <div class="bento" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+              <div class="bento-card" style="grid-column: auto; padding: 22px">
+                <div class="icon-bubble icon-bubble--green" style="width: 38px; height: 38px; margin-bottom: 12px">
+                  <svg aria-hidden="true"><use href="assets/icons.svg#i-refresh"></use></svg>
+                </div>
+                <h3>Updates</h3>
+                <p>Pull a new image, keep the same mounts and <code>StackName</code>, and re-create the container. Back up <code>/config</code> first. Stackarr can check image updates, but you decide when to apply them.</p>
+              </div>
+              <div class="bento-card" style="grid-column: auto; padding: 22px">
+                <div class="icon-bubble icon-bubble--indigo" style="width: 38px; height: 38px; margin-bottom: 12px">
+                  <svg aria-hidden="true"><use href="assets/icons.svg#i-database"></use></svg>
+                </div>
+                <h3>Backups</h3>
+                <p><code>/config</code> holds the YAML, both SQLite databases, service config volumes and encryption keys. Treat it as the crown jewels. A nightly copy to another disk is enough for most homes.</p>
+              </div>
+              <div class="bento-card" style="grid-column: auto; padding: 22px">
+                <div class="icon-bubble icon-bubble--yellow" style="width: 38px; height: 38px; margin-bottom: 12px">
+                  <svg aria-hidden="true"><use href="assets/icons.svg#i-history"></use></svg>
+                </div>
+                <h3>Config history</h3>
+                <p>The Config page keeps versions of <code>stackarr.yaml</code>. When something feels off, compare against the previous version before hand-editing. Keep a copy outside the container too.</p>
+              </div>
+              <div class="bento-card" style="grid-column: auto; padding: 22px">
+                <div class="icon-bubble icon-bubble--pink" style="width: 38px; height: 38px; margin-bottom: 12px">
+                  <svg aria-hidden="true"><use href="assets/icons.svg#i-search"></use></svg>
+                </div>
+                <h3>When something breaks</h3>
+                <p>Start with <code>docker logs -f stackarr</code>, then <code>/events</code> for the event trail and <code>/logs</code> for the app log. The service's own UI is still there when you need the deeper view.</p>
+              </div>
+            </div>
+            <div class="callout callout--green" style="margin-top: 20px">
+              <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-shield"></use></svg></span>
+              <div>
+                <h4>A sane default posture</h4>
+                <p>Approval-only accounts, no automatic deletion, slow/stalled cleanup on, VPN on the downloader only, and a weekly config backup. Change one thing at a time.</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="cta cta--left" style="margin-top: 10px">
+            <span class="pill pill--pink" style="margin-bottom: 16px"><span class="pill-dot"></span> You made it</span>
+            <h2>Now go add something.</h2>
+            <p>Open Discover, pick a title, and watch the whole loop work. If something is confusing, the FAQ and the source docs are the next stop.</p>
+            <div class="btn-row">
+              <a class="btn btn-primary" href="faq.html">Read the FAQ <svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></a>
+              <a class="btn btn-ghost" href="how-it-works.html">How it works</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a class="brand" href="index.html">
+            <img src="assets/logo.svg" alt="" width="34" height="34">
+            <span>Stackarr</span>
+          </a>
+          <p>One web UI and one YAML file for a self-hosted media stack. Movies, shows, music and the services behind them.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="features.html">Features</a></li>
+            <li><a href="how-it-works.html">How it works</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Get started</h4>
+          <ul>
+            <li><a href="setup.html">Install</a></li>
+            <li><a href="guide.html">Setup guide</a></li>
+            <li><a href="setup.html#troubleshooting">Troubleshooting</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Stackarr. Built for the self-hosted corner of the internet.</span>
+        <span class="footer-note"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg> Early alpha — expect changes.</span>
+        <div class="footer-social">
+          <a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<Project>
+
+  <PropertyGroup>
+    <!--
+      Development fallback for the Stackarr version (major.minor.revision).
+      Every project in the repository inherits this value, so the app and all
+      built-in modules report the same version. The release workflow owns the
+      released value: it updates this property, tags the commit and builds the
+      image with the same version. Do not bump it in a normal pull request.
+      Third-party modules ship their own csproj and set their own <Version>.
+    -->
+    <Version>0.120.1</Version>
+    <!-- Keep InformationalVersion clean (no "+<commit sha>" suffix). -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+</Project>

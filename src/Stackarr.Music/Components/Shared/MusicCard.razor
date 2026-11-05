@@ -1,0 +1,193 @@
+@* Square artwork card for music artists / albums. Mirrors MediaPosterCard but with square art. *@
+<div class="st-media-card st-music-card @CardStateClass @Class"
+     @onclick="HandleClick"
+     tabindex="0"
+     role="button"
+     aria-label="@Item.Title"
+     style="cursor:pointer;outline:none;">
+
+    <div class="st-music-card-art">
+        @if (!string.IsNullOrEmpty(Badge))
+        {
+            <div class="st-music-card-badge st-music-card-badge--resume">
+                <MudIcon Icon="@Icons.Material.Filled.Replay" Size="Size.Small" Style="font-size:0.75rem;" />
+                <span>@Badge</span>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(Item.ArtUrl))
+        {
+            <img src="@Item.ArtUrl" alt="@Item.Title" loading="lazy" />
+        }
+        else
+        {
+            <div class="st-media-card-poster-placeholder">
+                <MudIcon Icon="@EntityIcon" Size="Size.Large" />
+            </div>
+        }
+
+        @if (Item.HasStaleWarning)
+        {
+            <div class="st-media-card-stale">
+                <StaleBadge Level="Item.Staleness" DaysRemaining="Item.DaysRemaining"
+                            ShowBookmarked="Item.IsBookmarked" BookmarkLabel="Item.BookmarkLabel"
+                            IsPinned="Item.IsPinned" />
+            </div>
+        }
+
+        @if (Item.HasRequestState && !Item.IsInLibrary)
+        {
+            <div class="st-media-card-badge st-media-card-badge--@Item.RequestState">
+                <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" Style="font-size:0.8rem;" />
+                <span>@RequestLabel</span>
+            </div>
+        }
+        else if (ShowLibraryBadge && ShowInLibraryBadge && Item.IsInLibrary && Item.HasFile)
+        {
+            <div class="st-media-card-badge st-media-card-badge--library">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="font-size:0.8rem;" />
+                <span>In Library</span>
+            </div>
+        }
+        @if (Item.IsUnidentified)
+        {
+            <div class="st-media-card-badge st-media-card-badge--unidentified"
+                 title="Not matched to Deezer metadata (e.g. a non-official release)">
+                <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Small" Style="font-size:0.8rem;" />
+                <span>Unidentified</span>
+            </div>
+        }
+        @if (OnPlay.HasDelegate)
+        {
+            <div class="st-music-card-play" @onclick:stopPropagation="true" @onclick="HandlePlay" role="button" title="Play" aria-label="Play">
+                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" />
+            </div>
+        }
+        @if (OnAddToPlaylist.HasDelegate)
+        {
+            <div class="st-music-card-addlist" @onclick:stopPropagation="true" @onclick="HandleAddToPlaylist" role="button" title="Add to playlist" aria-label="Add to playlist">
+                <MudIcon Icon="@Icons.Material.Filled.PlaylistAdd" />
+            </div>
+        }
+    </div>
+
+    <div class="st-media-card-info">
+        <div class="st-media-card-title" title="@Item.Title">@Item.Title</div>
+        <div class="st-media-card-meta">
+            @if (Item.EntityType != MusicEntityType.Artist && !string.IsNullOrEmpty(Item.ArtistName))
+            {
+                <span>@Item.ArtistName</span>
+            }
+            @if (Item.Year > 0)
+            {
+                if (Item.EntityType != MusicEntityType.Artist && !string.IsNullOrEmpty(Item.ArtistName))
+                {
+                    <span class="st-meta-sep">·</span>
+                }
+                <span>@Item.Year</span>
+            }
+            @if (Item.EntityType == MusicEntityType.Artist && Item.AlbumCount > 0)
+            {
+                <span class="st-meta-sep">·</span>
+                <span>@Item.AlbumCount album@(Item.AlbumCount == 1 ? "" : "s")</span>
+            }
+            @if (Item.EntityType == MusicEntityType.Playlist && Item.TrackCount > 0)
+            {
+                <span class="st-meta-sep">·</span>
+                <span>@Item.TrackCount song@(Item.TrackCount == 1 ? "" : "s")</span>
+            }
+        </div>
+        @if (Item.IsDownloading)
+        {
+            <div class="st-media-card-download">
+                <div class="st-media-card-download-row">
+                    <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Small" Style="font-size:0.85rem;color:var(--st-blue);" />
+                    <span>Downloading</span>
+                    @if (Item.DownloadSize > 0)
+                    {
+                        <span class="st-media-card-download-pct">@(Math.Round(Item.DownloadPercent))%</span>
+                    }
+                </div>
+                @if (Item.DownloadSize > 0)
+                {
+                    <MudProgressLinear Value="Item.DownloadPercent" Color="Color.Info" Size="Size.Small" Rounded="true" Style="height:4px;" />
+                }
+            </div>
+        }
+        else if (Item.IsInLibrary && !string.IsNullOrEmpty(Item.LibraryStatus) && Item.LibraryStatus != "Downloaded")
+        {
+            <div class="st-media-card-status st-media-card-status--@Item.StatusVariant">
+                <MudIcon Icon="@StatusIcon" Size="Size.Small" Style="font-size:0.85rem;" />
+                <span>@Item.LibraryStatus</span>
+                @if (Item.TrackCount > 0)
+                {
+                    <span class="st-media-card-status-count">@Item.TrackFileCount/@Item.TrackCount</span>
+                }
+            </div>
+        }
+        @if (Item.Technical is { HasInfo: true })
+        {
+            <MusicFormatLine Technical="Item.Technical" Class="st-media-card-format" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public MusicItem Item { get; set; } = new();
+    [Parameter] public bool ShowLibraryBadge { get; set; } = true;
+
+    /// <summary>Set false on the library page so in-library cards do not repeat the obvious.</summary>
+    [Parameter] public bool ShowInLibraryBadge { get; set; } = true;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback<MusicItem> OnClick { get; set; }
+    [Parameter] public EventCallback<MusicItem> OnPlay { get; set; }
+    [Parameter] public EventCallback<MusicItem> OnAddToPlaylist { get; set; }
+    [Parameter] public string Badge { get; set; } = "";
+
+    string RequestLabel => Item.RequestState switch
+    {
+        "pending" => "Requested",
+        "approved" => "Approved",
+        "denied" => "Denied",
+        "blacklisted" => "Blacklisted",
+        _ => ""
+    };
+
+    string EntityIcon => Item.EntityType switch
+    {
+        MusicEntityType.Artist => Icons.Material.Filled.Person,
+        MusicEntityType.Playlist => Icons.Material.Filled.QueueMusic,
+        _ => Icons.Material.Filled.Album
+    };
+
+    string CardStateClass => Item.IsInLibrary
+        ? "st-media-card--library"
+        : Item.HasRequestState
+            ? $"st-media-card--request st-media-card--request-{Item.RequestState}"
+            : "st-media-card--remote st-music-card--remote";
+
+    string StatusIcon => Item.LibraryStatus switch
+    {
+        "Downloaded" => Icons.Material.Filled.CheckCircle,
+        "Partial" => Icons.Material.Filled.IncompleteCircle,
+        "Missing" => Icons.Material.Filled.ErrorOutline,
+        "Unmonitored" => Icons.Material.Outlined.VisibilityOff,
+        "Downloading" => Icons.Material.Filled.CloudDownload,
+        _ => Icons.Material.Filled.LibraryAddCheck
+    };
+
+    async Task HandleClick()
+    {
+        if (OnClick.HasDelegate) await OnClick.InvokeAsync(Item);
+    }
+
+    async Task HandlePlay()
+    {
+        if (OnPlay.HasDelegate) await OnPlay.InvokeAsync(Item);
+    }
+
+    async Task HandleAddToPlaylist()
+    {
+        if (OnAddToPlaylist.HasDelegate) await OnAddToPlaylist.InvokeAsync(Item);
+    }
+}

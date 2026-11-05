@@ -1,0 +1,19 @@
+@* Empty state message for lists/grids *@
+
+<div class="st-empty-state">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+    }
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@Message</MudText>
+    @if (!string.IsNullOrEmpty(Detail))
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 st-empty-state-detail">@Detail</MudText>
+    }
+</div>
+
+@code {
+    [Parameter] public string Message { get; set; } = "Nothing found.";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string? Detail { get; set; }
+}

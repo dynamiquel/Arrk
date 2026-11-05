@@ -1,0 +1,80 @@
+@inject DashboardSummaryCache SummaryCache
+@implements IDisposable
+
+@if (Metric == "updated")
+{
+    <div class="st-stat-value st-stat-value--blue st-stat-value--time">@_lastUpdated.ToLocalTime().ToString("HH:mm:ss")</div>
+    <div class="st-stat-sub">@_lastUpdated.ToLocalTime().ToString("MMM dd, yyyy")</div>
+}
+else if (Metric == "running")
+{
+    <div class="st-stat-value st-stat-value--pink">@_running<span class="st-tile-total"> / @_total</span></div>
+    <div class="st-stat-sub">running</div>
+}
+else if (Metric == "healthy")
+{
+    <div class="st-stat-value st-stat-value--green">@_healthy</div>
+    <div class="st-stat-sub">of @_total total</div>
+}
+else
+{
+    <div class="st-stat-value @(_unhealthy > 0 ? "st-stat-value--red" : "st-stat-value--green")">@_unhealthy</div>
+    <div class="st-stat-sub">requires attention</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    /// <summary>One of <c>running</c>, <c>healthy</c>, <c>unhealthy</c> or <c>updated</c>.</summary>
+    [Parameter] public string Metric { get; set; } = "running";
+
+    const int RefreshSeconds = 2;
+
+    int _total;
+    int _running;
+    int _healthy;
+    int _unhealthy;
+    DateTime _lastUpdated = DateTime.UtcNow;
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(CancellationToken.None);
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAsync(CancellationToken ct)
+    {
+        try
+        {
+            DashboardSummary summary = await SummaryCache.GetAsync(ct);
+            _total = summary.Services.Count(s => s.State.IsEnabled);
+            _running = summary.Services.Count(s => s.State.IsEnabled && s.State.IsHealthy);
+            _healthy = _running;
+            _unhealthy = _total - _running;
+            _lastUpdated = summary.LastUpdated;
+        }
+        catch
+        {
+            // Keep the last known numbers.
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+}

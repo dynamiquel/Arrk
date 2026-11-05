@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer to release (for example 0.121.0)
+        required: true
+        type: string
+      tags:
+        description: Extra image tags, comma-separated (for example latest,stable)
+        required: true
+        default: latest
+        type: string
+      ref:
+        description: Branch to release from
+        required: true
+        default: main
+        type: string
+      platforms:
+        description: Target platforms
+        required: true
+        default: linux/amd64
+        type: string
+      create_github_release:
+        description: Create a GitHub release for the tag
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Tag and version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Update version, commit and tag
+        id: release
+        env:
+          VERSION: ${{ inputs.version }}
+          RELEASE_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "error: version is not valid SemVer: $VERSION" >&2
+            exit 1
+          fi
+
+          TAG="v${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "error: tag ${TAG} already exists" >&2
+            exit 1
+          fi
+
+          sed -i -E "s#<Version>[^<]+</Version>#<Version>${VERSION}</Version>#" Directory.Build.props
+          if ! grep -q "<Version>${VERSION}</Version>" Directory.Build.props; then
+            echo "error: could not update Directory.Build.props" >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- Directory.Build.props; then
+            echo "Version is already ${VERSION}; tagging the current commit."
+          else
+            git add Directory.Build.props
+            git commit -m "chore(release): ${TAG} [skip ci]"
+            git push origin "HEAD:${RELEASE_REF}"
+          fi
+
+          git tag -a "${TAG}" -m "Stackarr ${TAG}"
+          git push origin "${TAG}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  image:
+    name: Publish release image
+    needs: prepare
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker-image.yml
+    with:
+      ref: ${{ needs.prepare.outputs.tag }}
+      version: ${{ needs.prepare.outputs.version }}
+      tags: ${{ inputs.tags }}
+      push: true
+      platforms: ${{ inputs.platforms }}
+
+  github-release:
+    name: Create GitHub release
+    needs: [prepare, image]
+    if: ${{ inputs.create_github_release }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: gh release create "$TAG" --verify-tag --generate-notes --title "Stackarr ${VERSION}"

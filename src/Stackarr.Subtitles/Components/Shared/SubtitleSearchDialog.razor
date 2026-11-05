@@ -1,0 +1,283 @@
+@* Shared subtitle search popup used by the movie, series, episode and player actions. It shows
+   what languages exist and what is missing, can request every missing default subtitle, and can
+   search/download a specific language through the configured subtitle provider. *@
+
+@inject SubtitleService Subtitles
+@inject ISnackbar Snackbar
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-release-search">
+            <StDialogTitle Icon="@Icons.Material.Filled.Subtitles"
+                           Title="@Target.Title"
+                           Subtitle="@ScopeLine" />
+
+            <div class="st-release-search-bar">
+                <MudText Typo="Typo.caption" Class="st-release-search-count">@StatusText</MudText>
+                @if (_busy)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary"
+                                         Style="margin-left:8px;" />
+                }
+                <MudSpacer />
+                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download" Disabled="@_busy"
+                           OnClick="RequestMissingAsync">
+                    Get missing
+                </MudButton>
+            </div>
+
+            @if (_status is not null)
+            {
+                <div class="st-subtitle-status">
+                    @if (_status.Available.Count > 0)
+                    {
+                        <div class="st-subtitle-status-row">
+                            <span class="st-subtitle-status-label">Available</span>
+                            @foreach (SubtitleTrack track in AvailableTracks)
+                            {
+                                <StChip Variant="success">@TrackLabel(track)</StChip>
+                            }
+                        </div>
+                    }
+                    @if (_status.Missing.Count > 0)
+                    {
+                        <div class="st-subtitle-status-row">
+                            <span class="st-subtitle-status-label">Missing</span>
+                            @foreach (SubtitleLanguage language in _status.Missing)
+                            {
+                                <StChip Variant="error">@LanguageName(language)</StChip>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (CanSearchManually)
+            {
+                <div class="st-subtitle-search-row">
+                    <MudAutocomplete T="SubtitleLanguage"
+                                     Value="_language"
+                                     ValueChanged="OnLanguageChanged"
+                                     SearchFunc="SearchLanguagesAsync"
+                                     ToStringFunc="@(language => language is null ? "" : LanguageName(language))"
+                                     Label="Language"
+                                     Placeholder="Any default language"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Dense="true"
+                                     Clearable="true"
+                                     ResetValueOnEmptyText="false"
+                                     CoerceText="false"
+                                     Class="st-subtitle-language" />
+                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Search" Disabled="@_busy"
+                               OnClick="SearchAsync">
+                        Search
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Class="st-subtitle-hint">
+                    A series or season request downloads every missing default subtitle for all of its episodes.
+                    Search a single episode from its episode menu.
+                </MudText>
+            }
+
+            @if (_searched && _candidates.Count == 0 && !_busy)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.SearchOff"
+                            Message="No subtitles found for that language." />
+            }
+            else if (_candidates.Count > 0)
+            {
+                <div class="st-release-list">
+                    @foreach (SubtitleCandidate candidate in _candidates)
+                    {
+                        <SubtitleCandidateRow Candidate="candidate" Busy="@_busy"
+                                              OnDownload="@(() => DownloadAsync(candidate))" />
+                    }
+                </div>
+            }
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public SubtitleTarget Target { get; set; } = new() { Kind = SubtitleMediaKind.Movie };
+
+    /// <summary>
+    /// Raised after a download or request, with the downloaded language when there is one, so the
+    /// player can pick the new track up.
+    /// </summary>
+    [Parameter] public EventCallback<string?> OnChanged { get; set; }
+
+    IReadOnlyList<SubtitleLanguage> _languages = [];
+    SubtitleLanguage? _language;
+    SubtitleStatus? _status;
+    List<SubtitleCandidate> _candidates = [];
+    bool _busy;
+    bool _searched;
+
+    bool CanSearchManually => Target.Kind is SubtitleMediaKind.Movie or SubtitleMediaKind.Episode;
+
+    string ScopeLine => string.Join(" · ", new[] { Target.Subtitle, KindLabel }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    string KindLabel => Target.Kind switch
+    {
+        SubtitleMediaKind.Movie => "Movie",
+        SubtitleMediaKind.Episode => "Episode",
+        SubtitleMediaKind.Season => $"Season {Target.SeasonNumber}",
+        SubtitleMediaKind.Series => "Whole series",
+        _ => ""
+    };
+
+    string StatusText
+    {
+        get
+        {
+            if (_status is null)
+                return "Loading…";
+
+            if (Target.Kind is SubtitleMediaKind.Series or SubtitleMediaKind.Season)
+            {
+                int count = _status.MissingEpisodeCount;
+                return count == 0
+                    ? "Every episode has the default subtitles."
+                    : $"{count} of {_status.EpisodeCount} episodes are missing subtitles";
+            }
+
+            return _status.Missing.Count == 0
+                ? "All default subtitles are present."
+                : $"{_status.Missing.Count} language{(_status.Missing.Count == 1 ? "" : "s")} missing";
+        }
+    }
+
+    IEnumerable<SubtitleTrack> AvailableTracks => _status?.Available
+        .OrderBy(track => track.LanguageName)
+        .ThenBy(track => track.Forced)
+        .ThenBy(track => track.HearingImpaired)
+        .Take(12) ?? [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _busy = true;
+        try
+        {
+            _languages = await Subtitles.GetLanguagesAsync();
+            _status = await Subtitles.GetStatusAsync(Target);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not load subtitle status: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    Task OnLanguageChanged(SubtitleLanguage? language)
+    {
+        _language = language;
+        return Task.CompletedTask;
+    }
+
+    Task<IEnumerable<SubtitleLanguage>> SearchLanguagesAsync(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult<IEnumerable<SubtitleLanguage>>(_languages.Take(80));
+
+        string query = value.Trim();
+        return Task.FromResult<IEnumerable<SubtitleLanguage>>(_languages
+            .Where(language => language.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                               || language.Code.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Take(80));
+    }
+
+    async Task SearchAsync()
+    {
+        _busy = true;
+        _searched = true;
+        _candidates = [];
+        try
+        {
+            IReadOnlyList<string> languages = _language is null ? Subtitles.DefaultLanguages : [_language.Code];
+            _candidates = [.. await Subtitles.SearchAsync(Target, languages)];
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Subtitle search failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    async Task RequestMissingAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Subtitles.RequestAsync(Target);
+            Snackbar.Add("Subtitle download requested. It can take a moment to appear.", Severity.Success);
+            await Task.Delay(1500);
+            _status = await Subtitles.GetStatusAsync(Target);
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync(null);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not request subtitles: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    async Task DownloadAsync(SubtitleCandidate candidate)
+    {
+        _busy = true;
+        try
+        {
+            await Subtitles.DownloadAsync(Target, candidate);
+            Snackbar.Add($"Downloading {LanguageName(candidate)} subtitles…", Severity.Success);
+            await Task.Delay(1500);
+            _status = await Subtitles.GetStatusAsync(Target);
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync(candidate.LanguageCode);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not download the subtitle: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    static string LanguageName(SubtitleLanguage language) =>
+        string.IsNullOrWhiteSpace(language.Name) ? language.Code.ToUpperInvariant() : language.Name;
+
+    static string LanguageName(SubtitleCandidate candidate) =>
+        string.IsNullOrWhiteSpace(candidate.LanguageName)
+            ? candidate.LanguageCode.ToUpperInvariant()
+            : candidate.LanguageName;
+
+    static string TrackLabel(SubtitleTrack track)
+    {
+        List<string> parts = [string.IsNullOrWhiteSpace(track.LanguageName) ? track.LanguageCode.ToUpperInvariant() : track.LanguageName];
+        if (track.Forced)
+            parts.Add("forced");
+        if (track.HearingImpaired)
+            parts.Add("HI");
+        return string.Join(" · ", parts);
+    }
+}

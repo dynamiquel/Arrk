@@ -1,0 +1,35 @@
+@* Reusable key/value summary tile. Shares the visual language of .st-stat-card
+   so summary tiles across the app read as one family. *@
+<div class="st-config-tile @Class">
+    @if (!string.IsNullOrEmpty(Icon) || !string.IsNullOrEmpty(Title))
+    {
+        <div class="st-config-tile-head">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <MudIcon Icon="@Icon" Size="Size.Small" />
+            }
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <span>@Title</span>
+            }
+        </div>
+    }
+    <div class="st-config-tile-rows">
+        @foreach (StInfoDatum row in Rows)
+        {
+            <div class="st-config-tile-row">
+                <span class="st-config-tile-key">@row.Label</span>
+                <span class="st-config-tile-val">@row.Value</span>
+            </div>
+        }
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public IReadOnlyList<StInfoDatum> Rows { get; set; } = [];
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,29 @@
+@* Reusable dialog title row, styled to match the card-sheet headers (gradient icon tile,
+   title, optional subtitle) so every dialog reads as the same family.
+
+   NOTE: MudBlazor's dialog container only cascades IMudDialogInstance around the dialog
+   *content*, not the title, so a close button must NOT live here. Every dialog renders its
+   close as the first element inside <DialogContent> via <DialogCloseButton> (see
+   .st-dialog-close--floating), which is anchored to the card corner and always works. *@
+
+<div class="st-dialog-title">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <div class="st-appbar-logo st-appbar-logo--sm">
+            <MudIcon Icon="@Icon" Size="Size.Small" Color="Color.Default" />
+        </div>
+    }
+    <div class="st-apple-card-header-text">
+        <MudText Typo="Typo.subtitle1" Class="st-apple-card-title">@Title</MudText>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <MudText Typo="Typo.caption" Class="st-apple-card-subtitle">@Subtitle</MudText>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Subtitle { get; set; } = "";
+}

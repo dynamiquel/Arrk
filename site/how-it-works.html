@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>How it works — Stackarr</title>
+  <meta name="description" content="How Stackarr fits together: one ASP.NET Core app, module contracts, Docker provisioning, service APIs, SQLite and the services it orchestrates.">
+  <meta name="theme-color" content="#0f0a18">
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="canonical" href="https://dynamiquel.github.io/Stackarr/how-it-works.html">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Stackarr home">
+        <img src="assets/logo.svg" alt="" width="34" height="34">
+        <span>Stackarr</span>
+      </a>
+      <nav class="site-nav" id="site-nav" aria-label="Main navigation">
+        <a href="index.html">Overview</a>
+        <a href="features.html">Features</a>
+        <a href="setup.html">Setup</a>
+        <a href="guide.html">Guide</a>
+        <a href="how-it-works.html">How it works</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <div class="header-actions">
+        <a class="icon-link" href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="Stackarr on GitHub">
+          <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+        </a>
+        <a class="btn btn-primary" href="setup.html">Get started</a>
+        <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">
+          <svg class="menu-open" aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg>
+          <svg class="menu-close" aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-hero">
+      <div class="wrap">
+        <span class="pill pill--indigo"><svg aria-hidden="true"><use href="assets/icons.svg#i-layers"></use></svg> Under the hood</span>
+        <h1 style="margin-top: 18px">One app. A lot of<br><span class="grad-text">quiet coordination.</span></h1>
+        <p class="lead">
+          Stackarr is a single modular ASP.NET Core application, not a microservice per feature. It
+          provisions Docker containers, configures each service through its REST API and keeps one
+          coherent UI on top.
+        </p>
+        <div class="page-hero-meta">
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-cpu"></use></svg> ASP.NET Core 10</span>
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg> Blazor + MudBlazor</span>
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-database"></use></svg> SQLite everywhere</span>
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-box"></use></svg> Docker.DotNet</span>
+          <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-refresh"></use></svg> Hangfire jobs</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--flush-top">
+      <div class="wrap split split--wide-left">
+        <div class="reveal">
+          <span class="eyebrow">The shape of it</span>
+          <h2>Everything starts at one front door.</h2>
+          <p class="lead" style="font-size: 1rem">
+            The services still do the real work. Stackarr owns the user experience, the
+            configuration, the lifecycle rules and the glue between them. Their own UIs remain
+            reachable when you need the deeper view.
+          </p>
+          <ul class="mini-list" style="margin-top: 22px">
+            <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> One container with the Docker socket and three storage mounts</li>
+            <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> YAML config with hot-reload, validation and a schema-backed editor</li>
+            <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Typed HTTP clients for every managed service</li>
+            <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> SQLite for Stackarr, Hangfire and every managed service</li>
+            <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Traefik for path-based routing and an optional Cloudflare tunnel</li>
+          </ul>
+        </div>
+        <div class="arch reveal" aria-label="Architecture layers">
+          <div class="arch-layer arch-layer--accent">
+            <span class="arch-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-dashboard"></use></svg></span>
+            <div><b>Browser &amp; players</b><span>One Stackarr UI · Jellyfin and Navidrome under path routes</span></div>
+          </div>
+          <div class="arch-arrow"><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></div>
+          <div class="arch-layer">
+            <span class="arch-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-layers"></use></svg></span>
+            <div><b>Stackarr app</b><span>Blazor shell · REST endpoints · module loader · jobs · config</span></div>
+          </div>
+          <div class="arch-arrow"><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></div>
+          <div class="arch-layer">
+            <span class="arch-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-box"></use></svg></span>
+            <div><b>Modules &amp; contracts</b><span>TV · music · downloads · players · auth · AI · notifications</span></div>
+          </div>
+          <div class="arch-arrow"><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></div>
+          <div class="arch-layer">
+            <span class="arch-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-server"></use></svg></span>
+            <div><b>Service APIs</b><span>Radarr · Sonarr · Prowlarr · Transmission · Jellyfin · Navidrome · slskd</span></div>
+          </div>
+          <div class="arch-arrow"><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></div>
+          <div class="arch-layer">
+            <span class="arch-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-database"></use></svg></span>
+            <div><b>Docker &amp; storage</b><span>Sibling containers · <code>/config</code> · <code>/downloads</code> · <code>/media</code></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">Concepts over implementations</span>
+          <h2>You work with media. Stackarr picks the tool.</h2>
+          <p>
+            Config and UI use user concepts — <code>tv</code>, <code>music</code>,
+            <code>jellyfin</code> — never the names of the services underneath. One definition per
+            concern, derived per service, keeps quality profiles, indexers and download clients
+            from drifting apart.
+          </p>
+        </div>
+        <div class="table-wrap reveal">
+          <table>
+            <thead>
+              <tr><th>Your concept</th><th>What Stackarr runs</th><th>What it does</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>tv</code></td><td>Radarr + Sonarr</td><td>Movie and show libraries, quality, queue and file management.</td></tr>
+              <tr><td><code>music</code></td><td>Stackarr-native library + slskd</td><td>Artists, albums, tracks, acquisition and imports; Navidrome plays it.</td></tr>
+              <tr><td><code>torrent_downloader</code></td><td>Transmission</td><td>Torrent downloads and the seeding lifecycle.</td></tr>
+              <tr><td><code>indexer</code></td><td>Prowlarr</td><td>One indexer catalogue, synced into the library managers.</td></tr>
+              <tr><td><code>subtitles</code></td><td>OpenSubtitles + optional Bazarr</td><td>Search, scoring, automatic coverage and sidecar placement.</td></tr>
+              <tr><td><code>jellyfin</code></td><td>Jellyfin</td><td>Video library and transcoding, with Stackarr's in-site player in front.</td></tr>
+              <tr><td><code>navidrome</code></td><td>Navidrome</td><td>Music library and Subsonic playback.</td></tr>
+              <tr><td><code>vpn</code></td><td>Gluetun</td><td>Optional tunnel for services that opt into it.</td></tr>
+              <tr><td><code>reverse_proxy</code></td><td>Traefik</td><td>Path-based routing, with direct bootstrap access on <code>5186</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap split">
+        <div class="reveal">
+          <span class="eyebrow">Bootstrap</span>
+          <h2>From <code>docker run</code> to a configured stack.</h2>
+          <p class="lead" style="font-size: 1rem">
+            No setup wizard, no pile of manual first-run steps. On startup Stackarr loads its
+            config, works out what should exist, and then creates and configures it.
+          </p>
+          <div class="timeline" style="margin-top: 24px">
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-settings"></use></svg></span>
+              <div><b>Load config and modules</b><span>YAML binds to POCOs, hot-reload starts, module discovery and DI registration run.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-layers"></use></svg></span>
+              <div><b>Prepare the stack</b><span>The Docker network is created or reused, migrations run and services are sorted by provisioning order.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-box"></use></svg></span>
+              <div><b>Provision</b><span>Traefik, Gluetun when required, then enabled services: pull, create, start, await health.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-refresh"></use></svg></span>
+              <div><b>Configure through APIs</b><span>Root folders, quality profiles, download clients, Prowlarr apps, Jellyfin libraries and theme.</span></div>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-play"></use></svg></span>
+              <div><b>Keep it in shape</b><span>Health monitoring, download management, config sync and scheduled jobs take over.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-visual feature-visual--green reveal">
+          <div class="visual-head"><span>Jobs at work</span><b>Single-flight by design</b></div>
+          <div class="visual-list">
+            <div class="visual-row">
+              <span class="thumb thumb--green"></span>
+              <div class="text"><b>Root folder sync</b><small>Every 30s + on config change</small></div>
+              <span class="status status--ok">Healthy</span>
+            </div>
+            <div class="visual-row">
+              <span class="thumb thumb--indigo"></span>
+              <div class="text"><b>Quality profile sync</b><small>Bitrate floors and custom formats</small></div>
+              <span class="status status--ok">Healthy</span>
+            </div>
+            <div class="visual-row">
+              <span class="thumb thumb--orange"></span>
+              <div class="text"><b>Missing content search</b><small>Hourly · monitored items only</small></div>
+              <span class="status status--info">Running</span>
+            </div>
+            <div class="visual-row">
+              <span class="thumb"></span>
+              <div class="text"><b>Lifecycle cleanup</b><small>Hourly · warnings first</small></div>
+              <span class="status status--ok">Healthy</span>
+            </div>
+          </div>
+          <div class="callout callout--info" style="margin-top: 18px">
+            <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-database"></use></svg></span>
+            <div>
+              <h4>One database, no extra container</h4>
+              <p>Stackarr uses SQLite. So do the services it manages. There is no Postgres sidecar to babysit.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">Modules</span>
+          <h2>The shell never knows which feature it is rendering.</h2>
+          <p>
+            A module contributes services, config sections, DI registrations, hosted services,
+            jobs, HTTP endpoints and UI. The UI is composed from contracts for navigation,
+            discovery tabs, named regions, head assets and dashboard tiles. A drop-in plugin uses
+            the same seams as a built-in module.
+          </p>
+        </div>
+        <div class="module-grid reveal">
+          <div class="module module--core"><b>Stackarr.Core</b><span>Kernel: modules, services, config, events, shared DB</span></div>
+          <div class="module"><b>Stackarr.Ui</b><span>Theme, primitives and UI contracts</span></div>
+          <div class="module"><b>Stackarr.Tvarr</b><span>Movies, shows and discovery</span></div>
+          <div class="module"><b>Stackarr.Music</b><span>Native library and acquisition</span></div>
+          <div class="module"><b>Stackarr.Jellyfin</b><span>Player, libraries and SSO</span></div>
+          <div class="module"><b>Stackarr.Downloads</b><span>Torrent and Soulseek lifecycle</span></div>
+          <div class="module"><b>Stackarr.Auth</b><span>Accounts, roles and OIDC</span></div>
+          <div class="module"><b>Stackarr.Ai</b><span>Optional assistant and ranking</span></div>
+          <div class="module"><b>Stackarr.Configuration</b><span>Schema, validation and editor</span></div>
+          <div class="module"><b>Stackarr.Orchestration</b><span>Provisioning, health and dashboard</span></div>
+          <div class="module"><b>Stackarr.Notifications</b><span>Discord and webhook delivery</span></div>
+          <div class="module"><b>Your plugin</b><span>Same contracts, loaded from <code>plugins/</code></span></div>
+        </div>
+
+        <div class="split" style="margin-top: 34px">
+          <div class="code-block">
+            <div class="code-head">
+              <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> MyModule.cs</span>
+              <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
+            </div>
+            <pre><code>public sealed class MyModule : IStackarrModule
+{
+    public string ModuleName =&gt; "MyPlugin";
+
+    public IReadOnlyList&lt;Service&gt; GetServices() =&gt; [];
+
+    public void ConfigureServices(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddSingleton&lt;INavigationProvider, MyNavigation&gt;();
+        services.AddSingleton&lt;ITileProvider, MyTiles&gt;();
+        services.AddSingleton&lt;IHeadAssetProvider, MyHeadAssets&gt;();
+    }
+}</code></pre>
+          </div>
+          <div class="reveal">
+            <h3>A plugin is a normal class library.</h3>
+            <p class="muted" style="color: var(--text-2); font-size: .95rem">
+              Drop the DLL into <code>&lt;data&gt;/plugins</code>, restart Stackarr, and it is
+              loaded like a built-in module. It can add pages, navigation, dashboard tiles, jobs,
+              endpoints and CSS.
+            </p>
+            <ul class="mini-list" style="margin-top: 18px">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Reference the abstraction assemblies, never a feature implementation</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Use the shared <code>--st-*</code> theme tokens</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> A broken contribution is isolated by an error boundary</li>
+            </ul>
+            <div class="btn-row" style="margin-top: 22px">
+              <a class="text-link" href="https://github.com/dynamiquel/Stackarr/blob/main/docs/features/modules.md" target="_blank" rel="noopener">Plugin guide <svg aria-hidden="true"><use href="assets/icons.svg#i-external"></use></svg></a>
+              <a class="text-link" href="https://github.com/dynamiquel/Stackarr/tree/main/samples/Stackarr.SamplePlugin" target="_blank" rel="noopener">Sample plugin <svg aria-hidden="true"><use href="assets/icons.svg#i-external"></use></svg></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">Honest status</span>
+          <h2>What works, and what is still growing.</h2>
+          <p>
+            Stackarr is early. The core loop is real and used daily, but this is not a finished
+            commercial product. Here is the current shape of it, without the marketing gloss.
+          </p>
+        </div>
+        <div class="compare reveal">
+          <div class="compare-card compare-card--after">
+            <div class="compare-title">
+              <span class="badge"><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg></span>
+              Working today
+            </div>
+            <ul class="compare-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Modular UI and plugin loading, YAML validation, hot-reload and a visual editor</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Docker provisioning with volumes, networks, GPU passthrough and VPN routing</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Movies, shows, anime, native music, downloads, playback, subtitles and requests</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Per-user watch history, watchlists, staleness and opt-in cleanup</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Accounts, OIDC, Discord/MAL sign-in, notifications and optional AI</li>
+            </ul>
+          </div>
+          <div class="compare-card compare-card--before">
+            <div class="compare-title">
+              <span class="badge"><svg aria-hidden="true"><use href="assets/icons.svg#i-clock"></use></svg></span>
+              Still in progress
+            </div>
+            <ul class="compare-list">
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> Automatic TLS certificate management</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> A dedicated simplified landing page for non-admin users</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> Notifications for every lifecycle event and completed grab</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> More AI actions, recommendations and import fallbacks</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg> Cleaner module boundaries for a few concrete clients</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout callout--warn" style="margin-top: 20px">
+          <span class="callout-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-alert"></use></svg></span>
+          <div>
+            <h4>Expect movement</h4>
+            <p>Configuration keys, schema and UI can change between releases while the project is pre-1.0. Back up config, read release notes, and pin an image if you need stability.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap">
+        <div class="disclaimer reveal">
+          <span class="disclaimer-icon"><svg aria-hidden="true"><use href="assets/icons.svg#i-heart"></use></svg></span>
+          <div>
+            <h3>Why this exists</h3>
+            <p>
+              Stackarr is a personal project. It grew out of repeated frustration with the usual
+              self-hosted media stack: services that each solve one thing well, but never quite
+              feel like one product. It is shared so other people can use it, learn from it or make
+              it better — not because it is finished. Expect changes, and please be kind in issues.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--tight">
+      <div class="wrap">
+        <div class="cta reveal">
+          <h2>Boring architecture. Calm evenings.</h2>
+          <p>That is the trade Stackarr makes: one more container in exchange for one fewer pile of tabs.</p>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="setup.html">Set it up <svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></a>
+            <a class="btn btn-ghost" href="guide.html">Read the guide</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a class="brand" href="index.html">
+            <img src="assets/logo.svg" alt="" width="34" height="34">
+            <span>Stackarr</span>
+          </a>
+          <p>One web UI and one YAML file for a self-hosted media stack. Movies, shows, music and the services behind them.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="features.html">Features</a></li>
+            <li><a href="how-it-works.html">How it works</a></li>
+            <li><a href="faq.html">FAQ</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Get started</h4>
+          <ul>
+            <li><a href="setup.html">Install</a></li>
+            <li><a href="guide.html">Setup guide</a></li>
+            <li><a href="setup.html#troubleshooting">Troubleshooting</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
+            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> Stackarr. Built for the self-hosted corner of the internet.</span>
+        <span class="footer-note"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg> Early alpha — expect changes.</span>
+        <div class="footer-social">
+          <a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/site.js"></script>
+</body>
+</html>

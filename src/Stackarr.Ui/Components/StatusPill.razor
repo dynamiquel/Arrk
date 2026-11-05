@@ -1,0 +1,22 @@
+@* Reusable media status pill: library/remote state, download progress, monitoring. *@
+
+<span class="st-status-pill st-status-pill--@Variant @Class" title="@Tooltip">
+    @if (Progress.HasValue && Progress.Value < 1)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="width:12px;height:12px;" />
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        <MudIcon Icon="@Icon" Size="Size.Small" Style="font-size:0.85rem;" />
+    }
+    <span>@Label</span>
+</span>
+
+@code {
+    [Parameter] public string Variant { get; set; } = "neutral";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string? Tooltip { get; set; }
+    [Parameter] public double? Progress { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+}

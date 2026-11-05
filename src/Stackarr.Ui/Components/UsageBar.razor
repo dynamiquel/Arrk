@@ -1,0 +1,22 @@
+@* Reusable hardware usage bar (CPU/MEM/Disk) with label, track, and value *@
+
+<div class="st-hw-bar">
+    <span class="st-hw-bar-label">@Label</span>
+    <div class="st-hw-bar-track">
+        <div class="st-hw-bar-fill @UsageClass" style="width: @(Math.Min(Percent, 100))%"></div>
+    </div>
+    <span class="st-hw-value">@Text</span>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public double Percent { get; set; }
+    [Parameter] public string Text { get; set; } = "";
+
+    string UsageClass => Percent switch
+    {
+        >= UiConstants.UsageHighThreshold => UiConstants.UsageBarHigh,
+        >= UiConstants.UsageMidThreshold => UiConstants.UsageBarMid,
+        _ => UiConstants.UsageBarLow
+    };
+}

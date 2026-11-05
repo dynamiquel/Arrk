@@ -1,0 +1,334 @@
+/* Notifications, app-bar bell, inbox card sheet, live activity and the event feed. Split out of the shared app.css so the notifications module owns its styling. */
+
+/* Event viewer: event type label + severity colouring */
+.st-event-type {
+    display: inline-block;
+    min-width: 150px;
+    font-weight: 600;
+    padding-right: 6px;
+    color: var(--st-text-secondary);
+}
+
+.st-event-info .st-event-type { color: var(--st-blue); }
+.st-event-success .st-event-type { color: var(--st-green); }
+.st-event-warning .st-event-type { color: var(--st-yellow); }
+.st-event-error .st-event-type { color: var(--st-red); }
+
+.st-event-success .st-log-message { color: var(--st-green); }
+.st-event-warning .st-log-message { color: var(--st-yellow); }
+.st-event-error .st-log-message { color: var(--st-red); }
+
+/* Activity Center */
+
+.st-activity-trigger--active { color: var(--st-pink) !important; }
+.st-activity-trigger--active .mud-icon-root { animation: st-spin 2s linear infinite; }
+.st-activity-badge .mud-badge { font-size: 0.75rem; }
+
+.st-activity-panel {
+    width: 360px;
+    max-width: 92vw;
+    background: var(--st-bg-surface);
+    border: 1px solid var(--st-border-strong);
+    border-radius: var(--st-radius-md);
+    overflow: hidden;
+}
+.st-activity-panel-header {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    padding: 10px var(--st-space-md);
+    border-bottom: 1px solid var(--st-border);
+    background: var(--st-bg-elevated);
+}
+.st-activity-panel-body { max-height: 420px; overflow-y: auto; }
+.st-activity-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--st-space-sm);
+    padding: var(--st-space-xl);
+}
+.st-activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--st-space-sm);
+    padding: 10px var(--st-space-md);
+    border-bottom: 1px solid var(--st-border);
+}
+.st-activity-item:last-child { border-bottom: none; }
+.st-activity-item-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--st-radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--st-bg-primary);
+}
+.st-activity-item-icon--running { color: var(--st-pink); }
+.st-activity-item-icon--success { color: var(--st-green); background: var(--st-green-soft); }
+.st-activity-item-icon--error { color: var(--st-red); background: var(--st-red-soft); }
+.st-activity-item-icon--info { color: var(--st-blue); background: var(--st-blue-soft); }
+.st-activity-item-body { flex: 1; min-width: 0; }
+.st-activity-item-title { font-size: 0.9375rem; font-weight: 600; color: var(--st-text-primary); }
+.st-activity-item-detail { font-size: .8125rem; color: var(--st-text-secondary); word-break: break-word; }
+.st-activity-item-time { font-size: 0.75rem; color: var(--st-text-muted); flex-shrink: 0; }
+
+/* Notification bell (app bar inbox card) */
+
+.st-notif-trigger--active { color: var(--st-pink) !important; }
+.st-notif-badge .mud-badge { font-size: 0.75rem; }
+
+.st-notif-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+}
+
+.st-notif-card-group {
+    background: rgba(15, 10, 24, 0.48);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    /* The card body is the scroll container. Without this the groups are flex items that
+       shrink to fit the capped body height, and their `overflow: hidden` then clips the
+       activity/notification rows instead of the body scrolling. Keep each group at its
+       natural height so a long notification list scrolls as a whole. */
+    flex: 0 0 auto;
+}
+
+.st-notif-card-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.st-notif-section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    padding: 10px 14px 6px;
+    font-size: .8125rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--st-text-secondary);
+}
+.st-notif-section-empty {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    padding: 10px 14px 14px;
+}
+
+.st-notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--st-space-sm);
+    padding: 10px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background var(--st-transition-fast);
+}
+.st-notif-item:hover { background: var(--st-gradient-soft); }
+
+.st-notif-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--st-bg-primary);
+}
+.st-notif-item.success .st-notif-item-icon { color: var(--st-green); background: var(--st-green-soft); }
+.st-notif-item.warning .st-notif-item-icon { color: var(--st-yellow); background: var(--st-yellow-soft); }
+.st-notif-item.error .st-notif-item-icon { color: var(--st-red); background: var(--st-red-soft); }
+.st-notif-item.info .st-notif-item-icon { color: var(--st-blue); background: var(--st-blue-soft); }
+
+.st-notif-item-body { flex: 1; min-width: 0; cursor: pointer; }
+.st-notif-item-title { font-size: .9375rem; font-weight: 600; color: var(--st-text-primary); }
+.st-notif-item-detail { font-size: .8125rem; color: var(--st-text-secondary); word-break: break-word; }
+.st-notif-item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    margin-top: 3px;
+    font-size: 0.75rem;
+    color: var(--st-text-muted);
+}
+.st-notif-item-source { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-notif-item-time { margin-left: auto; flex-shrink: 0; }
+.st-notif-item-dismiss { opacity: 0.45; transition: opacity var(--st-transition-fast); flex-shrink: 0; }
+.st-notif-item:hover .st-notif-item-dismiss,
+.st-notif-item:focus-within .st-notif-item-dismiss { opacity: 1; }
+@media (max-width: 767.98px), (hover: none) {
+    .st-notif-item-dismiss { opacity: 0.85; }
+}
+
+/* Events page, unified event feed */
+
+.st-event-count { color: var(--st-text-muted); }
+
+.st-event-feed { display: flex; flex-direction: column; }
+
+.st-event-feed-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--st-space-2xl);
+    text-align: center;
+}
+
+.st-event-feed-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--st-space-sm);
+    padding: 10px var(--st-space-sm);
+    border-bottom: 1px solid var(--st-border);
+    border-left: 3px solid transparent;
+    transition: background var(--st-transition-fast);
+}
+.st-event-feed-item:last-child { border-bottom: none; }
+.st-event-feed-item:hover { background: var(--st-bg-elevated); }
+
+.st-event-feed-item--info { border-left-color: var(--st-blue); }
+.st-event-feed-item--success { border-left-color: var(--st-green); }
+.st-event-feed-item--warning { border-left-color: var(--st-yellow); }
+.st-event-feed-item--error { border-left-color: var(--st-red); }
+
+.st-event-feed-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--st-radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--st-bg-primary);
+}
+.st-event-feed-item--info .st-event-feed-icon { color: var(--st-blue); background: var(--st-blue-soft); }
+.st-event-feed-item--success .st-event-feed-icon { color: var(--st-green); background: var(--st-green-soft); }
+.st-event-feed-item--warning .st-event-feed-icon { color: var(--st-yellow); background: var(--st-yellow-soft); }
+.st-event-feed-item--error .st-event-feed-icon { color: var(--st-red); background: var(--st-red-soft); }
+.st-event-feed-emoji { font-size: 0.95rem; line-height: 1; }
+
+.st-event-feed-body { flex: 1; min-width: 0; }
+.st-event-feed-line {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    flex-wrap: wrap;
+}
+.st-event-feed-message {
+    font-size: .9375rem;
+    color: var(--st-text-primary);
+    word-break: break-word;
+}
+
+.st-event-feed-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--st-pink);
+    background: var(--st-pink-soft);
+    border-radius: var(--st-radius-full);
+    padding: 1px 8px;
+    white-space: nowrap;
+}
+
+.st-event-feed-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 3px;
+    font-size: 0.75rem;
+    color: var(--st-text-muted);
+}
+.st-event-feed-cat {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--st-text-secondary);
+    background: var(--st-bg-elevated);
+    border: 1px solid var(--st-border);
+    border-radius: var(--st-radius-full);
+    padding: 1px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.st-event-feed-topic {
+    color: var(--st-purple);
+    background: var(--st-purple-soft);
+    border-radius: var(--st-radius-sm);
+    padding: 0 5px;
+    font-size: 0.75rem;
+}
+.st-event-feed-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 42ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.st-event-feed-time { margin-left: auto; flex-shrink: 0; }
+
+.st-notif-compact {
+    display: flex;
+    align-items: center;
+    gap: var(--st-space-sm);
+    padding: var(--st-space-sm) var(--st-space-md);
+}
+.st-notif-compact .st-discord-logo {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.st-notif-compact-text { flex: 1 1 auto; min-width: 0; }
+.st-notif-compact-title { font-weight: 600; }
+.st-notif-compact-state {
+    color: var(--st-text-muted);
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.st-notif-compact-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.st-notif-follow-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 var(--st-space-md) var(--st-space-md);
+}
+.st-notif-follow-row .st-media-row-art {
+    width: 44px;
+    height: 64px;
+    flex-basis: 44px;
+}
+.st-notif-follow-row .st-media-row-meta {
+    gap: 4px;
+}
+
+@media (max-width: 599.98px) {
+    .st-notif-panel { width: 92vw; }
+    .st-event-feed-source { max-width: 100%; }
+    .st-event-feed-time { margin-left: 0; }
+}

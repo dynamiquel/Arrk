@@ -1,0 +1,23 @@
+# Normalize line endings so a checkout on any OS produces the same tree.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.cs text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.slnx text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pdf binary
+*.zip binary
+*.snupkg binary
+*.nupkg binary

@@ -1,0 +1,71 @@
+@inject DownloadSummaryCache SummaryCache
+@implements IDisposable
+
+@if (Metric == "download")
+{
+    <div class="st-stat-value st-stat-value--pink">@FormatHelper.FormatRate(_summary.Transfer.DownloadSpeed)</div>
+    <div class="st-stat-sub">total: @FormatHelper.FormatBytes(_summary.Transfer.TotalDownloaded)</div>
+}
+else if (Metric == "upload")
+{
+    <div class="st-stat-value st-stat-value--green">@FormatHelper.FormatRate(_summary.Transfer.UploadSpeed)</div>
+    <div class="st-stat-sub">total: @FormatHelper.FormatBytes(_summary.Transfer.TotalUploaded)</div>
+}
+else if (Metric == "active")
+{
+    <div class="st-stat-value st-stat-value--blue">@_summary.Downloading</div>
+    <div class="st-stat-sub">of @_summary.Total total</div>
+}
+else
+{
+    <div class="st-stat-value st-stat-value--green">@_summary.Seeding</div>
+    <div class="st-stat-sub">uploading</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    /// <summary>One of <c>download</c>, <c>upload</c>, <c>active</c> or <c>seeding</c>.</summary>
+    [Parameter] public string Metric { get; set; } = "download";
+
+    const int RefreshSeconds = 3;
+
+    DownloadSummary _summary = new(new TorrentTransferStats(), 0, 0, 0);
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(CancellationToken.None);
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAsync(CancellationToken ct)
+    {
+        try
+        {
+            _summary = await SummaryCache.GetAsync(ct);
+        }
+        catch
+        {
+            // Keep the last snapshot when Transmission is briefly unreachable.
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+}

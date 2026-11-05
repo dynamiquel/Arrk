@@ -1,0 +1,70 @@
+@page "/containers"
+@attribute [Authorize(Policy = StackarrPolicies.AdminOnly)]
+@inject ServiceProvisioner Provisioner
+@inject ResourceInventory Inventory
+@inject LiveActivityRegistry LiveActivity
+
+<PageTitle>Stackarr - Containers</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Dns" Title="Containers" />
+
+@if (_containers == null)
+{
+    <LoadingView />
+}
+else if (_containers.Count == 0)
+{
+    <EmptyState Message="No managed containers found." Icon="@Icons.Material.Filled.Dns" />
+}
+else
+{
+    <MudDataGrid T="ContainerInfo" Items="_containers" Hover="true" Dense="true" Striped="true">
+        <Columns>
+            <TemplateColumn Title="Name">
+                <CellTemplate>
+                    <EntityIcon EntityType="container" /> @context.Item.Name
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Image" Title="Image" />
+            <TemplateColumn Title="State">
+                <CellTemplate>
+                    <ContainerStatusLabel State="context.Item.State" />
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Service">
+                <CellTemplate>
+                    @context.Item.Labels.GetValueOrDefault(DockerUiConstants.LabelService, "-")
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Status" Title="Status" />
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <ContainerActionsButtons State="context.Item.State"
+                        OnStart="@(() => HandleContainerAction(ContainerActionHelper.StartContainer, context.Item.Id, context.Item.Name))"
+                        OnStop="@(() => HandleContainerAction(ContainerActionHelper.StopContainer, context.Item.Id, context.Item.Name))"
+                        OnRestart="@(() => HandleContainerAction(ContainerActionHelper.RestartContainer, context.Item.Id, context.Item.Name))" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+}
+
+@code {
+    List<ContainerInfo>? _containers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContainers();
+    }
+
+    async Task LoadContainers()
+    {
+        _containers = await Provisioner.GetAllManagedContainers();
+        StateHasChanged();
+    }
+
+    async Task HandleContainerAction(Func<string, string, LiveActivityRegistry, Func<Task>?, Task> action, string containerId, string containerName)
+    {
+        await action(containerId, containerName, LiveActivity, LoadContainers);
+    }
+}

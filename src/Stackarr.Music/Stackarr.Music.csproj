@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    The music module owns its own UI (Razor class library): the library/discover pages, the
+    album/artist/playlist popups, the mini/full player overlay and the component scripts and
+    styles, all contributed to the shell through the Stackarr.Ui contracts.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.Core\Stackarr.Core.csproj" />
+    <ProjectReference Include="..\Stackarr.Ai\Stackarr.Ai.csproj" />
+    <ProjectReference Include="..\Stackarr.Ui\Stackarr.Ui.csproj" />
+    <ProjectReference Include="..\Stackarr.Prowlarr\Stackarr.Prowlarr.csproj" />
+    <ProjectReference Include="..\Stackarr.Transmission\Stackarr.Transmission.csproj" />
+    <ProjectReference Include="..\Stackarr.Navidrome\Stackarr.Navidrome.csproj" />
+    <ProjectReference Include="..\Stackarr.Slskd\Stackarr.Slskd.csproj" />
+    <ProjectReference Include="..\Stackarr.Requests\Stackarr.Requests.csproj" />
+    <ProjectReference Include="..\Stackarr.Media.Abstractions\Stackarr.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\Stackarr.Downloads.Abstractions\Stackarr.Downloads.Abstractions.csproj" />
+    <ProjectReference Include="..\Stackarr.Music.Abstractions\Stackarr.Music.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <!-- The music module contributes HTTP endpoints (art proxy) alongside Navidrome playback. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- The music pure helpers (title cleaning, file/track matching) are internal so they can be unit-tested. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Stackarr.Music.Tests" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Stackarr.Media.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Stackarr.Downloads.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Stackarr.Music.Abstractions" />
+  </ItemGroup>
+</Project>

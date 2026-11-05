@@ -1,0 +1,22 @@
+@* A single labelled metadata field inside a <MetaGrid>. *@
+
+<div class="st-meta-item">
+    <div class="st-info-label">@Label</div>
+    <div class="st-info-value @ValueClass">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            @Value
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string ValueClass { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

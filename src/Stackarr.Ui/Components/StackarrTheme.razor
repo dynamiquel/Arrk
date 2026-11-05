@@ -1,0 +1,63 @@
+<MudThemeProvider @bind-IsDarkMode="_isDarkMode" Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@code {
+    private bool _isDarkMode = true;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#e879a0",
+            Secondary = "#c084fc",
+            Tertiary = "#a78bfa",
+            Info = "#818cf8",
+            Success = "#4ade80",
+            Warning = "#fbbf24",
+            Error = "#f87171",
+            Dark = "#1e1528",
+            TextPrimary = "#e8e0f0",
+            TextSecondary = "#a899be",
+            TextDisabled = "#6b5c80",
+            Surface = "#181225",
+            Background = "#0f0a18",
+            DrawerBackground = "#140d1d",
+            DrawerText = "#cfc0e0",
+            DrawerIcon = "#a899be",
+            AppbarBackground = "#140d1d",
+            AppbarText = "#e8e0f0",
+            LinesDefault = "#2d2040",
+            LinesInputs = "#2d2040",
+            TableLines = "#2d2040",
+            Divider = "#2d2040",
+            OverlayLight = "rgba(10,6,16,0.6)",
+        },
+        Typography = new()
+        {
+            Default = new DefaultTypography
+            {
+                FontFamily = ["Google Sans", "Product Sans", "Inter", "system-ui", "sans-serif"],
+                FontSize = "1rem",
+            },
+            H1 = new H1Typography { FontWeight = "700", FontSize = "2.5rem", LineHeight = "1.2" },
+            H2 = new H2Typography { FontWeight = "700", FontSize = "2rem", LineHeight = "1.2" },
+            H3 = new H3Typography { FontWeight = "600", FontSize = "1.75rem", LineHeight = "1.3" },
+            H4 = new H4Typography { FontWeight = "600", FontSize = "1.5rem", LineHeight = "1.3" },
+            H5 = new H5Typography { FontWeight = "600", FontSize = "1.25rem", LineHeight = "1.3" },
+            H6 = new H6Typography { FontWeight = "600", FontSize = "1.125rem", LineHeight = "1.4" },
+            Body1 = new Body1Typography { FontSize = "1rem" },
+            Body2 = new Body2Typography { FontSize = "0.9375rem" },
+            Caption = new CaptionTypography { FontSize = "0.8125rem" },
+            Subtitle2 = new Subtitle2Typography { FontWeight = "500", FontSize = "0.9375rem" },
+            Button = new ButtonTypography { FontSize = "0.9375rem", TextTransform = "none", FontWeight = "500" },
+        },
+        LayoutProperties = new()
+        {
+            DrawerWidthLeft = "240px",
+            DrawerMiniWidthLeft = "68px",
+            AppbarHeight = "64px",
+        },
+    };
+}

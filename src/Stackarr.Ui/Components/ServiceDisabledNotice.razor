@@ -1,0 +1,16 @@
+@* Shown in place of a media surface whose module is disabled in configuration. *@
+<EmptyState Icon="@Icons.Material.Filled.Block"
+            Message="@($"{Title} is disabled")"
+            Detail="@Detail" />
+<div class="d-flex justify-center mt-2">
+    <MudButton Href="/config" Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Settings" title="Open configuration" AriaLabel="Open configuration">
+        <span class="st-btn-label">Open configuration</span>
+    </MudButton>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+
+    [Parameter] public string Detail { get; set; } = "";
+}

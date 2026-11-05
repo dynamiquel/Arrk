@@ -1,0 +1,17 @@
+@* Consistent icon for Docker entity types (container, network, volume) *@
+
+<MudIcon Icon="@GetIcon()" Size="Size.Small" Color="@Color" Style="vertical-align:middle;" />
+
+@code {
+    [Parameter] public string EntityType { get; set; } = "";
+    [Parameter] public Color Color { get; set; } = Color.Secondary;
+
+    string GetIcon() => EntityType.ToLowerInvariant() switch
+    {
+        "container" => Icons.Material.Filled.Layers,
+        "network" => Icons.Material.Filled.Lan,
+        "volume" => Icons.Material.Filled.Folder,
+        "image" => Icons.Material.Filled.Image,
+        _ => Icons.Material.Filled.HelpOutline
+    };
+}

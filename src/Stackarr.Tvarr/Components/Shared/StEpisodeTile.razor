@@ -1,0 +1,145 @@
+@* Modern episode tile for the season grid in SeriesDetailDialog: the episode still as the
+   card background with the number, status, title, runtime, quality and synopsis overlaid. *@
+
+<div class="st-ep-tile" role="group" aria-label="@($"Season {Episode.SeasonNumber} episode {Episode.EpisodeNumber}: {Episode.Title}")">
+    @if (!string.IsNullOrEmpty(ImageUrl))
+    {
+        <img class="st-ep-art" src="@ImageUrl" alt="@($"S{Episode.SeasonNumber}E{Episode.EpisodeNumber}")" loading="lazy" />
+    }
+    else
+    {
+        <div class="st-ep-art st-ep-art--placeholder">
+            <MudIcon Icon="@Icons.Material.Filled.Tv" Size="Size.Large" />
+        </div>
+    }
+    <div class="st-ep-scrim"></div>
+
+    <div class="st-ep-top">
+        <span class="st-ep-num">
+            @if (QueueItem != null)
+            {
+                <MudTooltip Text="@($"Downloading · {FormatHelper.FormatBytes(QueueItem.Size - (long)QueueItem.Sizeleft)} / {FormatHelper.FormatBytes(QueueItem.Size)}")">
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Info" Style="width:14px;height:14px;flex-shrink:0;" />
+                </MudTooltip>
+            }
+            else if (IsWatched)
+            {
+                <MudTooltip Text="Watched">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="font-size:0.8rem;color:var(--st-pink);flex-shrink:0;" />
+                </MudTooltip>
+            }
+            else if (Episode.HasFile)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Style="font-size:0.8rem;color:var(--st-green);flex-shrink:0;" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.Circle" Size="Size.Small" Style="font-size:0.8rem;opacity:0.75;flex-shrink:0;" />
+            }
+            <span>@($"E{Episode.EpisodeNumber}")</span>
+        </span>
+
+        <div class="st-ep-actions">
+            @if (Episode.HasFile && !string.IsNullOrEmpty(PlayHref))
+            {
+                <StIconButton Overlay Icon="@Icons.Material.Filled.PlayArrow" Title="Play"
+                              Href="@PlayHref" Target="@(PlayHref.StartsWith('/') ? null : "_blank")" />
+            }
+            @if (Episode.HasFile || QueueItem != null || IsAdmin || !Episode.Monitored)
+            {
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small"
+                         ListClass="st-ep-menu" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    @if (Episode.HasFile && !string.IsNullOrEmpty(PlayHref))
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.PlayArrow" Href="@PlayHref"
+                                     Target="@(PlayHref.StartsWith('/') ? null : "_blank")">Play</MudMenuItem>
+                    }
+                    @if (Episode.HasFile)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Info" OnClick="@(() => OnMediaInfo.InvokeAsync())">Media info</MudMenuItem>
+                    }
+                    @if (IsAdmin && OnUpload.HasDelegate)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.CloudUpload" OnClick="@(() => OnUpload.InvokeAsync())">Upload file</MudMenuItem>
+                    }
+                    <UiRegion Name="tv.episode.menu" Context="new TvEpisodeActionContext(null, Episode)" />
+                    @if (IsAdmin && SearchEnabled && OnInteractiveSearch.HasDelegate)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.TravelExplore" OnClick="@(() => OnInteractiveSearch.InvokeAsync())">Interactive search</MudMenuItem>
+                    }
+                    @if (IsAdmin || !Episode.Monitored)
+                    {
+                        <MudMenuItem Icon="@(Episode.Monitored ? Icons.Material.Filled.Visibility : Icons.Material.Outlined.VisibilityOff)"
+                                     OnClick="@(() => OnToggleMonitored.InvokeAsync())">@(Episode.Monitored ? "Unmonitor" : "Monitor")</MudMenuItem>
+                    }
+                    @if (QueueItem != null && IsAdmin)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Cancel" OnClick="@(() => OnCancelDownload.InvokeAsync())">Cancel download</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => OnRetryDownload.InvokeAsync())">Retry search</MudMenuItem>
+                    }
+                    else if (Episode.HasFile && IsAdmin)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" OnClick="@(() => OnDelete.InvokeAsync())">Delete</MudMenuItem>
+                    }
+                </MudMenu>
+            }
+        </div>
+    </div>
+
+    <div class="st-ep-info">
+        @if (!string.IsNullOrEmpty(Overview))
+        {
+            <div class="st-ep-desc">@Overview</div>
+        }
+        <div class="st-ep-title">@Episode.Title</div>
+        <div class="st-ep-meta">
+            @if (TmdbEpisode?.Runtime is > 0)
+            {
+                <span class="st-ep-meta-item">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />@($"{TmdbEpisode.Runtime} min")
+                </span>
+            }
+            @if (Episode.HasFile)
+            {
+                <MediaFormatLine Info="Episode.File?.Technical" Quality="Episode.Quality" ShowAudio="false" Class="st-ep-format" />
+            }
+            @if (Episode.AirDate.HasValue)
+            {
+                <span class="st-ep-meta-item">@Episode.AirDate.Value.ToString("d MMM yyyy")</span>
+            }
+            @if (TmdbEpisode?.VoteAverage is > 0)
+            {
+                <span class="st-ep-meta-item st-ep-rating">
+                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" />@TmdbEpisode.VoteAverage.ToString("F1")
+                </span>
+            }
+        </div>
+    </div>
+
+    @if (QueueItem is { Size: > 0 })
+    {
+        double progress = QueueItem.Sizeleft > 0 ? (double)(QueueItem.Size - (long)QueueItem.Sizeleft) / QueueItem.Size * 100 : 100;
+        <div class="st-ep-progress" title="@($"{FormatHelper.FormatBytes(QueueItem.Size - (long)QueueItem.Sizeleft)} / {FormatHelper.FormatBytes(QueueItem.Size)}")">
+            <div class="st-ep-progress-fill" style="@($"width:{progress.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}%")"></div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TvEpisode Episode { get; set; } = default!;
+    [Parameter] public TmdbTvEpisode? TmdbEpisode { get; set; }
+    [Parameter] public SonarrQueueItemDto? QueueItem { get; set; }
+    [Parameter] public string ImageUrl { get; set; } = "";
+    [Parameter] public string Overview { get; set; } = "";
+    [Parameter] public string? PlayHref { get; set; }
+    [Parameter] public bool IsWatched { get; set; }
+    [Parameter] public bool IsAdmin { get; set; }
+    [Parameter] public bool SearchEnabled { get; set; } = true;
+    [Parameter] public EventCallback OnCancelDownload { get; set; }
+    [Parameter] public EventCallback OnRetryDownload { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter] public EventCallback OnMediaInfo { get; set; }
+    [Parameter] public EventCallback OnToggleMonitored { get; set; }
+    [Parameter] public EventCallback OnInteractiveSearch { get; set; }
+    [Parameter] public EventCallback OnUpload { get; set; }
+}

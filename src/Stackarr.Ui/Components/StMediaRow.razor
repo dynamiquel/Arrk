@@ -1,0 +1,54 @@
+@* Shared compact media row used by history, stale media and other list surfaces.
+   Artwork/icon + title + badges + meta on the left, optional trailing value and actions on the
+   right. Wraps cleanly on mobile, so pages do not invent their own row markup. *@
+
+<div class="st-media-row @Class" @attributes="AdditionalAttributes">
+    <div class="st-media-row-art">
+        @if (Art is not null)
+        {
+            @Art
+        }
+        else if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            <img src="@ImageUrl" alt="" loading="lazy" />
+        }
+        else if (!string.IsNullOrEmpty(Icon))
+        {
+            <MudIcon Icon="@Icon" Size="Size.Medium" />
+        }
+    </div>
+
+    <div class="st-media-row-main">
+        <div class="st-media-row-title-row">
+            <span class="st-media-row-title">@Title</span>
+            @Badges
+        </div>
+        @if (Info is not null)
+        {
+            <div class="st-media-row-meta">@Info</div>
+        }
+    </div>
+
+    @if (Trailing is not null)
+    {
+        <div class="st-media-row-trailing">@Trailing</div>
+    }
+
+    @if (Actions is not null)
+    {
+        <div class="st-media-row-actions">@Actions</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string ImageUrl { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public RenderFragment? Art { get; set; }
+    [Parameter] public RenderFragment? Badges { get; set; }
+    [Parameter] public RenderFragment? Info { get; set; }
+    [Parameter] public RenderFragment? Trailing { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

@@ -1,0 +1,39 @@
+@* Reusable horizontal cast row sourced from TMDB credits. *@
+@inject TmdbService TmdbService
+
+@if (Cast.Count > 0)
+{
+    <div class="st-cast-section">
+        <div class="st-detail-section-label">
+            <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" /> Cast
+        </div>
+        <ScrollRow TrackClass="st-cast-row">
+            @foreach (TmdbCreditPerson person in Cast.Take(MaxItems))
+            {
+                <a class="st-cast-card" href="@($"https://www.themoviedb.org/person/{person.Id}")"
+                   target="_blank" rel="noopener" title="@($"View {person.Name} on TMDB")">
+                    @if (!string.IsNullOrEmpty(person.ProfilePath))
+                    {
+                        <img src="@TmdbService.GetProfileUrl(person.ProfilePath, "w185")" class="st-cast-img" alt="@person.Name" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="st-cast-img st-cast-img--placeholder">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" />
+                        </div>
+                    }
+                    <div class="st-cast-name">@person.Name</div>
+                    @if (!string.IsNullOrEmpty(person.Character))
+                    {
+                        <div class="st-cast-role">@person.Character</div>
+                    }
+                </a>
+            }
+        </ScrollRow>
+    </div>
+}
+
+@code {
+    [Parameter] public List<TmdbCreditPerson> Cast { get; set; } = [];
+    [Parameter] public int MaxItems { get; set; } = 20;
+}

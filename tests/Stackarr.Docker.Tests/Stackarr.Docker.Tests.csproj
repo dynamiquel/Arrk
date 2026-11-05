@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableTestingSupport>true</EnableTestingSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.56.35" />
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Stackarr.TestSupport\Stackarr.TestSupport.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Docker\Stackarr.Docker.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Core\Stackarr.Core.csproj" />
+    <ProjectReference Include="..\..\src\Stackarr.Media.Abstractions\Stackarr.Media.Abstractions.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Stackarr.Media.Abstractions" />
+  </ItemGroup>
+</Project>

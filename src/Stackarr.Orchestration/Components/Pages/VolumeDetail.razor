@@ -1,0 +1,645 @@
+@page "/docker/volume/{Name}"
+@attribute [Authorize(Policy = StackarrPolicies.AdminOnly)]
+@inject ResourceInventory Inventory
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Stackarr - Volume</PageTitle>
+
+<MudButton StartIcon="@Icons.Material.Filled.ArrowBack" Href="/docker" Class="mb-4"
+           title="Back to Docker" AriaLabel="Back to Docker">
+    <span class="st-btn-label">Back to Docker</span>
+</MudButton>
+
+@if (_loading)
+{
+    <LoadingView />
+}
+else if (_metrics == null)
+{
+    <MudAlert Severity="Severity.Error">Volume not found.</MudAlert>
+}
+else
+{
+    <PageHeader Icon="@Icons.Material.Filled.Folder" Title="@_metrics.Name" />
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6">
+            <SectionContainer Icon="@Icons.Material.Filled.Info" Title="Volume Info">
+                <div class="st-info-grid">
+                    <InfoGridRow Label="Path" Break="true">@_metrics.Name</InfoGridRow>
+                    @if (_metrics.MountPoint.Contains('→'))
+                    {
+                        <InfoGridRow Label="Mount" Break="true">@_metrics.MountPoint</InfoGridRow>
+                    }
+                    @if (_metrics.Containers.Count > 0)
+                    {
+                        <div>
+                            <span class="st-info-label">Containers</span>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                                @for (int i = 0; i < _metrics.Containers.Count; i++)
+                                {
+                                    string containerName = _metrics.Containers[i];
+                                    string? containerId = _containerIdMap.GetValueOrDefault(containerName);
+                                    if (containerId != null)
+                                    {
+                                        <MudLink Href="@($"/docker/container/{containerId}")" Typo="Typo.body2"><EntityIcon EntityType="container" /> @containerName</MudLink>
+                                    }
+                                    else
+                                    {
+                                        <StChip Variant="neutral">@containerName</StChip>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </SectionContainer>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <SectionContainer Icon="@Icons.Material.Filled.Storage" Title="Disk Usage">
+                @if (_metrics.TotalBytes > 0)
+                {
+                    <UsageBar Label="" Percent="_metrics.UsedPercent" Text="@($"{_metrics.UsedPercent:F1}%")" />
+                    <div style="font-size:0.9375rem;margin-top:var(--st-space-sm);">@FormatHelper.FormatBytes(_metrics.UsedBytes) / @FormatHelper.FormatBytes(_metrics.TotalBytes)</div>
+                    <div style="font-size:0.875rem;color:var(--st-text-secondary);">Available: @FormatHelper.FormatBytes(_metrics.AvailableBytes)</div>
+                }
+                else
+                {
+                    <div style="font-size:0.9375rem;color:var(--st-text-secondary);">Usage data not available.</div>
+                }
+            </SectionContainer>
+        </MudItem>
+    </MudGrid>
+
+    @if (_isDirectory)
+    {
+        <SectionContainer Icon="@Icons.Material.Filled.Folder" Title="Files" Class="mb-4" BodyStyle="padding:0;">
+            <HeaderRight>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">#@_entries.Count items</MudText>
+                <StIconButton Icon="@Icons.Material.Filled.Refresh" Title="Refresh" OnClick="LoadDirectory" />
+            </HeaderRight>
+            <ChildContent>
+                @if (_currentPath != _metrics.Name)
+                {
+                    <div class="st-section-footer">
+                        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.ArrowUpward"
+                            OnClick="GoUp" Disabled="_directoryLoading" title="Go up" AriaLabel="Go up">
+                            <span class="st-btn-label">Up</span>
+                        </MudButton>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2" Style="word-break:break-all">@_currentPath</MudText>
+                    </div>
+                }
+                @if (_directoryLoading)
+                {
+                    <LoadingView Size="Size.Small" Message="Loading directory..." />
+                }
+                else if (_entries.Count > 0)
+                {
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr>
+                                <th style="width:50%">Name</th>
+                                <th>Size</th>
+                                <th>Modified</th>
+                                <th>Permissions</th>
+                                <th style="width:120px">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (FileEntry entry in _entries)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (entry.IsDirectory)
+                                        {
+                                            <MudLink OnClick="@(() => NavigateTo(entry.FullPath))" Style="cursor:pointer">
+                                                <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Warning" Class="mr-1" />@entry.Name
+                                            </MudLink>
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@GetFileIcon(entry.Name)" Size="Size.Small" Color="Color.Primary" Class="mr-1" />
+                                            <MudLink OnClick="@(() => InspectFile(entry))">@entry.Name</MudLink>
+                                        }
+                                    </td>
+                                    <td>@(entry.IsDirectory ? "-" : FormatHelper.FormatBytes(entry.Size))</td>
+                                    <td>@entry.Modified.ToString("g")</td>
+                                    <td><code style="font-size:0.8125rem">@entry.Permissions</code></td>
+                                    <td>
+                                        <MudButtonGroup Size="Size.Small">
+                                            <MudTooltip Text="Rename">
+                                                <MudIconButton Icon="@Icons.Material.Filled.DriveFileRenameOutline" Size="Size.Small"
+                                                    OnClick="@(() => StartRename(entry))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="Move">
+                                                <MudIconButton Icon="@Icons.Material.Filled.DriveFileMove" Size="Size.Small"
+                                                    OnClick="@(() => StartMove(entry))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="Delete">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                    OnClick="@(() => DeleteEntry(entry))" />
+                                            </MudTooltip>
+                                        </MudButtonGroup>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                }
+                else if (!_directoryLoading)
+                {
+                    <EmptyState Message="Empty directory." />
+                }
+            </ChildContent>
+        </SectionContainer>
+    }
+}
+
+@* Inspect Dialog *@
+<MudDialog @bind-Visible="_inspectVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />@_inspectEntry?.Name
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_inspectEntry != null)
+        {
+            <MudSimpleTable Dense="true">
+                <tbody>
+                    <tr><td><b>Path</b></td><td style="word-break:break-all">@_inspectEntry.FullPath</td></tr>
+                    <tr><td><b>Size</b></td><td>@FormatHelper.FormatBytes(_inspectEntry.Size)</td></tr>
+                    <tr><td><b>Permissions</b></td><td><code>@_inspectEntry.Permissions</code></td></tr>
+                    <tr><td><b>Modified</b></td><td>@_inspectEntry.Modified.ToString("g")</td></tr>
+                    <tr><td><b>Type</b></td><td>@(_inspectEntry.IsDirectory ? "Directory" : "File")</td></tr>
+                </tbody>
+            </MudSimpleTable>
+            @if (!_inspectEntry.IsDirectory && _fileContent != null)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Content Preview</MudText>
+                <pre class="file-preview">@_fileContent</pre>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (_inspectEntry is { IsDirectory: false } && _isTextFile)
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="OpenEditor"
+                       title="Edit file" AriaLabel="Edit file">
+                <span class="st-btn-label">Edit</span>
+            </MudButton>
+        }
+        <MudButton OnClick="@(() => _inspectVisible = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Rename Dialog *@
+<MudDialog @bind-Visible="_renameVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.DriveFileRenameOutline" Class="mr-2" />Rename
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_renameValue" Label="New name" Immediate="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _renameVisible = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="ConfirmRename">Rename</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Move Dialog *@
+<MudDialog @bind-Visible="_moveVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.DriveFileMove" Class="mr-2" />Move
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_moveValue" Label="Destination path" Immediate="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _moveVisible = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="ConfirmMove">Move</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* Editor Dialog *@
+<MudDialog @bind-Visible="_editorVisible" Options="_editorOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />Edit: @_editingEntry?.Name
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <CodeEditor @bind-Value="_editorContent" Lines="25" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _editorVisible = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="SaveFile">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public string Name { get; set; } = "";
+
+    string DecodedName => Uri.UnescapeDataString(Name);
+
+    VolumeMetrics? _metrics;
+    bool _loading = true;
+    bool _isDirectory;
+    string _currentPath = "";
+    List<FileEntry> _entries = [];
+    bool _directoryLoading;
+    Timer? _refreshTimer;
+    CancellationTokenSource? _refreshCts;
+    Dictionary<string, string> _containerIdMap = new(StringComparer.OrdinalIgnoreCase);
+
+    bool _inspectVisible;
+    FileEntry? _inspectEntry;
+    string? _fileContent;
+    bool _isTextFile;
+    bool _renameVisible;
+    string _renameValue = "";
+    FileEntry? _renameEntry;
+    bool _moveVisible;
+    string _moveValue = "";
+    FileEntry? _moveEntry;
+    bool _editorVisible;
+    FileEntry? _editingEntry;
+    string _editorContent = "";
+
+    DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Medium, FullWidth = true };
+    DialogOptions _editorOptions = new() { MaxWidth = MaxWidth.Large, FullWidth = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        List<ContainerInfo> containers = await Inventory.GetOwnedContainers();
+        _containerIdMap = containers
+            .Where(c => !string.IsNullOrEmpty(c.Name))
+            .ToDictionary(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+
+        List<VolumeMetrics> volumes = await Inventory.GetOwnedVolumes();
+        _metrics = volumes.FirstOrDefault(v =>
+            string.Equals(v.Name, DecodedName, StringComparison.OrdinalIgnoreCase));
+
+        if (_metrics != null)
+        {
+            _currentPath = _metrics.Name;
+            _isDirectory = Directory.Exists(_currentPath);
+            if (_isDirectory)
+            {
+                await LoadDirectory();
+            }
+        }
+        _loading = false;
+
+        (_refreshTimer, _refreshCts) = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                List<VolumeMetrics> v = await Inventory.GetOwnedVolumes();
+                _metrics = v.FirstOrDefault(vol =>
+                    string.Equals(vol.Name, DecodedName, StringComparison.OrdinalIgnoreCase));
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(DockerUiConstants.VolumeDetailInitialDelaySeconds),
+            TimeSpan.FromSeconds(DockerUiConstants.VolumeDetailRefreshSeconds));
+    }
+
+    async Task LoadDirectory()
+    {
+        _directoryLoading = true;
+        await InvokeAsync(StateHasChanged);
+        List<FileEntry> newEntries = new();
+        try
+        {
+            DirectoryInfo dirInfo = new(_currentPath);
+            DirectoryInfo[] dirs = dirInfo.GetDirectories();
+            FileInfo[] files = dirInfo.GetFiles();
+
+            List<Task<FileEntry>> tasks = new();
+            foreach (DirectoryInfo dir in dirs)
+            {
+                tasks.Add(CreateEntry(dir));
+            }
+            foreach (FileInfo file in files)
+            {
+                tasks.Add(CreateEntry(file));
+            }
+            FileEntry[] results = await Task.WhenAll(tasks);
+            newEntries.AddRange(results);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error reading directory: {ex.Message}", Severity.Error);
+        }
+        _entries = newEntries;
+        _directoryLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task<FileEntry> CreateEntry(DirectoryInfo dir)
+    {
+        string perms = "-";
+        try
+        {
+            System.Diagnostics.ProcessStartInfo psi = new("stat", $"-c '%a' \"{dir.FullName}\"")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using System.Diagnostics.Process proc = System.Diagnostics.Process.Start(psi);
+            if (proc != null)
+            {
+                perms = (await proc.StandardOutput.ReadToEndAsync()).Trim();
+            }
+        }
+        catch { }
+
+        return new()
+        {
+            Name = dir.Name,
+            FullPath = dir.FullName,
+            IsDirectory = true,
+            Size = 0,
+            Modified = dir.LastWriteTime,
+            Permissions = perms
+        };
+    }
+
+    async Task<FileEntry> CreateEntry(FileInfo file)
+    {
+        string perms = "-";
+        try
+        {
+            System.Diagnostics.ProcessStartInfo psi = new("stat", $"-c '%a' \"{file.FullName}\"")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using System.Diagnostics.Process proc = System.Diagnostics.Process.Start(psi);
+            if (proc != null)
+            {
+                perms = (await proc.StandardOutput.ReadToEndAsync()).Trim();
+            }
+        }
+        catch { }
+
+        return new()
+        {
+            Name = file.Name,
+            FullPath = file.FullName,
+            IsDirectory = false,
+            Size = file.Length,
+            Modified = file.LastWriteTime,
+            Permissions = perms
+        };
+    }
+
+    async Task NavigateTo(string path)
+    {
+        _currentPath = path;
+        await LoadDirectory();
+    }
+
+    async Task GoUp()
+    {
+        DirectoryInfo? parent = Directory.GetParent(_currentPath);
+        if (parent != null)
+        {
+            _currentPath = parent.FullName;
+            await LoadDirectory();
+        }
+    }
+
+    async Task InspectFile(FileEntry entry)
+    {
+        _inspectEntry = entry;
+        _fileContent = null;
+        _isTextFile = false;
+
+        if (!entry.IsDirectory)
+        {
+            string ext = Path.GetExtension(entry.Name).ToLowerInvariant();
+            _isTextFile = entry.Size <= DockerUiConstants.MaxTextPreviewBytes && IsTextExtension(ext);
+
+            if (_isTextFile)
+            {
+                try
+                {
+                    _fileContent = await File.ReadAllTextAsync(entry.FullPath);
+                    if (_fileContent.Length > DockerUiConstants.MaxTextPreviewChars)
+                        _fileContent = _fileContent[..DockerUiConstants.MaxTextPreviewChars] + "\n... (truncated)";
+                }
+                catch (Exception ex)
+                {
+                    _fileContent = $"Error reading file: {ex.Message}";
+                }
+            }
+            else if (entry.Size > 0 && entry.Size <= DockerUiConstants.MaxBinaryPreviewBytes)
+            {
+                try
+                {
+                    byte[] bytes = await File.ReadAllBytesAsync(entry.FullPath);
+                    _fileContent = FormatHexDump(bytes, DockerUiConstants.HexDumpPreviewBytes);
+                }
+                catch
+                {
+                    _fileContent = "(binary file, cannot preview)";
+                }
+            }
+            else
+            {
+                _fileContent = entry.Size > DockerUiConstants.MaxBinaryPreviewBytes ? "(file too large to preview)" : "(empty file)";
+            }
+        }
+
+        _inspectVisible = true;
+    }
+
+    void StartRename(FileEntry entry)
+    {
+        _renameEntry = entry;
+        _renameValue = entry.Name;
+        _renameVisible = true;
+    }
+
+    async Task ConfirmRename()
+    {
+        if (_renameEntry == null || string.IsNullOrWhiteSpace(_renameValue))
+        {
+            return;
+        }
+
+        try
+        {
+            string destPath = Path.Combine(Path.GetDirectoryName(_renameEntry.FullPath)!, _renameValue);
+            if (_renameEntry.IsDirectory)
+                Directory.Move(_renameEntry.FullPath, destPath);
+            else
+                File.Move(_renameEntry.FullPath, destPath);
+
+            Snackbar.Add("Renamed successfully", Severity.Success);
+            _renameVisible = false;
+            await LoadDirectory();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Rename failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void StartMove(FileEntry entry)
+    {
+        _moveEntry = entry;
+        _moveValue = Path.GetDirectoryName(entry.FullPath) ?? "";
+        _moveVisible = true;
+    }
+
+    async Task ConfirmMove()
+    {
+        if (_moveEntry == null || string.IsNullOrWhiteSpace(_moveValue))
+        {
+            return;
+        }
+
+        try
+        {
+            string destPath = Path.Combine(_moveValue, _moveEntry.Name);
+            if (_moveEntry.IsDirectory)
+                Directory.Move(_moveEntry.FullPath, destPath);
+            else
+                File.Move(_moveEntry.FullPath, destPath);
+
+            Snackbar.Add("Moved successfully", Severity.Success);
+            _moveVisible = false;
+            await LoadDirectory();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Move failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    async Task DeleteEntry(FileEntry entry)
+    {
+        try
+        {
+            if (entry.IsDirectory)
+                Directory.Delete(entry.FullPath, true);
+            else
+                File.Delete(entry.FullPath);
+
+            Snackbar.Add("Deleted successfully", Severity.Success);
+            await LoadDirectory();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void OpenEditor()
+    {
+        if (_inspectEntry == null)
+        {
+            return;
+        }
+        _editingEntry = _inspectEntry;
+        _editorContent = _fileContent ?? "";
+        _editorVisible = true;
+    }
+
+    async Task SaveFile()
+    {
+        if (_editingEntry == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await File.WriteAllTextAsync(_editingEntry.FullPath, _editorContent);
+            Snackbar.Add("File saved", Severity.Success);
+            _editorVisible = false;
+            await LoadDirectory();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Save failed: {ex.Message}", Severity.Error);
+        }
+    }
+
+    static bool IsTextExtension(string ext) => ext switch
+    {
+        ".txt" or ".md" or ".json" or ".yaml" or ".yml" or ".xml" or ".csv" or ".log"
+        or ".conf" or ".cfg" or ".ini" or ".toml" or ".env" or ".sh" or ".bash"
+        or ".py" or ".js" or ".ts" or ".cs" or ".html" or ".css" or ".sql"
+        or ".dockerfile" or ".gitignore" or ".editorconfig" or ".props" or ".targets"
+        or "" => true,
+        _ => false
+    };
+
+    static string GetFileIcon(string name)
+    {
+        string ext = Path.GetExtension(name).ToLowerInvariant();
+        return ext switch
+        {
+            ".json" or ".yaml" or ".yml" or ".toml" or ".xml" => Icons.Material.Filled.DataObject,
+            ".log" or ".txt" or ".md" => Icons.Material.Filled.Article,
+            ".sh" or ".bash" or ".py" or ".js" or ".ts" or ".cs" => Icons.Material.Filled.Code,
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" => Icons.Material.Filled.Image,
+            ".mp4" or ".mkv" or ".avi" or ".mov" => Icons.Material.Filled.VideoFile,
+            ".mp3" or ".flac" or ".ogg" or ".wav" => Icons.Material.Filled.AudioFile,
+            ".zip" or ".tar" or ".gz" or ".7z" => Icons.Material.Filled.Archive,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    static string FormatHexDump(byte[] bytes, int maxBytes)
+    {
+        System.Text.StringBuilder sb = new();
+        int len = Math.Min(bytes.Length, maxBytes);
+        for (int i = 0; i < len; i += 16)
+        {
+            sb.Append($"{i:X8}  ");
+            for (int j = 0; j < 16 && i + j < len; j++)
+            {
+                sb.Append($"{bytes[i + j]:X2} ");
+                if (j == 7) sb.Append(' ');
+            }
+            sb.Append(" |");
+            for (int j = 0; j < 16 && i + j < len; j++)
+            {
+                byte b = bytes[i + j];
+                sb.Append(b >= 32 && b < 127 ? (char)b : '.');
+            }
+            sb.Append("|\n");
+        }
+        if (len < bytes.Length)
+            sb.Append($"... ({bytes.Length - len} more bytes)");
+        return sb.ToString();
+    }
+
+    public void Dispose()
+    {
+        _refreshCts?.Cancel();
+        _refreshCts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+
+    class FileEntry
+    {
+        public string Name { get; set; } = "";
+        public string FullPath { get; set; } = "";
+        public bool IsDirectory { get; set; }
+        public long Size { get; set; }
+        public DateTime Modified { get; set; }
+        public string Permissions { get; set; } = "";
+    }
+}

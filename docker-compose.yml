@@ -1,0 +1,53 @@
+# Stackarr — portable, single-service deployment.
+#
+# Stackarr provisions and manages the whole media stack itself (arrs, players, VPN sidecar,
+# reverse proxy, tunnel, downloads). This compose file therefore describes just the Stackarr
+# container. It is the declarative equivalent of `scripts/run-stackarr.sh`.
+#
+# Quick start (copy this file and a .env next to your data, then):
+#   docker compose up -d --build
+#
+# Everything is configurable through the environment. All values have defaults; a typical
+# setup looks like:
+#
+#   # .env
+#   STACKARR_STACK_NAME=media
+#   STACKARR_CONTAINER_NAME=stackarr-media
+#   STACKARR_CONFIG_DIR=/srv/stackarr/config
+#   STACKARR_DOWNLOADS_DIR=/srv/stackarr/downloads
+#   STACKARR_MEDIA_DIR=/srv/stackarr/media
+#   STACKARR_IMAGE=stackarr:latest
+#
+#   # Uncomment to publish the web UI on the host (omit for a tunnel-only stack):
+#   # STACKARR_HOST_PORT=5186
+
+name: ${STACKARR_CONTAINER_NAME:-stackarr}
+
+services:
+  stackarr:
+    image: ${STACKARR_IMAGE:-stackarr:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${STACKARR_CONTAINER_NAME:-stackarr}
+    restart: unless-stopped
+    environment:
+      # Namespaces every container Stackarr creates (stackarr-<name>-*) and its Docker network
+      # (stackarr-<name>-net).
+      StackName: ${STACKARR_STACK_NAME:-default}
+    volumes:
+      # Stackarr talks to the Docker daemon over the host socket to provision its services.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${STACKARR_CONFIG_DIR:-./stackarr-data/config}:/config
+      - ${STACKARR_DOWNLOADS_DIR:-./stackarr-data/downloads}:/downloads
+      - ${STACKARR_MEDIA_DIR:-./stackarr-data/media}:/media
+    # Tunnel-only by default: no host ports are published. Uncomment to expose the web UI
+    # locally (the reverse proxy's own ports come from routes.httpPort/httpsPort in the config).
+    # ports:
+    #   - "${STACKARR_HOST_PORT:-5186}:5186"
+    networks:
+      - stackarr
+
+networks:
+  stackarr:
+    name: stackarr-${STACKARR_STACK_NAME:-default}-net

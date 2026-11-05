@@ -1,0 +1,140 @@
+@using Stackarr.Core.Requests
+@using Stackarr.Requests
+@inject RequestService RequestService
+@inject ISnackbar Snackbar
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-request-dialog">
+            <div class="st-request-dialog-head">
+                @if (!string.IsNullOrEmpty(Item.ArtUrl))
+                {
+                    <img src="@Item.ArtUrl" alt="@Item.Title" class="st-request-dialog-poster st-request-dialog-poster--square" />
+                }
+                <div style="min-width:0;">
+                    <MudText Typo="Typo.h6">@Item.Title</MudText>
+                    <MudText Typo="Typo.caption" Style="color:var(--st-text-secondary);">
+                        @(!string.IsNullOrEmpty(Item.ArtistName) && Item.EntityType != MusicEntityType.Artist ? Item.ArtistName + " · " : "")@KindLabel
+                    </MudText>
+                </div>
+            </div>
+
+            <MudText Typo="Typo.body2" Class="mb-3">Request @Item.Title and wait for approval.</MudText>
+
+            <MudSelect T="string" Label="Quality" @bind-Value="_qualityKey" Variant="Variant.Outlined" Dense="true" Class="mb-2">
+                @foreach (RequestQualityOption option in _qualityOptions)
+                {
+                    <MudSelectItem T="string" Value="@option.Key">@option.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@_errorMessage</MudAlert>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                   StartIcon="@Icons.Material.Filled.Send" Disabled="@_submitting">
+            <span class="st-btn-label">@(_submitting ? "Requesting…" : "Request")</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    [Parameter] public MusicItem Item { get; set; } = new();
+    [Parameter] public RequestKind Kind { get; set; } = RequestKind.Album;
+
+    string _qualityKey = "";
+    List<RequestQualityOption> _qualityOptions = [];
+    bool _submitting;
+    string? _errorMessage;
+    int _userId;
+    string _username = "";
+
+    string KindLabel => Kind switch
+    {
+        RequestKind.Artist => "Artist",
+        RequestKind.Track => "Track",
+        _ => "Album"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is not null)
+        {
+            System.Security.Claims.ClaimsPrincipal user = (await AuthStateTask).User;
+            int.TryParse(user.FindFirst(StackarrClaims.UserIdClaim)?.Value, out _userId);
+            _username = user.Identity?.Name ?? "";
+        }
+
+        IMediaRequestHandler? handler = RequestService.Registry.GetHandler(MusicMediaDomains.Music, Kind);
+        if (handler is { IsAvailable: true })
+        {
+            try
+            {
+                _qualityOptions = (await handler.GetQualityOptionsAsync()).ToList();
+                if (_qualityOptions.Count > 0)
+                    _qualityKey = _qualityOptions[0].Key;
+            }
+            catch { /* backend default applies */ }
+        }
+    }
+
+    async Task Submit()
+    {
+        if (_userId <= 0)
+        {
+            _errorMessage = "You must be signed in to request music.";
+            return;
+        }
+
+        _submitting = true;
+        _errorMessage = null;
+        try
+        {
+            // Deezer is the identity provider: a request can only be fulfilled if the release is on
+            // Deezer, which is where the artist/album identity comes from.
+            bool hasIdentity = Kind == RequestKind.Artist
+                ? Item.DeezerId > 0 || Item.ArtistDeezerId > 0
+                : Item.DeezerId > 0;
+            if (!hasIdentity)
+            {
+                _errorMessage = "Could not find this release on Deezer, so it can't be requested.";
+                _submitting = false;
+                return;
+            }
+
+            RequestTarget target = Kind switch
+            {
+                RequestKind.Artist => MusicRequestTargets.ForArtist(Item),
+                RequestKind.Track => MusicRequestTargets.ForTrack(Item),
+                _ => MusicRequestTargets.ForAlbum(Item)
+            };
+
+            RequestOperationResult result = await RequestService.CreateAsync(
+                _userId, _username, target,
+                string.IsNullOrWhiteSpace(_qualityKey) ? null : _qualityKey);
+
+            if (!result.Success)
+            {
+                _errorMessage = result.Message ?? "Request failed.";
+                _submitting = false;
+                return;
+            }
+
+            Snackbar.Add(result.Message ?? $"Requested {Item.Title}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _submitting = false;
+        }
+    }
+}

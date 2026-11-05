@@ -1,0 +1,23 @@
+@* Standard top-right dialog close (X) button. *@
+
+<MudIconButton Class="@($"st-dialog-close {Class}")"
+               Icon="@Icons.Material.Filled.Close"
+               Size="Size.Small"
+               AriaLabel="Close dialog"
+               OnClick="HandleClick" />
+
+@code {
+    [CascadingParameter] IMudDialogInstance? MudDialog { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+            return;
+        }
+        MudDialog?.Cancel();
+    }
+}
