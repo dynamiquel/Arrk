@@ -120,7 +120,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=Stackarr
-            org.opencontainers.image.description=One web UI and one YAML file for a self-hosted media stack.
+            org.opencontainers.image.description=One web UI and one config for a self-hosted media stack.
             org.opencontainers.image.version=${{ inputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ steps.meta.outputs.created }}

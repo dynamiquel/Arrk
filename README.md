@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  One web UI and one YAML file for a self-hosted media stack. Stackarr runs and configures the
+  One web UI and one config for a self-hosted media stack. Stackarr runs and configures the
   services around your library — movies, shows, music, downloads and players — so you can stop
   visiting each one.
 </p>

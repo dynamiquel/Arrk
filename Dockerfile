@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ffmpeg && 
 COPY --from=build /app/publish .
 
 LABEL org.opencontainers.image.title="Stackarr" \
-      org.opencontainers.image.description="One web UI and one YAML file for a self-hosted media stack." \
+      org.opencontainers.image.description="One web UI and one config for a self-hosted media stack." \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
