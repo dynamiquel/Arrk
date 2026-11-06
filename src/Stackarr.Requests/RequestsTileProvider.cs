@@ -4,29 +4,41 @@ using Stackarr.Ui;
 
 namespace Stackarr.Requests;
 
-/// <summary>The request system's headline counts, contributed as shareable tiles.</summary>
+/// <summary>The request system's headline counts and pending queue, contributed as shareable tiles.</summary>
 public sealed class RequestsTileProvider : ITileProvider
 {
     public IReadOnlyList<TileDefinition> Tiles { get; } =
     [
-        Create("requests.open", "Open", Icons.Material.Filled.PendingActions, "open", 10, null),
-        Create("requests.accepted", "Accepted", Icons.Material.Filled.CheckCircle, "accepted", 20, null),
-        Create("requests.denied", "Denied", Icons.Material.Filled.Cancel, "denied", 30, null),
-        Create("requests.blacklisted", "Blacklisted", Icons.Material.Filled.Block, "blacklisted", 40, null),
-        Create("requests.total", "Total", Icons.Material.Filled.AllInbox, "total", 50, null)
-    ];
-
-    static TileDefinition Create(string id, string title, string icon, string metric, int order, string? defaultSection) =>
         new(
-            id,
-            "Requests",
-            title,
-            icon,
-            typeof(RequestsStatTile),
-            Order: order,
-            Description: $"{title} media requests.",
-            Href: "/requests",
+            "requests.open", "Requests", "Open", Icons.Material.Filled.PendingActions, typeof(RequestsStatTile),
+            Description: "Open media requests.", Href: "/requests",
             EnabledConfigPath: "requests",
-            DefaultSection: defaultSection,
-            Parameters: new Dictionary<string, object?> { ["Metric"] = metric });
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "open" }),
+        new(
+            "requests.accepted", "Requests", "Accepted", Icons.Material.Filled.CheckCircle, typeof(RequestsStatTile),
+            Description: "Accepted media requests.", Href: "/requests",
+            EnabledConfigPath: "requests",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "accepted" }),
+        new(
+            "requests.denied", "Requests", "Denied", Icons.Material.Filled.Cancel, typeof(RequestsStatTile),
+            Description: "Denied media requests.", Href: "/requests",
+            EnabledConfigPath: "requests",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "denied" }),
+        new(
+            "requests.blacklisted", "Requests", "Blacklisted", Icons.Material.Filled.Block, typeof(RequestsStatTile),
+            Description: "Blacklisted media requests.", Href: "/requests",
+            EnabledConfigPath: "requests",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "blacklisted" }),
+        new(
+            "requests.total", "Requests", "Total", Icons.Material.Filled.AllInbox, typeof(RequestsStatTile),
+            Description: "Total media requests.", Href: "/requests",
+            EnabledConfigPath: "requests",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "total" }),
+
+        // The Requests page's pending queue as an interactive shelf.
+        new(
+            "requests.pending", "Requests", "Pending Requests", Icons.Material.Filled.HourglassTop,
+            typeof(PendingRequestsTile), Description: "Requests waiting for a decision, with approve and deny actions.",
+            EnabledConfigPath: "requests", DefaultSize: TileSize.VeryLarge)
+    ];
 }

@@ -15,7 +15,17 @@
     {
         <MudIcon Icon="@Icon" Color="Color.Primary" Size="Size.Medium" Class="st-page-header-icon" />
     }
-    <MudText Typo="Typo.h3" Class="st-page-title">@Title</MudText>
+    @if (string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <MudText Typo="Typo.h3" Class="st-page-title">@Title</MudText>
+    }
+    else
+    {
+        <div class="st-page-header-titles">
+            <MudText Typo="Typo.h3" Class="st-page-title">@Title</MudText>
+            <MudText Typo="Typo.h5" Class="st-page-subtitle">@Subtitle</MudText>
+        </div>
+    }
     @ChildContent
     @if (Actions != null)
     {
@@ -27,6 +37,7 @@
     [Parameter] public string Icon { get; set; } = "";
     [Parameter] public string LogoUrl { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
     [Parameter] public RenderFragment? StatusDot { get; set; }
     [Parameter] public RenderFragment? Actions { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }

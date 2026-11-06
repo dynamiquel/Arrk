@@ -42,16 +42,20 @@ sections:
       - id: torrents.download
 ```
 
-- `size` is `Small`, `Medium` (default) or `Large`.
-- A new account starts from a slim Overview: service status and totals, host, Docker, storage and
-  speedtest. Other tiles stay available in the editor.
+- `size` is `Small`, `Medium` (default), `Large` (double `Medium`) or `VeryLarge` (full width).
+- A new account starts from `ui.defaultDashboardSections`: an array of sections, each with an
+  array of tiles (`id` and `size`). The built-in default is a **Host** section with service
+  status, host, storage and speedtest, plus a **Library** section with pending requests and the
+  media/music shelves. Administrators can change this in Configuration → Interface; unknown,
+  disabled and admin-only tiles are filtered out per account. Other tiles stay available in the
+  editor.
 - Validation rejects unknown ids, duplicate tiles, disabled services, admin-only tiles for
   non-admins and oversized documents. Unknown ids render as a placeholder.
 - The document is stored per account in `UserUiPreferences` (`DashboardYaml`).
 
-## Tile Editor
+## Dashboard editor
 
-The editor is a card-sheet dialog opened from the dashboard:
+The **Edit Dashboard** button opens the editor as a card-sheet dialog:
 
 - **Visual** edits sections and tiles (add, remove, reorder, resize, rename).
 - **YAML** uses the shared Monaco editor with a generated schema for the dashboard document.

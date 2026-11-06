@@ -204,7 +204,7 @@ public static class NavidromePlaybackEndpoints
 
             if (!submission && int.TryParse(http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int playUserId))
             {
-                // Keep the small per-user "jump back in" history in step with the richer activity log.
+                // Keep the small per-user "Recently Played" history in step with the richer activity log.
                 await library.RecordPlayAsync(playUserId, songId, body.Title, body.Artist, body.Album, body.CoverArtUrl, ct);
             }
 

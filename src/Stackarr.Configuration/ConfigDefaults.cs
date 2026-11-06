@@ -27,5 +27,7 @@ public static class ConfigDefaults
             icon: "MonitorHeart", group: "Infrastructure", order: 50, groupOrder: 10));
         registry.Register(new ConfigSectionProvider<QualityProfilesConfig>("qualityProfiles", "Qualities",
             icon: "HighQuality", group: "Infrastructure", order: 60, groupOrder: 10));
+        registry.Register(new ConfigSectionProvider<UiConfig>("ui", "Interface",
+            icon: "Dashboard", group: "Application", order: 5, groupOrder: 0));
     }
 }

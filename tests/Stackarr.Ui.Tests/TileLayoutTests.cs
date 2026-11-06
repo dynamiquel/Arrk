@@ -31,6 +31,14 @@ public class TileLayoutTests
     static IConfiguration Config(params (string Key, string Value)[] settings) =>
         new ConfigurationBuilder()
             .AddInMemoryCollection(settings.ToDictionary(s => s.Key, s => (string?)s.Value))
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ui:defaultDashboardSections:0:title"] = "Overview",
+                ["ui:defaultDashboardSections:0:tiles:0:id"] = "system.host",
+                ["ui:defaultDashboardSections:0:tiles:0:size"] = "Medium",
+                ["ui:defaultDashboardSections:0:tiles:1:id"] = "torrents.download",
+                ["ui:defaultDashboardSections:0:tiles:1:size"] = "Medium"
+            })
             .Build();
 
     static (DashboardLayoutService Layouts, UserCssService Css, SqliteConnection Connection) Build(
@@ -54,17 +62,15 @@ public class TileLayoutTests
         UserUiPreferenceService preferences = new(factory);
 
         FakeTileProvider provider = new(
-            new("system.host", "System", "Host", "", typeof(StatTile),
-                Order: 10, DefaultSection: "Overview", DefaultOrder: 10),
-            new("torrents.download", "Torrents", "Download", "", typeof(StatTile),
-                Order: 20, DefaultSection: "Overview", DefaultOrder: 20, Href: "/downloads"),
-            new("admin.secret", "System", "Secret", "", typeof(StatTile),
-                Order: 30, AdminOnly: true, DefaultSection: "Overview", DefaultOrder: 30),
+            new("system.host", "System", "Host", "", typeof(StatTile)),
+            new("torrents.download", "Torrents", "Download", "", typeof(StatTile), Href: "/downloads"),
+            new("admin.secret", "System", "Secret", "", typeof(StatTile), AdminOnly: true),
             new("tv.movies", "TV", "Movies", "", typeof(StatTile),
-                Order: 40, EnabledConfigPath: "services:tv"));
+                EnabledConfigPath: "services:tv"));
 
-        TileRegistry registry = new([provider], configuration ?? Config());
-        DashboardLayoutService layouts = new(preferences, registry);
+        IConfiguration effective = configuration ?? Config();
+        TileRegistry registry = new([provider], effective);
+        DashboardLayoutService layouts = new(preferences, registry, effective);
         UserCssService css = new(preferences, []);
         return (layouts, css, connection);
     }
@@ -92,6 +98,21 @@ public class TileLayoutTests
     }
 
     [Test]
+    public async Task Registry_UsesProviderListOrderWithinACategory()
+    {
+        (DashboardLayoutService layouts, _, SqliteConnection connection) = Build();
+        await using (connection)
+        {
+            string[] systemIds = layouts.AvailableTiles(isAdmin: true)
+                .Where(t => t.Category == "System")
+                .Select(t => t.Id)
+                .ToArray();
+
+            await Assert.That(systemIds).IsEquivalentTo(["system.host", "admin.secret"]);
+        }
+    }
+
+    [Test]
     public async Task Schema_DescribesTileIdsAndStandardSizes()
     {
         (DashboardLayoutService layouts, _, SqliteConnection connection) = Build();
@@ -111,7 +132,7 @@ public class TileLayoutTests
 
             await Assert.That(ids).Contains("system.host");
             await Assert.That(ids).Contains("torrents.download");
-            await Assert.That(sizes).IsEquivalentTo(["Small", "Medium", "Large"]);
+            await Assert.That(sizes).IsEquivalentTo(["Small", "Medium", "Large", "VeryLarge"]);
         }
     }
 

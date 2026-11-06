@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Stackarr.Core.Configuration;
 using Stackarr.Core.Services;
 using System.Text.Json.Nodes;
@@ -40,7 +41,8 @@ public sealed record DashboardLayoutError(string Message);
 /// </summary>
 public sealed class DashboardLayoutService(
     UserUiPreferenceService preferences,
-    TileRegistry registry)
+    TileRegistry registry,
+    IConfiguration configuration)
 {
     public const int MaxSections = 20;
     public const int MaxTilesPerSection = 40;
@@ -173,10 +175,11 @@ public sealed class DashboardLayoutService(
                 {
                     ["type"] = "string",
                     ["description"] = "Standard tile size. The section grid decides how many fit per row.",
-                    ["enum"] = new JsonArray("Small", "Medium", "Large"),
+                    ["enum"] = new JsonArray("Small", "Medium", "Large", "VeryLarge"),
                     ["enumDescriptions"] = new JsonArray(
                         "Compact card (about four per row).",
                         "Wide card (about two per row).",
+                        "Double the Medium width (about half the row).",
                         "Full-width card (one per row)."),
                     ["default"] = "Small"
                 }
@@ -244,52 +247,85 @@ public sealed class DashboardLayoutService(
     }
 
     /// <summary>
-    /// Builds the default layout from tiles that opt in with <see cref="TileDefinition.DefaultSection"/>.
-    /// Tiles without a default section stay available in the editor but do not clutter a new
-    /// account's dashboard.
+    /// The layout a new account starts with. It comes from <c>ui.defaultDashboardSections</c> when
+    /// an administrator has set one, otherwise from the built-in default. Unknown, disabled and
+    /// admin-only tiles are dropped so the same config works for every account.
     /// </summary>
     public DashboardLayout CreateDefault(bool isAdmin)
     {
-        List<TileDefinition> curated = registry.Available(isAdmin)
-            .Where(t => !string.IsNullOrWhiteSpace(t.DefaultSection))
-            .OrderBy(t => t.DefaultOrder)
-            .ThenBy(t => t.Order)
-            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        List<DashboardSectionConfig> configured = configuration
+            .GetSection(UiConfig.SectionName)
+            .GetSection("defaultDashboardSections")
+            .Get<List<DashboardSectionConfig>>() ?? UiDefaults.CreateDefaultSections();
+        DashboardLayout source = new() { Version = 1 };
 
-        if (curated.Count == 0)
-            curated = [.. registry.Available(isAdmin)];
-
-        DashboardLayout layout = new() { Version = 1 };
-        string[] preferredOrder = ["Overview", "System", "Downloads", "Media", "Requests"];
-        IEnumerable<IGrouping<string, TileDefinition>> groups = curated
-            .GroupBy(t => t.DefaultSection ?? t.Category, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(g => SectionRank(g.Key, preferredOrder))
-            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
-
-        foreach (IGrouping<string, TileDefinition> group in groups)
+        foreach (DashboardSectionConfig section in configured)
         {
-            TileSection section = new()
+            source.Sections.Add(new TileSection
             {
-                Id = Slug(group.Key),
-                Title = group.Key,
-                Tiles = [.. group.Select(t => new DashboardTile { Id = t.Id, Size = t.DefaultSize })]
-            };
-            layout.Sections.Add(section);
+                Title = section.Title,
+                Tiles =
+                [
+                    .. section.Tiles.Select(tile => new DashboardTile
+                    {
+                        Id = tile.Id,
+                        Size = ToTileSize(tile.Size)
+                    })
+                ]
+            });
         }
 
-        return layout;
+        return FilterDefault(source, isAdmin);
     }
 
-    static int SectionRank(string name, IReadOnlyList<string> preferred)
+    static TileSize ToTileSize(DashboardTileSize size) => size switch
     {
-        for (int i = 0; i < preferred.Count; i++)
+        DashboardTileSize.Small => TileSize.Small,
+        DashboardTileSize.Large => TileSize.Large,
+        DashboardTileSize.VeryLarge => TileSize.VeryLarge,
+        _ => TileSize.Medium
+    };
+
+    DashboardLayout FilterDefault(DashboardLayout source, bool isAdmin)
+    {
+        DashboardLayout normalized = Normalize(source);
+        DashboardLayout filtered = new() { Version = 1 };
+
+        foreach (TileSection section in normalized.Sections)
         {
-            if (string.Equals(name, preferred[i], StringComparison.OrdinalIgnoreCase))
-                return i;
+            List<DashboardTile> tiles = [];
+            HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+
+            foreach (DashboardTile tile in section.Tiles)
+            {
+                TileDefinition? definition = registry.Find(tile.Id);
+                if (definition is null
+                    || !registry.IsAvailable(definition.EnabledConfigPath)
+                    || (!isAdmin && definition.AdminOnly)
+                    || !seen.Add(definition.Id))
+                {
+                    continue;
+                }
+
+                tiles.Add(new DashboardTile
+                {
+                    Id = definition.Id,
+                    Size = tile.Size ?? definition.DefaultSize
+                });
+            }
+
+            if (tiles.Count == 0)
+                continue;
+
+            filtered.Sections.Add(new TileSection
+            {
+                Id = section.Id,
+                Title = section.Title,
+                Tiles = tiles
+            });
         }
 
-        return preferred.Count;
+        return filtered;
     }
 
     public IReadOnlyList<DashboardLayoutError> Validate(DashboardLayout layout, bool isAdmin)

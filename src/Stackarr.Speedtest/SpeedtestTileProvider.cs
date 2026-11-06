@@ -22,10 +22,7 @@ public sealed class SpeedtestTileProvider : ITileProvider
                 "Speedtest",
                 Icons.Material.Filled.Speed,
                 typeof(SpeedtestTile),
-                Order: 70,
                 Description: "Latest network download, upload and ping results.",
-                DefaultSection: "Overview",
-                DefaultOrder: 90,
                 Parameters: new Dictionary<string, object?> { ["Target"] = "network" })
         ];
 
@@ -37,10 +34,7 @@ public sealed class SpeedtestTileProvider : ITileProvider
                 "VPN Speedtest",
                 Icons.Material.Filled.VpnLock,
                 typeof(SpeedtestTile),
-                Order: 71,
                 Description: "Latest speedtest through the VPN tunnel.",
-                DefaultSection: "Overview",
-                DefaultOrder: 91,
                 Parameters: new Dictionary<string, object?> { ["Target"] = "vpn" }));
         }
 

@@ -20,7 +20,6 @@ public sealed class DownloadManagementTileProvider : ITileProvider
             "Download",
             Icons.Material.Filled.ArrowDownward,
             typeof(TorrentStatTile),
-            Order: 10,
             Description: "Current download speed and total downloaded.",
             Href: "/downloads",
             Parameters: new Dictionary<string, object?> { ["Metric"] = "download" }),
@@ -30,7 +29,6 @@ public sealed class DownloadManagementTileProvider : ITileProvider
             "Upload",
             Icons.Material.Filled.ArrowUpward,
             typeof(TorrentStatTile),
-            Order: 20,
             Description: "Current upload speed and total uploaded.",
             Href: "/downloads",
             Parameters: new Dictionary<string, object?> { ["Metric"] = "upload" }),
@@ -40,7 +38,6 @@ public sealed class DownloadManagementTileProvider : ITileProvider
             "Active",
             Icons.Material.Filled.Cloud,
             typeof(TorrentStatTile),
-            Order: 30,
             Description: "Torrents currently downloading.",
             Href: "/downloads",
             Parameters: new Dictionary<string, object?> { ["Metric"] = "active" }),
@@ -50,7 +47,6 @@ public sealed class DownloadManagementTileProvider : ITileProvider
             "Seeding",
             Icons.Material.Filled.Speed,
             typeof(TorrentStatTile),
-            Order: 40,
             Description: "Torrents currently seeding.",
             Href: "/downloads",
             Parameters: new Dictionary<string, object?> { ["Metric"] = "seeding" }),
@@ -60,10 +56,7 @@ public sealed class DownloadManagementTileProvider : ITileProvider
             "Storage",
             Icons.Material.Filled.Storage,
             typeof(StorageTile),
-            Order: 10,
             Description: "Free space on the media and downloads roots.",
-            Href: "/downloads",
-            DefaultSection: "Overview",
-            DefaultOrder: 80)
+            Href: "/downloads")
     ];
 }

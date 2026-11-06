@@ -7,34 +7,41 @@
 
 @* The speedtest tile body: the shared frame supplies the title and icon. *@
 
-@if (_latest is not null && _latest.ErrorMessage is null)
-{
-    <div class="st-speedtest-values" style="display:flex;gap:1rem;margin:0.25rem 0;cursor:pointer;" @onclick="OpenHistory">
-        <div>
-            <div class="st-tile-metric-label">Down</div>
-            <div class="st-speedtest-value" style="font-size:1.1rem;font-weight:700;color:var(--st-green);">@((_latest.DownloadMbps / 8.0).ToString("F1"))<span class="st-tile-unit"> MB/s</span></div>
-        </div>
-        <div>
-            <div class="st-tile-metric-label">Up</div>
-            <div class="st-speedtest-value" style="font-size:1.1rem;font-weight:700;color:var(--st-blue);">@((_latest.UploadMbps / 8.0).ToString("F1"))<span class="st-tile-unit"> MB/s</span></div>
-        </div>
-        <div>
-            <div class="st-tile-metric-label">Ping</div>
-            <div class="st-speedtest-value" style="font-size:1.1rem;font-weight:700;color:var(--st-purple);">@_latest.PingMs.ToString("F0")<span class="st-tile-unit"> ms</span></div>
-        </div>
+@* The whole card is the click target: the body overlays the frame so the empty space and the
+   shared title row open the history too, not only the numbers. *@
+<div class="st-speedtest-tile" role="button" tabindex="0" title="Open speedtest history"
+     @onclick="OpenHistory" @onkeydown="OnKeyDown">
+    <div class="st-speedtest-tile-body">
+        @if (_latest is not null && _latest.ErrorMessage is null)
+        {
+            <div class="st-speedtest-values">
+                <div>
+                    <div class="st-tile-metric-label">Down</div>
+                    <div class="st-speedtest-value st-speedtest-value--down">@((_latest.DownloadMbps / 8.0).ToString("F1"))<span class="st-tile-unit"> MB/s</span></div>
+                </div>
+                <div>
+                    <div class="st-tile-metric-label">Up</div>
+                    <div class="st-speedtest-value st-speedtest-value--up">@((_latest.UploadMbps / 8.0).ToString("F1"))<span class="st-tile-unit"> MB/s</span></div>
+                </div>
+                <div>
+                    <div class="st-tile-metric-label">Ping</div>
+                    <div class="st-speedtest-value st-speedtest-value--ping">@_latest.PingMs.ToString("F0")<span class="st-tile-unit"> ms</span></div>
+                </div>
+            </div>
+            <div class="st-stat-sub">@GetTimeAgo(_latest.TestedAt)</div>
+        }
+        else if (_latest?.ErrorMessage is not null)
+        {
+            <div class="st-tile-error">Test failed</div>
+            <div class="st-stat-sub">@GetTimeAgo(_latest.TestedAt)</div>
+        }
+        else
+        {
+            <div class="st-stat-sub">No results yet</div>
+            <div class="st-stat-sub">Waiting for first test</div>
+        }
     </div>
-    <div class="st-stat-sub">@GetTimeAgo(_latest.TestedAt)</div>
-}
-else if (_latest?.ErrorMessage is not null)
-{
-    <div class="st-tile-error" style="margin:0.25rem 0;">Test failed</div>
-    <div class="st-stat-sub">@GetTimeAgo(_latest.TestedAt)</div>
-}
-else
-{
-    <div class="st-stat-sub" style="margin:0.25rem 0;">No results yet</div>
-    <div class="st-stat-sub">Waiting for first test</div>
-}
+</div>
 
 @code {
     [Parameter] public TileContext? Context { get; set; }
@@ -82,6 +89,12 @@ else
         DialogOptions options = new() { MaxWidth = MaxWidth.Large, FullWidth = true };
         DialogParameters parameters = new() { [nameof(SpeedtestHistoryDialog.Target)] = Target };
         await DialogService.ShowAsync<SpeedtestHistoryDialog>($"{Title} History", parameters, options);
+    }
+
+    async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" or " ")
+            await OpenHistory();
     }
 
     static string GetTimeAgo(DateTime testedAt)
