@@ -76,7 +76,7 @@ jobs:
           INPUT_TAGS: ${{ inputs.tags }}
         run: |
           set -euo pipefail
-          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/arrk"
 
           if ! [[ "$INPUT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "error: version is not valid SemVer: $INPUT_VERSION" >&2
@@ -119,7 +119,7 @@ jobs:
           push: ${{ inputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
-            org.opencontainers.image.title=Stackarr
+            org.opencontainers.image.title=Arrk
             org.opencontainers.image.description=One web UI and one config for a self-hosted media stack.
             org.opencontainers.image.version=${{ inputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}

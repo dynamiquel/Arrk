@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\Arrk.Ai\Arrk.Ai.csproj" />
+    <ProjectReference Include="..\Arrk.Ui\Arrk.Ui.csproj" />
+    <ProjectReference Include="..\Arrk.Configuration\Arrk.Configuration.csproj" />
+    <ProjectReference Include="..\Arrk.Docker\Arrk.Docker.csproj" />
+    <ProjectReference Include="..\Arrk.Tvarr\Arrk.Tvarr.csproj" />
+    <ProjectReference Include="..\Arrk.Music\Arrk.Music.csproj" />
+    <ProjectReference Include="..\Arrk.Slskd\Arrk.Slskd.csproj" />
+    <ProjectReference Include="..\Arrk.Prowlarr\Arrk.Prowlarr.csproj" />
+    <ProjectReference Include="..\Arrk.Subtitles\Arrk.Subtitles.csproj" />
+    <ProjectReference Include="..\Arrk.Subtitles.OpenSubtitles\Arrk.Subtitles.OpenSubtitles.csproj" />
+    <ProjectReference Include="..\Arrk.Bazarr\Arrk.Bazarr.csproj" />
+    <ProjectReference Include="..\Arrk.Cloudflared\Arrk.Cloudflared.csproj" />
+    <ProjectReference Include="..\Arrk.Transmission\Arrk.Transmission.csproj" />
+    <ProjectReference Include="..\Arrk.Jellyfin\Arrk.Jellyfin.csproj" />
+    <ProjectReference Include="..\Arrk.Navidrome\Arrk.Navidrome.csproj" />
+    <ProjectReference Include="..\Arrk.Orchestration\Arrk.Orchestration.csproj" />
+    <ProjectReference Include="..\Arrk.DownloadManagement\Arrk.DownloadManagement.csproj" />
+    <ProjectReference Include="..\Arrk.Notifications\Arrk.Notifications.csproj" />
+    <ProjectReference Include="..\Arrk.Speedtest\Arrk.Speedtest.csproj" />
+    <ProjectReference Include="..\Arrk.Requests\Arrk.Requests.csproj" />
+    <ProjectReference Include="..\Arrk.WatchActivity\Arrk.WatchActivity.csproj" />
+    <ProjectReference Include="..\Arrk.MediaLifecycle\Arrk.MediaLifecycle.csproj" />
+    <ProjectReference Include="..\Arrk.Mal\Arrk.Mal.csproj" />
+    <ProjectReference Include="..\Arrk.Auth\Arrk.Auth.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CronExpressionDescriptor" Version="2.51.0" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.*" />
+    <PackageReference Include="Hangfire.Storage.SQLite" Version="0.4.*" />
+    <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+    <PackageReference Include="Pondhawk.Monaco" Version="1.0.2" />
+    <PackageReference Include="NetEscapades.Configuration.Yaml" Version="3.1.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Jobs\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Ui.Components" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="wwwroot/img/logo.svg;wwwroot/favicon.svg" />
+    <Content Include="wwwroot/img/logo.svg;wwwroot/favicon.svg" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CopyBrandAssets" BeforeTargets="PrepareForBuild">
+    <Copy SourceFiles="../../site/assets/logo.svg;../../site/assets/favicon.svg"
+          DestinationFiles="wwwroot/img/logo.svg;wwwroot/favicon.svg" SkipUnchangedFiles="true" />
+  </Target>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

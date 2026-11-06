@@ -1,12 +1,12 @@
 # Downloads
 
-How Stackarr provisions download clients, watches what they do, and enforces the download
+How Arrk provisions download clients, watches what they do, and enforces the download
 lifecycle.
 
 ## Model
 
 Transmission downloads torrents, slskd downloads from Soulseek, and
-`Stackarr.DownloadManagement` owns the rules, events and unified `/downloads` page.
+`Arrk.DownloadManagement` owns the rules, events and unified `/downloads` page.
 
 - Transmission is core infrastructure for TV, movie and music torrents. It implements
   `ITorrentDownloader`.
@@ -21,7 +21,7 @@ Transmission downloads torrents, slskd downloads from Soulseek, and
 enabled; `services.torrentDownloader.enabled` is not consulted.
 
 - LinuxServer image, stack network, named config volume, `$downloads` read-write bind.
-- RPC on 9091 with basic auth (`transmission`/`stackarr`); peer port 51413 is internal only.
+- RPC on 9091 with basic auth (`transmission`/`arrk`); peer port 51413 is internal only.
 - Proxy is opt-in (`/transmission`).
 - `NetworkMode = container:<stack>-gluetun` when VPN-routed; no peer port is published.
 

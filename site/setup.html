@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Setup — Stackarr</title>
-  <meta name="description" content="Install Stackarr with the launcher script, Docker Compose or docker run. Requirements, storage layout, first boot and troubleshooting.">
+  <title>Setup — Arrk</title>
+  <meta name="description" content="Install Arrk with the launcher script, Docker Compose or docker run. Requirements, storage layout, first boot and troubleshooting.">
   <meta name="theme-color" content="#0f0a18">
   <script>document.documentElement.classList.add("js");</script>
-  <link rel="canonical" href="https://dynamiquel.github.io/Stackarr/setup.html">
+  <link rel="canonical" href="https://dynamiquel.github.io/Arrk/setup.html">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,9 +20,9 @@
 
   <header class="site-header">
     <div class="wrap header-inner">
-      <a class="brand" href="index.html" aria-label="Stackarr home">
+      <a class="brand" href="index.html" aria-label="Arrk home">
         <img src="assets/logo.svg" alt="" width="34" height="34">
-        <span>Stackarr</span>
+        <span>Arrk</span>
       </a>
       <nav class="site-nav" id="site-nav" aria-label="Main navigation">
         <a href="index.html">Overview</a>
@@ -33,7 +33,7 @@
         <a href="faq.html">FAQ</a>
       </nav>
       <div class="header-actions">
-        <a class="icon-link" href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="Stackarr on GitHub">
+        <a class="icon-link" href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener" aria-label="Arrk on GitHub">
           <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
         </a>
         <a class="btn btn-primary" href="#quick-start">Quick start</a>
@@ -51,7 +51,7 @@
         <span class="pill pill--pink"><span class="pill-dot"></span> Setup in one container</span>
         <h1 style="margin-top: 18px">From zero to a<br><span class="grad-text">working stack.</span></h1>
         <p class="lead">
-          Stackarr runs on a Linux host with Docker. You give it three host folders and access to
+          Arrk runs on a Linux host with Docker. You give it three host folders and access to
           the Docker socket; it creates the network, provisions the services and configures them
           through their APIs.
         </p>
@@ -64,7 +64,7 @@
           <span class="eyebrow">Before you begin</span>
           <h2>What you need.</h2>
           <p class="lead" style="font-size: 1rem">
-            A small always-on machine is plenty. The services do the heavy lifting; Stackarr is a
+            A small always-on machine is plenty. The services do the heavy lifting; Arrk is a
             single ASP.NET Core app that orchestrates them.
           </p>
           <div class="req-grid">
@@ -76,7 +76,7 @@
             <div class="req">
               <svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg>
               <b>Docker socket</b>
-              <span>Access to <code>/var/run/docker.sock</code>. This is powerful — treat the Stackarr container as root-equivalent.</span>
+              <span>Access to <code>/var/run/docker.sock</code>. This is powerful — treat the Arrk container as root-equivalent.</span>
             </div>
             <div class="req">
               <svg aria-hidden="true"><use href="assets/icons.svg#i-database"></use></svg>
@@ -94,7 +94,7 @@
             <div>
               <h4>Use a host you control</h4>
               <p>
-                Mounting the Docker socket lets Stackarr create and remove containers. Run it on a
+                Mounting the Docker socket lets Arrk create and remove containers. Run it on a
                 dedicated media host, not on a machine shared with things you do not want it to
                 touch. Back up <code>/config</code> before upgrades.
               </p>
@@ -103,17 +103,17 @@
         </div>
 
         <div class="card card--glow">
-          <span class="card-kicker"><svg aria-hidden="true" style="width:14px;height:14px"><use href="assets/icons.svg#i-layers"></use></svg> What Stackarr actually runs</span>
+          <span class="card-kicker"><svg aria-hidden="true" style="width:14px;height:14px"><use href="assets/icons.svg#i-layers"></use></svg> What Arrk actually runs</span>
           <h3>One container in front. The rest behind it.</h3>
           <p>
-            You start <code>stackarr</code>. It provisions the reverse proxy, the services you
+            You start <code>arrk</code>. It provisions the reverse proxy, the services you
             enable, the download clients and the VPN sidecar when needed. Their own UIs stay
             reachable for advanced work.
           </p>
           <div class="timeline" style="margin-top: 22px">
             <div class="timeline-item">
               <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-box"></use></svg></span>
-              <div><b>Stackarr</b><span>Your one web UI and config</span></div>
+              <div><b>Arrk</b><span>Your one web UI and config</span></div>
             </div>
             <div class="timeline-item">
               <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-cloud"></use></svg></span>
@@ -151,8 +151,8 @@
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>git clone https://github.com/dynamiquel/Stackarr.git
-cd Stackarr</code></pre>
+                <pre><code>git clone https://github.com/dynamiquel/Arrk.git
+cd Arrk</code></pre>
               </div>
             </div>
           </div>
@@ -163,8 +163,8 @@ cd Stackarr</code></pre>
               <h3>Recommended: use the launcher</h3>
               <p>
                 The script creates the storage directories and Docker network, pulls
-                <code>ghcr.io/dynamiquel/stackarr:latest</code>, then starts Stackarr. It defaults
-                to <code>./stackarr-data/{config,downloads,media}</code> and publishes the UI on
+                <code>ghcr.io/dynamiquel/arrk:latest</code>, then starts Arrk. It defaults
+                to <code>./arrk-data/{config,downloads,media}</code> and publishes the UI on
                 <code>:5186</code>.
               </p>
               <div class="code-block">
@@ -172,7 +172,7 @@ cd Stackarr</code></pre>
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>./scripts/run-stackarr.sh</code></pre>
+                <pre><code>./scripts/run-arrk.sh</code></pre>
               </div>
               <p style="margin-top: 12px">
                 Point it at existing storage or choose another port:
@@ -182,9 +182,9 @@ cd Stackarr</code></pre>
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>./scripts/run-stackarr.sh \
-  --data-root /srv/stackarr \
-  --name stackarr \
+                <pre><code>./scripts/run-arrk.sh \
+  --data-root /srv/arrk \
+  --name arrk \
   --stack-name media \
   --host-port 8080</code></pre>
               </div>
@@ -199,8 +199,8 @@ cd Stackarr</code></pre>
             <div>
               <h3>Or: Docker Compose</h3>
               <p>
-                The Compose file describes only the Stackarr container; Stackarr handles the rest.
-                It pulls the published image, writes data under <code>./stackarr-data</code> by
+                The Compose file describes only the Arrk container; Arrk handles the rest.
+                It pulls the published image, writes data under <code>./arrk-data</code> by
                 default and is tunnel-only unless you publish a port.
               </p>
               <div class="code-block">
@@ -216,14 +216,14 @@ cd Stackarr</code></pre>
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> .env</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>STACKARR_STACK_NAME=media
-STACKARR_CONTAINER_NAME=stackarr-media
-STACKARR_CONFIG_DIR=/srv/stackarr/config
-STACKARR_DOWNLOADS_DIR=/srv/stackarr/downloads
-STACKARR_MEDIA_DIR=/srv/stackarr/media
+                <pre><code>ARRK_STACK_NAME=media
+ARRK_CONTAINER_NAME=arrk-media
+ARRK_CONFIG_DIR=/srv/arrk/config
+ARRK_DOWNLOADS_DIR=/srv/arrk/downloads
+ARRK_MEDIA_DIR=/srv/arrk/media
 
 # Uncomment to publish the UI on the host:
-# STACKARR_HOST_PORT=5186</code></pre>
+# ARRK_HOST_PORT=5186</code></pre>
               </div>
             </div>
           </div>
@@ -238,24 +238,24 @@ STACKARR_MEDIA_DIR=/srv/stackarr/media
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>mkdir -p /srv/stackarr/{config,downloads,media}
+                <pre><code>mkdir -p /srv/arrk/{config,downloads,media}
 docker network create stackarr-media-net
-docker pull ghcr.io/dynamiquel/stackarr:latest
+docker pull ghcr.io/dynamiquel/arrk:latest
 
 docker run -d \
-  --name stackarr \
+  --name arrk \
   --network stackarr-media-net \
   --restart unless-stopped \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /srv/stackarr/config:/config \
-  -v /srv/stackarr/downloads:/downloads \
-  -v /srv/stackarr/media:/media \
+  -v /srv/arrk/config:/config \
+  -v /srv/arrk/downloads:/downloads \
+  -v /srv/arrk/media:/media \
   -p 5186:5186 \
   -e StackName=media \
-  ghcr.io/dynamiquel/stackarr:latest</code></pre>
+  ghcr.io/dynamiquel/arrk:latest</code></pre>
               </div>
               <p style="margin-top: 12px">
-                <code>StackName</code> namespaces every container Stackarr creates
+                <code>StackName</code> namespaces every container Arrk creates
                 (<code>stackarr-media-*</code>) and its Docker network
                 (<code>stackarr-media-net</code>), so multiple stacks can share a host.
               </p>
@@ -273,12 +273,12 @@ docker run -d \
             <h2>What happens next.</h2>
             <p class="lead">
               First boot pulls images, creates the network and provisions each enabled service.
-              It can take a few minutes. Follow along with <code>docker logs -f stackarr</code>.
+              It can take a few minutes. Follow along with <code>docker logs -f arrk</code>.
             </p>
             <div class="timeline" style="margin-top: 24px">
               <div class="timeline-item">
                 <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-settings"></use></svg></span>
-                <div><b>Config is created</b><span><code>/config/stackarr.yaml</code> is generated with defaults and a placeholder admin account.</span></div>
+                <div><b>Config is created</b><span><code>/config/arrk.yaml</code> is generated with defaults and a placeholder admin account.</span></div>
               </div>
               <div class="timeline-item">
                 <span class="timeline-dot"><svg aria-hidden="true"><use href="assets/icons.svg#i-box"></use></svg></span>
@@ -306,7 +306,7 @@ docker run -d \
             </p>
             <div class="code-block code-block--tight" style="margin-top: 16px">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>auth:
@@ -329,7 +329,7 @@ docker run -d \
         <div class="section-head reveal">
           <span class="eyebrow">Storage</span>
           <h2>Three mounts. That is the whole contract.</h2>
-          <p>Relative storage paths are anchored to Stackarr's data root; absolute paths are used verbatim as Docker bind sources.</p>
+          <p>Relative storage paths are anchored to Arrk's data root; absolute paths are used verbatim as Docker bind sources.</p>
         </div>
         <div class="table-wrap reveal">
           <table>
@@ -337,9 +337,9 @@ docker run -d \
               <tr><th>Host path</th><th>Container</th><th>What lives there</th></tr>
             </thead>
             <tbody>
-              <tr><td><code>/srv/stackarr/config</code></td><td><code>/config</code></td><td><code>stackarr.yaml</code>, Stackarr and Hangfire SQLite databases, service config volumes, OIDC and Data Protection keys.</td></tr>
-              <tr><td><code>/srv/stackarr/downloads</code></td><td><code>/downloads</code></td><td>Incomplete and complete torrents, Soulseek transfers, staged uploads and import scratch space.</td></tr>
-              <tr><td><code>/srv/stackarr/media</code></td><td><code>/media</code></td><td>Your library: <code>tv/movies</code>, <code>tv/shows</code> and <code>music</code> by default.</td></tr>
+              <tr><td><code>/srv/arrk/config</code></td><td><code>/config</code></td><td><code>arrk.yaml</code>, Arrk and Hangfire SQLite databases, service config volumes, OIDC and Data Protection keys.</td></tr>
+              <tr><td><code>/srv/arrk/downloads</code></td><td><code>/downloads</code></td><td>Incomplete and complete torrents, Soulseek transfers, staged uploads and import scratch space.</td></tr>
+              <tr><td><code>/srv/arrk/media</code></td><td><code>/media</code></td><td>Your library: <code>tv/movies</code>, <code>tv/shows</code> and <code>music</code> by default.</td></tr>
             </tbody>
           </table>
         </div>
@@ -356,13 +356,13 @@ docker run -d \
           <span class="eyebrow">Ports &amp; remote access</span>
           <h2>Direct, proxied or tunnel-only.</h2>
           <p class="lead" style="font-size: 1rem">
-            Stackarr listens on <code>5186</code> for bootstrap access. Traefik publishes host
+            Arrk listens on <code>5186</code> for bootstrap access. Traefik publishes host
             <code>80</code> and <code>443</code> by default. If those ports are taken, or you do
             not want any inbound ports, change them in config.
           </p>
           <div class="code-block" style="margin-top: 18px">
             <div class="code-head">
-              <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+              <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
               <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
             </div>
             <pre><code>routes:
@@ -396,7 +396,7 @@ docker run -d \
             </div>
           </div>
           <p class="muted" style="margin-top: 16px; font-size: .8rem">
-            TLS certificates are not automated yet. Put Stackarr behind a TLS-terminating proxy or
+            TLS certificates are not automated yet. Put Arrk behind a TLS-terminating proxy or
             tunnel and set <code>auth.requireHttps</code>.
           </p>
         </div>
@@ -414,13 +414,13 @@ docker run -d \
         <details>
           <summary>“Cannot talk to the Docker daemon” <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
           <div class="accordion-body">
-            <p>Stackarr needs the host Docker socket. Check that it is mounted and that the container can reach it:</p>
+            <p>Arrk needs the host Docker socket. Check that it is mounted and that the container can reach it:</p>
             <div class="code-block code-block--tight">
               <div class="code-head"><span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span><button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button></div>
-              <pre><code>docker exec stackarr ls -l /var/run/docker.sock
-docker exec stackarr docker info</code></pre>
+              <pre><code>docker exec arrk ls -l /var/run/docker.sock
+docker exec arrk docker info</code></pre>
             </div>
-            <p>On SELinux hosts, the socket mount may need a label. Stackarr is designed for Linux; Docker Desktop on macOS/Windows is not a supported host.</p>
+            <p>On SELinux hosts, the socket mount may need a label. Arrk is designed for Linux; Docker Desktop on macOS/Windows is not a supported host.</p>
           </div>
         </details>
 
@@ -429,7 +429,7 @@ docker exec stackarr docker info</code></pre>
           <div class="accordion-body">
             <p>Either stop the other service, change the Traefik ports in config, or disable host publishing entirely for a tunnel-only deployment:</p>
             <div class="code-block code-block--tight">
-              <div class="code-head"><span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span><button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button></div>
+              <div class="code-head"><span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span><button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button></div>
               <pre><code>routes:
   httpPort: 8080
   httpsPort: 8443</code></pre>
@@ -443,8 +443,8 @@ docker exec stackarr docker info</code></pre>
             <p>Pulling service images is the slow part. Watch the log rather than assuming it has failed:</p>
             <div class="code-block code-block--tight">
               <div class="code-head"><span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span><button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button></div>
-              <pre><code>docker logs -f stackarr
-docker ps --filter name=stackarr-</code></pre>
+              <pre><code>docker logs -f arrk
+docker ps --filter name=arrk-</code></pre>
             </div>
             <p>A slow first pull is normal. A loop of failed starts usually points at a port conflict or a missing storage directory.</p>
           </div>
@@ -453,14 +453,14 @@ docker ps --filter name=stackarr-</code></pre>
         <details>
           <summary>Sign-in loops or redirects to the wrong host <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
           <div class="accordion-body">
-            <p>Set <code>routes.publicUrl</code> to the exact URL you use in the browser, including scheme. If TLS terminates in front of Stackarr, set <code>auth.requireHttps</code> and make sure forwarded headers are allowed from your proxy network. Changing the public URL invalidates some cookies; sign in again.</p>
+            <p>Set <code>routes.publicUrl</code> to the exact URL you use in the browser, including scheme. If TLS terminates in front of Arrk, set <code>auth.requireHttps</code> and make sure forwarded headers are allowed from your proxy network. Changing the public URL invalidates some cookies; sign in again.</p>
           </div>
         </details>
 
         <details>
           <summary>Media imports but players do not see it <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
           <div class="accordion-body">
-            <p>Confirm the library mounts point at the same host folders and that Jellyfin libraries use the paths inside its container (<code>/movies</code>, <code>/shows</code>, <code>/music</code>). Stackarr triggers a scan after imports, but a manual refresh can help while you are setting up.</p>
+            <p>Confirm the library mounts point at the same host folders and that Jellyfin libraries use the paths inside its container (<code>/movies</code>, <code>/shows</code>, <code>/music</code>). Arrk triggers a scan after imports, but a manual refresh can help while you are setting up.</p>
           </div>
         </details>
 
@@ -470,8 +470,8 @@ docker ps --filter name=stackarr-</code></pre>
             <p>The mounted config directory is often root-owned. Back it up first, then inspect or edit from inside the container:</p>
             <div class="code-block code-block--tight">
               <div class="code-head"><span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span><button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button></div>
-              <pre><code>docker cp stackarr:/config/stackarr.yaml ./stackarr.yaml.bak
-docker exec -it stackarr sh -c 'vi /config/stackarr.yaml'</code></pre>
+              <pre><code>docker cp arrk:/config/arrk.yaml ./arrk.yaml.bak
+docker exec -it arrk sh -c 'vi /config/arrk.yaml'</code></pre>
             </div>
           </div>
         </details>
@@ -499,7 +499,7 @@ docker exec -it stackarr sh -c 'vi /config/stackarr.yaml'</code></pre>
         <div class="footer-brand">
           <a class="brand" href="index.html">
             <img src="assets/logo.svg" alt="" width="34" height="34">
-            <span>Stackarr</span>
+            <span>Arrk</span>
           </a>
           <p>One web UI and one config for a self-hosted media stack. Movies, shows, music and the services behind them.</p>
         </div>
@@ -522,17 +522,17 @@ docker exec -it stackarr sh -c 'vi /config/stackarr.yaml'</code></pre>
         <div class="footer-col">
           <h4>Project</h4>
           <ul>
-            <li><a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener">GitHub</a></li>
-            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
-            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Stackarr. Built for the self-hosted corner of the internet.</span>
+        <span>© <span data-year>2026</span> Arrk. Built for the self-hosted corner of the internet.</span>
         <span class="footer-note"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg> Early alpha — expect changes.</span>
         <div class="footer-social">
-          <a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="GitHub">
+          <a href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener" aria-label="GitHub">
             <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
           </a>
         </div>

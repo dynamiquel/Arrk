@@ -1,0 +1,35 @@
+@page "/docker"
+@attribute [Authorize(Policy = ArrkPolicies.AdminOnly)]
+
+<PageTitle>Arrk - Docker</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.ViewModule" Title="Docker" />
+
+<DockerEventsTile />
+
+<div class="st-card" style="overflow:hidden;padding:var(--st-space-md);">
+    <StTabs T="int" Class="mb-0"
+            Items="_tabs" Value="_activeTab" ValueChanged="OnTabChanged" />
+    <div style="padding-top:var(--st-space-md);">
+        @if (_activeTab == 0)
+        {
+            <ServiceView />
+        }
+        else
+        {
+            <InfrastructureView />
+        }
+    </div>
+</div>
+
+@code {
+    int _activeTab = 0;
+
+    static readonly StTabItem<int>[] _tabs =
+    [
+        new(0, "Services", Icons.Material.Filled.Dns),
+        new(1, "Infrastructure", Icons.Material.Filled.Storage)
+    ];
+
+    void OnTabChanged(int value) => _activeTab = value;
+}

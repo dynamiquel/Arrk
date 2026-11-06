@@ -1,6 +1,6 @@
-# Stackarr website
+# Arrk website
 
-Static GitHub Pages site for Stackarr. Everything is plain HTML, CSS and a small
+Static GitHub Pages site for Arrk. Everything is plain HTML, CSS and a small
 vanilla-JavaScript file — no build step.
 
 ## Preview locally
@@ -29,4 +29,4 @@ deployment → Source** to **GitHub Actions**.
 - `robots.txt`, `sitemap.xml` — crawler hints for the canonical Pages URL.
 
 The canonical URL and social metadata assume the site is published at
-`https://dynamiquel.github.io/Stackarr/`. Update those absolute URLs if the repository moves.
+`https://dynamiquel.github.io/Arrk/`. Update those absolute URLs if the repository moves.

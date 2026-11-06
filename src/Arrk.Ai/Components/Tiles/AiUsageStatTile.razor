@@ -1,0 +1,93 @@
+@inject AiUsageService Usage
+@inject AiCache Cache
+@using Arrk.Ui.Components
+@implements IDisposable
+
+@if (_loading)
+{
+    <MudSkeleton Width="70px" Height="32px" />
+}
+else
+{
+    <div class="st-stat-value st-stat-value--@ValueColor">@Value</div>
+    @if (!string.IsNullOrEmpty(Sub))
+    {
+        <div class="st-stat-sub">@Sub</div>
+    }
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    /// <summary>One of <c>calls</c>, <c>tokens</c>, <c>failures</c> or <c>cache</c>.</summary>
+    [Parameter] public string Metric { get; set; } = "calls";
+
+    const int RefreshSeconds = 60;
+
+    AiUsageSummary? _summary;
+    int _cacheEntries;
+    long _cacheBytes;
+    bool _loading = true;
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    string Value => Metric switch
+    {
+        "tokens" => (_summary?.TotalTokens ?? 0).ToString("N0"),
+        "failures" => (_summary?.Failures ?? 0).ToString("N0"),
+        "cache" => _cacheEntries.ToString("N0"),
+        _ => (_summary?.Calls ?? 0).ToString("N0")
+    };
+
+    string Sub => Metric switch
+    {
+        "tokens" => $"in {(_summary?.PromptTokens ?? 0):N0} · out {(_summary?.CompletionTokens ?? 0):N0}",
+        "cache" => $"{FormatHelper.FormatBytes(_cacheBytes)} stored",
+        _ => ""
+    };
+
+    string ValueColor => Metric switch
+    {
+        "tokens" => "blue",
+        "failures" => (_summary?.Failures ?? 0) > 0 ? "red" : "green",
+        "cache" => "green",
+        _ => "purple"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(CancellationToken.None);
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAsync(CancellationToken ct)
+    {
+        try
+        {
+            _summary = await Usage.GetSummaryAsync(DateTime.UtcNow.AddDays(-30), ct);
+            (_cacheEntries, _cacheBytes) = await Cache.GetStatsAsync(ct);
+            _loading = false;
+        }
+        catch
+        {
+            // Keep the last values.
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+}

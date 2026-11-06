@@ -1,0 +1,281 @@
+@inject ResourceInventory Inventory
+@inject ServiceProvisioner Provisioner
+@inject ServiceStateManager StateManager
+@inject ServiceRegistry ServiceRegistry
+@inject IOptionsMonitor<ArrkConfig> Config
+@inject LiveActivityRegistry LiveActivity
+@inject NavigationManager Nav
+@implements IDisposable
+
+@if (_loading)
+{
+    <LoadingView />
+}
+else
+{
+    <MudGrid Class="mt-2 st-service-grid">
+        @foreach (ServiceCardInfo service in _serviceCards)
+        {
+            bool isExpanded = _expandedServices.Contains(service.Key);
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <div class="st-service-card @GetCardClass(service) @(isExpanded ? "st-service-card--expanded" : "")" @onclick="() => ToggleExpand(service.Key)">
+                    <div class="status-dot @(service.IsRunning ? "status-dot--running" : service.IsEnabled ? "status-dot--stopped" : "status-dot--unknown")"></div>
+                    <div style="min-width:0;flex:1;">
+                        <div class="st-service-name">@GetServiceIcon(service.Key) @service.DisplayName</div>
+                        <div class="st-service-desc">@service.Description</div>
+                        @if (service.Metrics != null && service.Metrics.RunningContainerCount > 0)
+                        {
+                            <div class="st-hw-bars">
+                                <UsageBar Label="CPU" Percent="service.Metrics.CpuPercent" Text="@($"{service.Metrics.CpuPercent:F1}%")" />
+                                <UsageBar Label="MEM" Percent="service.Metrics.MemoryPercent" Text="@FormatHelper.FormatBytes(service.Metrics.MemoryUsageBytes)" />
+                            </div>
+                        }
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                        @if (!service.IsEnabled)
+                        {
+                            <StChip Variant="neutral">Off</StChip>
+                        }
+                        else if (service.IsRunning && !service.IsHealthy)
+                        {
+                            <StChip Variant="warning">Unhealthy</StChip>
+                        }
+                        else if (!service.IsRunning)
+                        {
+                            <StChip Variant="error">Down</StChip>
+                        }
+                        <MudIcon Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" Class="@($"st-service-expand-icon {(isExpanded ? "st-service-expand-icon--open" : "")}")" />
+                    </div>
+                </div>
+
+                @if (isExpanded)
+                {
+                    <div class="st-service-detail">
+                        @if (service.Containers.Any())
+                        {
+                            <div class="st-service-detail-label"><MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" /> Containers</div>
+                            @foreach (ContainerInfo container in service.Containers)
+                            {
+                                <div class="st-service-detail-row">
+                                    <div class="status-dot status-dot--sm @CssClassHelper.GetContainerDotClass(container.State)"></div>
+                                    <MudLink Href="@($"/docker/container/{container.Id}")" Class="mr-auto" Typo="Typo.body2"><EntityIcon EntityType="container" /> @container.Name</MudLink>
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                                        @if (container.State != ContainerState.Running)
+                                        {
+                                            <MudMenuItem OnClick="@(() => HandleContainerAction(ContainerActionHelper.StartContainer, container.Id, container.Name))">
+                                                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" /> Start
+                                            </MudMenuItem>
+                                        }
+                                        else
+                                        {
+                                            <MudMenuItem OnClick="@(() => HandleContainerAction(ContainerActionHelper.StopContainer, container.Id, container.Name))">
+                                                <MudIcon Icon="@Icons.Material.Filled.Stop" Size="Size.Small" /> Stop
+                                            </MudMenuItem>
+                                            <MudMenuItem OnClick="@(() => HandleContainerAction(ContainerActionHelper.RestartContainer, container.Id, container.Name))">
+                                                <MudIcon Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" /> Restart
+                                            </MudMenuItem>
+                                        }
+                                    </MudMenu>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No containers</MudText>
+                        }
+
+                        @if (service.Volumes.Any())
+                        {
+                            <div class="st-service-detail-label"><MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" /> Volumes</div>
+                            @foreach (VolumeInfo vol in service.Volumes)
+                            {
+                                <div class="st-service-detail-row">
+                                    <EntityIcon EntityType="volume" />
+                                    <MudLink Href="@($"/docker/volume/{Uri.EscapeDataString(vol.ResolvedPath)}")" Typo="Typo.caption" Class="mr-auto">@vol.Key</MudLink>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family:var(--st-font-mono);">@vol.ContainerPath</MudText>
+                                    @if (!vol.ReadOnly)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Outlined.EditNote" Size="Size.Small" />
+                                    }
+                                </div>
+                            }
+                        }
+
+                        @if (service.Networks.Any())
+                        {
+                            <div class="st-service-detail-label"><MudIcon Icon="@Icons.Material.Filled.Lan" Size="Size.Small" /> Networks</div>
+                            @foreach (DockerDotNet.Models.NetworkResponse network in service.Networks)
+                            {
+                                <div class="st-service-detail-row">
+                                    <EntityIcon EntityType="network" />
+                                    <MudLink Typo="Typo.caption" Href="@($"/docker/network/{network.ID}")">@network.Name</MudLink>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    bool _loading = true;
+    List<ServiceCardInfo> _serviceCards = [];
+    Timer? _refreshTimer;
+    CancellationTokenSource? _cts;
+    HashSet<string> _expandedServices = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServices();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadServices();
+            },
+            TimeSpan.FromSeconds(DockerUiConstants.ServiceViewInitialDelaySeconds),
+            TimeSpan.FromSeconds(DockerUiConstants.ServiceViewRefreshSeconds));
+        _refreshTimer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadServices()
+    {
+        try
+        {
+            ArrkConfig config = Config.CurrentValue;
+            List<Service> services = await StateManager.GetAllServices();
+            VolumePathResolver resolver = new(config.Storage);
+
+            List<DockerDotNet.Models.NetworkResponse> networks = [];
+            try
+            {
+                networks = await Inventory.GetOwnedNetworks();
+            }
+            catch { }
+
+            _serviceCards = [];
+
+            foreach (Service svc in services)
+            {
+                HashSet<string> containerIds = svc.State.Containers.Select(c => c.Id).ToHashSet();
+
+                IEnumerable<VolumeMount> mounts = svc.State.Containers.SelectMany(c => c.Mounts).Distinct();
+                List<VolumeInfo> volumes = mounts.Select(rv => new VolumeInfo
+                {
+                    Key = rv.HostPath,
+                    ContainerPath = rv.ContainerPath,
+                    ResolvedPath = resolver.ResolveToHostPath(rv.HostPath),
+                    ReadOnly = rv.Permissions == VolumePerms.ReadOnly
+                }).ToList();
+
+                List<DockerDotNet.Models.NetworkResponse> serviceNetworks = networks
+                    .Where(n => n.Containers != null && n.Containers.Any(c => containerIds.Contains(c.Key)))
+                    .ToList();
+
+                _serviceCards.Add(new()
+                {
+                    Key = svc.Definition.Key,
+                    DisplayName = svc.Definition.DisplayName,
+                    Description = svc.Definition.Description,
+                    IsEnabled = svc.State.IsEnabled,
+                    IsInfrastructure = svc.Definition.IsInfrastructure,
+                    IsRunning = svc.State.IsHealthy,
+                    IsHealthy = svc.State.IsHealthy,
+                    Containers = svc.State.Containers,
+                    Networks = serviceNetworks,
+                    Volumes = volumes,
+                    Metrics = svc.State.Metrics
+                });
+            }
+            _serviceCards = _serviceCards.OrderBy(s => s.DisplayName).ToList();
+        }
+        catch
+        {
+            _serviceCards = [];
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task HandleContainerAction(Func<string, string, LiveActivityRegistry, Func<Task>?, Task> action, string containerId, string containerName)
+    {
+        StateManager.InvalidateCache();
+        await action(containerId, containerName, LiveActivity, LoadServices);
+    }
+
+    void ToggleExpand(string key)
+    {
+        if (_expandedServices.Contains(key))
+        {
+            _expandedServices.Remove(key);
+        }
+        else
+        {
+            _expandedServices.Add(key);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+
+    static string GetCardClass(ServiceCardInfo service)
+    {
+        if (!service.IsEnabled)
+        {
+            return "st-service-card--disabled";
+        }
+
+        if (service.IsEnabled && !service.IsRunning)
+        {
+            return "st-service-card--error";
+        }
+
+        return "";
+    }
+
+    static string GetServiceIcon(string key) => key switch
+    {
+        "tv" => "\U0001F4FA",
+        "music" => "\U0001F3B5",
+        "jellyfin" => "\U0001F3AC",
+        "navidrome" => "\U0001F3B6",
+        "traefik" => "\U0001F310",
+        "gluetun" => "\U0001F512",
+        "prowlarr" => "\U0001F50D",
+        "qbittorrent" => "\u26A1",
+        "bazarr" => "\U0001F4CC",
+        _ => ""
+    };
+
+    class ServiceCardInfo
+    {
+        public string Key { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public bool IsEnabled { get; set; }
+        public bool IsInfrastructure { get; set; }
+        public bool IsRunning { get; set; }
+        public bool IsHealthy { get; set; }
+        public List<ContainerInfo> Containers { get; set; } = [];
+        public List<DockerDotNet.Models.NetworkResponse> Networks { get; set; } = [];
+        public List<VolumeInfo> Volumes { get; set; } = [];
+        public ServiceMetrics? Metrics { get; set; }
+    }
+
+    class VolumeInfo
+    {
+        public string Key { get; init; } = "";
+        public string ContainerPath { get; init; } = "";
+        public string ResolvedPath { get; init; } = "";
+        public bool ReadOnly { get; set; }
+    }
+}

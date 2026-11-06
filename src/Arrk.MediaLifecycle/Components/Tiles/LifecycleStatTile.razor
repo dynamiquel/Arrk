@@ -1,0 +1,118 @@
+@inject StaleMediaService Stale
+@using Arrk.Core.Lifecycle
+@using Arrk.Ui.Components
+@implements IDisposable
+
+@if (!Stale.IsAvailable)
+{
+    <div class="st-stat-sub">Unavailable</div>
+}
+else if (!_loaded)
+{
+    <MudSkeleton Width="70px" Height="32px" />
+}
+else if (_report is null)
+{
+    <div class="st-stat-sub">Unavailable</div>
+}
+else if (Metric == "autocleanup")
+{
+    <div class="st-stat-value st-stat-value--green">@AutoCleanupLabel()</div>
+    <div class="st-stat-sub">@AutoCleanupDetail()</div>
+}
+else
+{
+    <div class="st-stat-value st-stat-value--@ValueColor">@Value</div>
+    <div class="st-stat-sub">@Sub</div>
+}
+
+@code {
+    [Parameter] public TileContext? Context { get; set; }
+
+    /// <summary>One of <c>stale</c>, <c>expiring</c>, <c>reclaimable</c> or <c>autocleanup</c>.</summary>
+    [Parameter] public string Metric { get; set; } = "stale";
+
+    const int RefreshSeconds = 300;
+
+    StaleMediaReport? _report;
+    bool _loaded;
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    string Value => Metric switch
+    {
+        "expiring" => _report?.Expiring.Count().ToString() ?? "0",
+        "reclaimable" => FormatHelper.FormatBytes((_report?.StaleBytes ?? 0) + (_report?.ExpiringBytes ?? 0)),
+        _ => _report?.Stale.Count().ToString() ?? "0"
+    };
+
+    string Sub => Metric switch
+    {
+        "expiring" => FormatHelper.FormatBytes(_report?.ExpiringBytes ?? 0),
+        "reclaimable" => "stale + expiring",
+        _ => FormatHelper.FormatBytes(_report?.StaleBytes ?? 0)
+    };
+
+    string ValueColor => Metric switch
+    {
+        "expiring" => "yellow",
+        "reclaimable" => "purple",
+        _ => "red"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(CancellationToken.None);
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadAsync(ct);
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(RefreshSeconds),
+            TimeSpan.FromSeconds(RefreshSeconds));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAsync(CancellationToken ct)
+    {
+        if (!Stale.IsAvailable)
+            return;
+
+        try
+        {
+            _report = await Stale.GetReportAsync(false, ct);
+        }
+        catch
+        {
+            // Keep the last snapshot.
+        }
+        finally
+        {
+            _loaded = true;
+        }
+    }
+
+    string AutoCleanupLabel()
+    {
+        if (_report is null)
+            return "Off";
+
+        int on = _report.Thresholds.Values.Count(x => x.AutoCleanup);
+        return on == 0 ? "Off" : on == _report.Thresholds.Count ? "On" : $"{on}/{_report.Thresholds.Count}";
+    }
+
+    string AutoCleanupDetail() => _report is null
+        ? "No thresholds"
+        : string.Join(" · ", _report.Thresholds.Select(x =>
+            $"{x.Key} {(x.Value.AutoCleanup ? "on" : "off")}"));
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+}

@@ -1,27 +1,27 @@
 # UI architecture
 
-How Stackarr's UI is composed from modules. For plugins see [`modules.md`](modules.md).
+How Arrk's UI is composed from modules. For plugins see [`modules.md`](modules.md).
 
-The shell (`Stackarr.App`) never references a module's UI. It renders whatever the registered
-`Stackarr.Ui` contracts describe, and every module, built-in or drop-in, contributes through
+The shell (`Arrk.App`) never references a module's UI. It renders whatever the registered
+`Arrk.Ui` contracts describe, and every module, built-in or drop-in, contributes through
 those contracts.
 
 ## Layers
 
 ```
-Stackarr.App        host: Blazor app, layout, router, module and plugin loader
-  +- Stackarr.Ui    shared UI layer every module builds against
+Arrk.App        host: Blazor app, layout, router, module and plugin loader
+  +- Arrk.Ui    shared UI layer every module builds against
        +- contracts  navigation, discover, regions, head assets, tiles, activity
        +- components primitives, theme and component JS (RCL)
-Stackarr.<Module>   Razor class library owning its pages, dialogs, styles, scripts and endpoints
+Arrk.<Module>   Razor class library owning its pages, dialogs, styles, scripts and endpoints
 ```
 
-`Stackarr.Ui.Components` holds the reusable primitives (`PageHeader`, `StTabs`,
+`Arrk.Ui.Components` holds the reusable primitives (`PageHeader`, `StTabs`,
 `StToggleChips`, `SearchBox`, `StChip`, `StatTile`, `StCardSheetDialog`, `UiRegion`, ...), the
 shared theme (`wwwroot/css/{app,site}.css`) and the component JS. `UiRegistry` publishes them as
 built-in head assets.
 
-Typography is one rem ladder; `StackarrTheme` mirrors it for MudBlazor. Body text and tabs are
+Typography is one rem ladder; `ArrkTheme` mirrors it for MudBlazor. Body text and tabs are
 `--st-font-size-md` (1rem), secondary metadata is `--st-font-size-sm`, and `--st-font-size-2xs`
 (0.75rem) is the floor for visible text. Only the root declares a pixel size.
 
@@ -38,7 +38,7 @@ flash.
 | `IUiSlotProvider` or `[UiRegion]` | A component injected into a named region | Wherever the region renders |
 | `IHeadAssetProvider` | Styles and scripts, in load order | `<head>` and end of `<body>` |
 | `ITileProvider` | Dashboard/page widgets | Dashboard and pages |
-| `IStackarrModule.ConfigureEndpoints` | The module's HTTP endpoints | Mapped by the host |
+| `IArrkModule.ConfigureEndpoints` | The module's HTTP endpoints | Mapped by the host |
 | `IWatchStateProvider` | Player history and continue-watching | Watch-state facade |
 
 `UiRegistry` composes everything once at startup, filters each contribution by its
@@ -81,6 +81,13 @@ which module owns it. DI, hosted services and jobs stay registered; the flag gat
 
 ## Assets and routing
 
+- The app, anonymous account pages, README and public website use `site/assets/logo.svg` and
+  `site/assets/favicon.svg` as their canonical brand marks. `Arrk.App.csproj` copies those SVGs
+  into `wwwroot/img/logo.svg` and `wwwroot/favicon.svg` before building for development or publishing;
+  the generated copies are gitignored. Docker copies the same source assets into its build context.
+  The ICO fallback is generated from the
+  favicon SVG with ImageMagick (`magick -background none site/assets/favicon.svg -define
+  icon:auto-resize=64,48,32,16 src/Arrk.App/wwwroot/favicon.ico`).
 - The shared theme loads first (`app.css`, then `site.css`); module stylesheets load after, so a
   module override wins.
 - Component JS loads first; module scripts load after.
@@ -91,7 +98,7 @@ which module owns it. DI, hosted services and jobs stay registered; the flag gat
 
 ## Building a module's UI
 
-1. Make the module a Razor class library and reference `Stackarr.Ui`.
+1. Make the module a Razor class library and reference `Arrk.Ui`.
 2. Register `INavigationProvider`, `IDiscoverSourceProvider`, `IUiSlotProvider`,
    `IHeadAssetProvider` or `ITileProvider`; set `EnabledConfigPath` where relevant.
 3. Add `@page` components built from the shared primitives.

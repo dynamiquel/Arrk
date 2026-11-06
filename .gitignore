@@ -36,11 +36,16 @@ bld/
 .DS_Store
 Thumbs.db
 
-## Stackarr
+## Arrk
 config/
 data/
 tmp/
+arrk-data/
 stackarr-data/
+
+## Brand assets copied from site/assets during the app build
+src/Arrk.App/wwwroot/img/logo.svg
+src/Arrk.App/wwwroot/favicon.svg
 
 ## Local runtime state
 *.db

@@ -1,0 +1,340 @@
+@page "/config"
+@attribute [Authorize(Policy = ArrkPolicies.AdminOnly)]
+@inject ConfigEditorService ConfigService
+@inject IOptionsMonitor<ArrkConfig> ConfigMonitor
+@inject ISnackbar Snackbar
+@inject IConfiguration Configuration
+@inject ConfigSectionRegistry SectionRegistry
+@inject ConfigValidator ConfigValidator
+@inject ConfigFormBuilder FormBuilder
+@inject ConfigSchemaGenerator SchemaGenerator
+
+<PageTitle>Arrk - Configuration</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Settings" Title="Configuration" />
+
+@* Shared action bar: editor mode + apply/undo *@
+<div class="config-toolbar">
+    <StTabs T="EditorMode" Variant="segmented" Class="mb-0"
+            Items="ModeTabs" Value="_mode" ValueChanged="SwitchMode" />
+
+    @if (_hasUnsavedChanges)
+    {
+        <StChip Variant="warning" Class="ml-2">Unsaved</StChip>
+    }
+
+    <div class="ml-auto d-flex align-center" style="gap:var(--st-space-xs);">
+        <MudButton StartIcon="@Icons.Material.Filled.Save" Color="Color.Primary" Class="st-btn-gradient" OnClick="ApplyConfig"
+                   Disabled="@(_loading || string.IsNullOrEmpty(_editorContent))" title="Apply config" AriaLabel="Apply config">
+            <span class="st-btn-label">Apply</span>
+        </MudButton>
+        <MudButton StartIcon="@Icons.Material.Filled.Undo" Color="Color.Default" Variant="Variant.Outlined" OnClick="UndoConfig"
+                   Disabled="@(_loading || !_hasUnsavedChanges)" title="Undo changes" AriaLabel="Undo changes">
+            <span class="st-btn-label">Undo</span>
+        </MudButton>
+        @if (_lastSaveResult?.BackedUpVersion != null)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                v@(Path.GetFileName(_lastSaveResult.BackedUpVersion))
+            </MudText>
+        }
+    </div>
+</div>
+
+@if (_loading)
+{
+    <LoadingView />
+}
+else if (_loadError != null)
+{
+    <MudAlert Severity="Severity.Error">@_loadError</MudAlert>
+}
+else if (_mode == EditorMode.Yaml)
+{
+    <div class="config-grid mb-4">
+        <div class="config-editor-wrap">
+            <div class="config-editor-header">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Code" Size="Size.Small" Color="Color.Primary" Class="mr-2" />
+                    <MudText Typo="Typo.subtitle2">@System.IO.Path.GetFileName(ConfigService.ConfigFilePath)</MudText>
+                </div>
+                <StIconButton Icon="@Icons.Material.Filled.Refresh" Title="Reload from disk" OnClick="LoadConfig" />
+            </div>
+            <div style="padding:var(--st-space-md);flex:1;overflow:hidden;">
+                <MonacoYamlEditor @bind-Value="_editorContent" Schema="_schemaJson" />
+            </div>
+        </div>
+
+        <div class="config-preview-wrap">
+            <div class="config-editor-header">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Secondary" Class="mr-2" />
+                    <MudText Typo="Typo.subtitle2">Live Config</MudText>
+                </div>
+                <StIconButton Icon="@Icons.Material.Filled.Refresh" Title="Refresh live config" OnClick="RefreshLiveConfig" />
+            </div>
+            <div class="config-preview-content">
+                <pre class="mono-block" style="margin:0;border:none;background:transparent;">@_liveConfigYaml</pre>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="st-visual-config-wrap mb-4">
+        <VisualConfigEditor Value="_editorContent"
+                            ValueChanged="OnFormYamlChanged"
+                            Errors="_formErrors"
+                            RefreshToken="_formRefreshToken" />
+    </div>
+
+    <div class="version-history mb-4">
+        <div class="version-history-header" @onclick="ToggleLiveConfig">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Secondary" Class="mr-2" />
+                <MudText Typo="Typo.subtitle2">Live Config</MudText>
+            </div>
+            <MudIcon Icon="@( _liveConfigOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" Color="Color.Secondary" />
+        </div>
+        @if (_liveConfigOpen)
+        {
+            <div class="config-preview-content">
+                <pre class="mono-block" style="margin:0;border:none;background:transparent;">@_liveConfigYaml</pre>
+            </div>
+        }
+    </div>
+}
+
+<div class="version-history">
+    <div class="version-history-header" @onclick="ToggleVersionHistory">
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Secondary" Class="mr-2" />
+            <MudText Typo="Typo.subtitle2">Version History</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">(@_versions.Count versions)</MudText>
+        </div>
+        <div class="d-flex align-center" style="gap:var(--st-space-xs);">
+            <StIconButton Icon="@Icons.Material.Filled.Refresh" Title="Refresh versions" OnClick="LoadVersions" />
+            <MudIcon Icon="@( _versionHistoryOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" Color="Color.Secondary" />
+        </div>
+    </div>
+    @if (_versionHistoryOpen)
+    {
+        <div class="version-history-body">
+            @if (_versions.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No saved versions yet.</MudText>
+            }
+            else
+            {
+                <MudList T="ConfigVersion" Dense="true" Clickable="true">
+                    @foreach (ConfigVersion version in _versions)
+                    {
+                        <MudListItem T="ConfigVersion" OnClick="@(() => RestoreVersion(version))">
+                            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="mr-2" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2">@version.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@FormatHelper.FormatBytes(version.SizeBytes)</MudText>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    enum EditorMode { Form, Yaml }
+
+    string _editorContent = "";
+    string? _loadError;
+    bool _loading = true;
+    bool _hasUnsavedChanges;
+    string? _originalContent;
+    ConfigSaveResult? _lastSaveResult;
+    List<ConfigVersion> _versions = [];
+    string _liveConfigYaml = "";
+    bool _versionHistoryOpen;
+    bool _liveConfigOpen;
+    EditorMode _mode = EditorMode.Form;
+    List<ConfigValidationError> _formErrors = [];
+    int _formRefreshToken;
+    string _schemaJson = "{}";
+
+    IReadOnlyList<StTabItem<EditorMode>> ModeTabs =>
+    [
+        new(EditorMode.Form, "Form", Icons.Material.Filled.Tune,
+            Disabled: _loading || (_hasUnsavedChanges && _mode != EditorMode.Form),
+            Title: _hasUnsavedChanges ? "Apply or undo your changes before switching" : "Friendly form editor"),
+        new(EditorMode.Yaml, "YAML", Icons.Material.Filled.Code,
+            Disabled: _loading || (_hasUnsavedChanges && _mode != EditorMode.Yaml),
+            Title: _hasUnsavedChanges ? "Apply or undo your changes before switching" : "Raw YAML editor"),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _schemaJson = SchemaGenerator.GenerateSchema().GetRawText();
+        await LoadConfig();
+        await LoadVersions();
+        RefreshLiveConfig();
+    }
+
+    void ToggleVersionHistory()
+    {
+        _versionHistoryOpen = !_versionHistoryOpen;
+    }
+
+    void ToggleLiveConfig()
+    {
+        _liveConfigOpen = !_liveConfigOpen;
+    }
+
+    void SwitchMode(EditorMode mode)
+    {
+        if (_hasUnsavedChanges)
+            return;
+
+        _mode = mode;
+        _formErrors = [];
+
+        if (mode == EditorMode.Form)
+            _formRefreshToken++;
+    }
+
+    async Task OnFormYamlChanged(string yaml)
+    {
+        _editorContent = yaml;
+        _hasUnsavedChanges = _editorContent != _originalContent;
+        _formErrors = [];
+        await Task.CompletedTask;
+    }
+
+    async Task LoadConfig()
+    {
+        _loading = true;
+        _loadError = null;
+
+        try
+        {
+            _editorContent = await ConfigService.ReadConfigAsync();
+            _originalContent = _editorContent;
+            _hasUnsavedChanges = false;
+            _formErrors = [];
+            _formRefreshToken++;
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Failed to load config: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    void RefreshLiveConfig()
+    {
+        try
+        {
+            _liveConfigYaml = ConfigRenderer.Render(Configuration, SectionRegistry);
+        }
+        catch (Exception ex)
+        {
+            _liveConfigYaml = $"# Error rendering live config: {ex.Message}";
+        }
+    }
+
+    async Task ApplyConfig()
+    {
+        ConfigValidationResult fluent = ConfigValidator.ValidateWithFluentValidation(_editorContent);
+        List<ConfigValidationError> schema = ConfigValidator.ValidateWithSchemaDetailed(_editorContent);
+
+        List<ConfigValidationError> combined = [.. fluent.Details, .. schema];
+        List<ConfigValidationError> errors = combined
+            .GroupBy(e => $"{e.Path}|{e.Message}")
+            .Select(g => g.First())
+            .ToList();
+
+        if (errors.Count > 0)
+        {
+            _formErrors = errors;
+            Snackbar.Add($"Configuration has {errors.Count} error(s). Please fix before saving.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            _lastSaveResult = await ConfigService.SaveConfigAsync(_editorContent);
+            _originalContent = _editorContent;
+            _hasUnsavedChanges = false;
+            _formErrors = [];
+            _formRefreshToken++;
+
+            Snackbar.Add("Configuration saved successfully", Severity.Success);
+
+            if (_lastSaveResult.BackedUpVersion != null)
+            {
+                Snackbar.Add($"Previous version backed up: {Path.GetFileName(_lastSaveResult.BackedUpVersion)}", Severity.Info);
+            }
+
+            await LoadVersions();
+            RefreshLiveConfig();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save: {ex.Message}", Severity.Error);
+        }
+    }
+
+    async Task UndoConfig()
+    {
+        try
+        {
+            string? content = await ConfigService.UndoAsync();
+            if (content != null)
+            {
+                _editorContent = content;
+                _hasUnsavedChanges = _editorContent != _originalContent;
+                _formErrors = [];
+                _formRefreshToken++;
+                Snackbar.Add("Reverted to previous version", Severity.Info);
+                await LoadVersions();
+            }
+            else
+            {
+                Snackbar.Add("No backup available to undo to", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to undo: {ex.Message}", Severity.Error);
+        }
+    }
+
+    async Task RestoreVersion(ConfigVersion version)
+    {
+        try
+        {
+            string? content = await ConfigService.RestoreVersionAsync(version.FileName);
+            if (content != null)
+            {
+                _editorContent = content;
+                _hasUnsavedChanges = true;
+                _formErrors = [];
+                _formRefreshToken++;
+                Snackbar.Add($"Restored version from {version.Timestamp:yyyy-MM-dd HH:mm:ss}", Severity.Info);
+            }
+            else
+            {
+                Snackbar.Add("Failed to restore version", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to restore: {ex.Message}", Severity.Error);
+        }
+    }
+
+    async Task LoadVersions()
+    {
+        _versions = ConfigService.GetVersions();
+    }
+}

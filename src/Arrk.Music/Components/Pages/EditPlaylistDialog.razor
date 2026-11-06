@@ -1,0 +1,98 @@
+@* Edit a playlist: rename, choose an icon, and remove songs. *@
+@using Arrk.Navidrome
+@inject NavidromeService Navidrome
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-detail-body" style="padding-top:8px;">
+            <MudText Typo="Typo.h6" Class="mb-3">Edit playlist</MudText>
+
+            <MudTextField T="string" @bind-Value="_name" Label="Name" Variant="Variant.Outlined" Immediate="true" Class="mb-3" />
+
+            <MudText Typo="Typo.caption" Style="color:var(--st-text-secondary);">Icon</MudText>
+            <div class="st-playlist-icon-picker">
+                @foreach (string icon in IconChoices)
+                {
+                    <button type="button" class="st-playlist-icon @(_icon == icon ? "active" : "")" @onclick="() => _icon = icon">@icon</button>
+                }
+                <button type="button" class="st-playlist-icon @(string.IsNullOrEmpty(_icon) ? "active" : "")" @onclick="@(() => _icon = "")" title="Default">♪</button>
+            </div>
+
+            <MudText Typo="Typo.caption" Style="color:var(--st-text-secondary);" Class="mt-3">Songs</MudText>
+            @if (_songs.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Style="color:var(--st-text-secondary);">No songs.</MudText>
+            }
+            else
+            {
+                <div class="st-music-tracklist" style="max-height:40vh;overflow:auto;">
+                    @for (int i = 0; i < _songs.Count; i++)
+                    {
+                        SubsonicSong song = _songs[i];
+                        int index = i;
+                        <StTrackRow Title="@song.Title" Meta="@song.Artist">
+                            <Actions>
+                                <StIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline" Title="Remove" Variant="ActionVariant.Danger" OnClick="() => RemoveAsync(index)" />
+                            </Actions>
+                        </StTrackRow>
+                    }
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="Save" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" StartIcon="@Icons.Material.Filled.Check" Disabled="@_busy">
+            <span class="st-btn-label">Save</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string PlaylistId { get; set; } = "";
+    [Parameter] public string PlaylistName { get; set; } = "";
+
+    static readonly string[] IconChoices = ["🎵", "🎶", "🔥", "⭐", "💜", "🌙", "🎸", "🎧", "🚀", "🌊", "🦄", "🌟"];
+
+    string _name = "";
+    string _icon = "";
+    bool _busy;
+    List<SubsonicSong> _songs = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _name = PlaylistName;
+        try { _icon = await JS.InvokeAsync<string>("arrkPlaylists.getIcon", PlaylistId) ?? ""; }
+        catch { _icon = ""; }
+        await ReloadAsync();
+    }
+
+    async Task ReloadAsync()
+    {
+        SubsonicPlaylist? playlist = await Navidrome.GetPlaylistAsync(PlaylistId);
+        _songs = playlist?.Tracks ?? [];
+    }
+
+    async Task RemoveAsync(int index)
+    {
+        try { await Navidrome.RemoveFromPlaylistAsync(PlaylistId, index); await ReloadAsync(); }
+        catch (Exception ex) { Snackbar.Add($"Could not remove song: {ex.Message}", Severity.Error); }
+    }
+
+    async Task Save()
+    {
+        _busy = true;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(_name) && !string.Equals(_name, PlaylistName, StringComparison.Ordinal))
+                await Navidrome.RenamePlaylistAsync(PlaylistId, _name.Trim());
+            try { await JS.InvokeVoidAsync("arrkPlaylists.setIcon", PlaylistId, _icon ?? ""); } catch { }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add($"Could not save: {ex.Message}", Severity.Error); _busy = false; }
+    }
+}

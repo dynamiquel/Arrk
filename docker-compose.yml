@@ -1,8 +1,8 @@
-# Stackarr — portable, single-service deployment.
+# Arrk — portable, single-service deployment.
 #
-# Stackarr provisions and manages the whole media stack itself (arrs, players, VPN sidecar,
-# reverse proxy, tunnel, downloads). This compose file therefore describes just the Stackarr
-# container. It is the declarative equivalent of `scripts/run-stackarr.sh`.
+# Arrk provisions and manages the whole media stack itself (arrs, players, VPN sidecar,
+# reverse proxy, tunnel, downloads). This compose file therefore describes just the Arrk
+# container. It is the declarative equivalent of `scripts/run-arrk.sh`.
 #
 # Quick start (copy this file and a .env next to your data, then):
 #   docker compose up -d
@@ -11,42 +11,43 @@
 # setup looks like:
 #
 #   # .env
-#   STACKARR_STACK_NAME=media
-#   STACKARR_CONTAINER_NAME=stackarr-media
-#   STACKARR_CONFIG_DIR=/srv/stackarr/config
-#   STACKARR_DOWNLOADS_DIR=/srv/stackarr/downloads
-#   STACKARR_MEDIA_DIR=/srv/stackarr/media
+#   ARRK_STACK_NAME=media
+#   ARRK_CONTAINER_NAME=arrk-media
+#   ARRK_CONFIG_DIR=/srv/arrk/config
+#   ARRK_DOWNLOADS_DIR=/srv/arrk/downloads
+#   ARRK_MEDIA_DIR=/srv/arrk/media
 #
 #   # Optional: run another tag or a local build instead of the published image.
-#   # STACKARR_IMAGE=ghcr.io/dynamiquel/stackarr:dev
+#   # ARRK_IMAGE=ghcr.io/dynamiquel/arrk:dev
 #
 #   # Uncomment to publish the web UI on the host (omit for a tunnel-only stack):
-#   # STACKARR_HOST_PORT=5186
+#   # ARRK_HOST_PORT=5186
 
-name: ${STACKARR_CONTAINER_NAME:-stackarr}
+name: ${ARRK_CONTAINER_NAME:-arrk}
 
 services:
-  stackarr:
-    image: ${STACKARR_IMAGE:-ghcr.io/dynamiquel/stackarr:latest}
-    container_name: ${STACKARR_CONTAINER_NAME:-stackarr}
+  arrk:
+    image: ${ARRK_IMAGE:-ghcr.io/dynamiquel/arrk:latest}
+    container_name: ${ARRK_CONTAINER_NAME:-arrk}
     restart: unless-stopped
     environment:
-      # Namespaces every container Stackarr creates (stackarr-<name>-*) and its Docker network
-      # (stackarr-<name>-net).
-      StackName: ${STACKARR_STACK_NAME:-default}
+      # Historical resource names are retained for existing installations:
+      # stackarr-<name>-* containers and stackarr-<name>-net network.
+      StackName: ${ARRK_STACK_NAME:-${STACKARR_STACK_NAME:-default}}
     volumes:
-      # Stackarr talks to the Docker daemon over the host socket to provision its services.
+      # Arrk talks to the Docker daemon over the host socket to provision its services.
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${STACKARR_CONFIG_DIR:-./stackarr-data/config}:/config
-      - ${STACKARR_DOWNLOADS_DIR:-./stackarr-data/downloads}:/downloads
-      - ${STACKARR_MEDIA_DIR:-./stackarr-data/media}:/media
+      # Keep the historical default data root and accept existing .env mount overrides.
+      - ${ARRK_CONFIG_DIR:-${STACKARR_CONFIG_DIR:-./stackarr-data/config}}:/config
+      - ${ARRK_DOWNLOADS_DIR:-${STACKARR_DOWNLOADS_DIR:-./stackarr-data/downloads}}:/downloads
+      - ${ARRK_MEDIA_DIR:-${STACKARR_MEDIA_DIR:-./stackarr-data/media}}:/media
     # Tunnel-only by default: no host ports are published. Uncomment to expose the web UI
     # locally (the reverse proxy's own ports come from routes.httpPort/httpsPort in the config).
     # ports:
-    #   - "${STACKARR_HOST_PORT:-5186}:5186"
+    #   - "${ARRK_HOST_PORT:-5186}:5186"
     networks:
-      - stackarr
+      - arrk
 
 networks:
-  stackarr:
-    name: stackarr-${STACKARR_STACK_NAME:-default}-net
+  arrk:
+    name: stackarr-${ARRK_STACK_NAME:-${STACKARR_STACK_NAME:-default}}-net

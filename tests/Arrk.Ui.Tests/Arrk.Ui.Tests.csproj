@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableTestingSupport>true</EnableTestingSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.56.35" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.TestSupport\Arrk.TestSupport.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Ui\Arrk.Ui.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Arrk.Media.Abstractions" />
+  </ItemGroup>
+</Project>

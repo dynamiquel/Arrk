@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Orchestration owns provisioning, config sync, health, metrics and the operational UI (Razor
+    class library): the Docker pages and container components, the Containers list and the Scheduler.
+    The UI is contributed to the shell through the Arrk.Ui contracts.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\Arrk.Ui\Arrk.Ui.csproj" />
+    <ProjectReference Include="..\Arrk.Configuration\Arrk.Configuration.csproj" />
+    <ProjectReference Include="..\Arrk.Docker\Arrk.Docker.csproj" />
+    <ProjectReference Include="..\Arrk.Ai\Arrk.Ai.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CronExpressionDescriptor" Version="2.51.0" />
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.*" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+    <PackageReference Include="NetEscapades.Configuration.Yaml" Version="3.1.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

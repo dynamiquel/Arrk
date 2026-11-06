@@ -1,20 +1,20 @@
-# AGENTS.md: working on Stackarr
+# AGENTS.md: working on Arrk
 
 This is the repository contract for coding agents (Codex, OpenCode, Claude Code, Copilot,
 etc.). It assumes a fresh clone and no machine-specific state. Follow it unless the task
 explicitly says otherwise.
 
-## What Stackarr is
+## What Arrk is
 
-Stackarr is one modular ASP.NET Core 10 application that provisions and configures a
+Arrk is one modular ASP.NET Core 10 application that provisions and configures a
 self-hosted media stack. Read `README.md` first, then the matching note under
 `docs/features/` for the area you are changing.
 
 - .NET 10 (`net10.0`), ASP.NET Core + Blazor/MudBlazor, SQLite (EF Core), Docker.DotNet,
   Hangfire, Serilog.
-- One module per concern under `src/Stackarr.*` (`IStackarrModule`); one test project per
-  module under `tests/Stackarr.*.Tests`, plus `Stackarr.IntegrationTests` and
-  `Stackarr.TestSupport`.
+- One module per concern under `src/Arrk.*` (`IArrkModule`); one test project per
+  module under `tests/Arrk.*.Tests`, plus `Arrk.IntegrationTests` and
+  `Arrk.TestSupport`.
 - Tests are TUnit on `Microsoft.Testing.Platform` (`global.json`).
 - The public website lives in `site/` and deploys through GitHub Pages.
 
@@ -32,7 +32,7 @@ Bootstrap once:
 ```bash
 ./scripts/setup-git-hooks.sh
 dotnet tool restore
-dotnet restore Stackarr.slnx
+dotnet restore Arrk.slnx
 ```
 
 No secrets are required for the default build or test run. Live tests read environment
@@ -87,7 +87,7 @@ touch another agent's worktree, branch, containers or network.
 - Do not rewrite shared history. Force-push only your own branch, preferably with
   `--force-with-lease`.
 - Never commit secrets, `.env` files, API keys, generated config, `config/`, `data/`,
-  `test-data/`, `stackarr-data/` or machine-specific paths.
+  `test-data/`, `arrk-data/`, `stackarr-data/` or machine-specific paths.
 - If the checkout has no git remote, stop and ask: you cannot open a pull request without
   one.
 - Do not tag releases or publish packages from an agent task. Release workflows own that.
@@ -104,8 +104,8 @@ The canonical entry point is:
 Manual equivalent:
 
 ```bash
-dotnet build Stackarr.slnx
-dotnet test --solution Stackarr.slnx
+dotnet build Arrk.slnx
+dotnet test --solution Arrk.slnx
 ```
 
 Docker-backed suites skip themselves when the daemon is unreachable. To force a hermetic
@@ -113,12 +113,12 @@ run, point `DOCKER_SOCKET` at a path that does not exist:
 
 ```bash
 DOCKER_SOCKET=/var/run/docker.sock.unavailable ./scripts/ci.sh
-STACKARR_SKIP_DOCKER_TESTS=1 ./scripts/ci.sh   # same effect, keeps the default socket
+ARRK_SKIP_DOCKER_TESTS=1 ./scripts/ci.sh   # same effect, keeps the default socket
 ```
 
 ### Docker test rules
 
-- Set a unique `STACKARR_TEST_RUN_ID` when you run container tests. Tests share the
+- Set a unique `ARRK_TEST_RUN_ID` when you run container tests. Tests share the
   `stackarr-tests-net` network and scope every container, volume and network by run id.
   `./scripts/ci.sh --docker` serializes test modules so parallel projects cannot exhaust
   Docker's default address pool.
@@ -132,12 +132,12 @@ STACKARR_SKIP_DOCKER_TESTS=1 ./scripts/ci.sh   # same effect, keeps the default 
 
 ### Live and network tests
 
-Live tests are opt-in and must stay env-gated (`STACKARR_SKIP_LIVE_TESTS=1` forces them
+Live tests are opt-in and must stay env-gated (`ARRK_SKIP_LIVE_TESTS=1` forces them
 off). They are never required for a pull request. Follow the existing patterns:
 
-- `STACKARR_LIVE_BASE_URL` for a running Stackarr instance.
-- `STACKARR_LIVE_*` for service-specific live checks.
-- `STACKARR_SKIP_LIVE_TESTS=1` in CI and hermetic runs.
+- `ARRK_LIVE_BASE_URL` for a running Arrk instance.
+- `ARRK_LIVE_*` for service-specific live checks.
+- `ARRK_SKIP_LIVE_TESTS=1` in CI and hermetic runs.
 
 ## What to change
 

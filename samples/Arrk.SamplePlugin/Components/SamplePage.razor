@@ -1,0 +1,18 @@
+@page "/sample"
+@attribute [Authorize]
+
+<PageHeader Icon="@Icons.Material.Filled.Extension" Title="Sample plugin" />
+
+<MudAlert Severity="Severity.Info" Class="mb-4">
+    This page is contributed by the <strong>Arrk.SamplePlugin</strong> plugin DLL — the host has no
+    reference to it. See <code>docs/features/modules.md</code>.
+</MudAlert>
+
+<SectionContainer Icon="@Icons.Material.Filled.Dashboard" Title="What a plugin gets">
+    <ul class="st-sample-list">
+        <li>One <code>IArrkModule</code> per concern, discovered from the DLL.</li>
+        <li>Its own DI registrations, jobs and HTTP endpoints.</li>
+        <li>Navigation, pages, region slots and head assets through <code>Arrk.Ui</code>.</li>
+        <li>Static assets served from <code>/plugins/&lt;folder&gt;/…</code>.</li>
+    </ul>
+</SectionContainer>

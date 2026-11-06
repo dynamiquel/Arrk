@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>FAQ — Stackarr</title>
-  <meta name="description" content="Common questions about Stackarr: project status, requirements, supported services, privacy, Docker, TLS, AI and troubleshooting.">
+  <title>FAQ — Arrk</title>
+  <meta name="description" content="Common questions about Arrk: project status, requirements, supported services, privacy, Docker, TLS, AI and troubleshooting.">
   <meta name="theme-color" content="#0f0a18">
   <script>document.documentElement.classList.add("js");</script>
-  <link rel="canonical" href="https://dynamiquel.github.io/Stackarr/faq.html">
+  <link rel="canonical" href="https://dynamiquel.github.io/Arrk/faq.html">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,9 +20,9 @@
 
   <header class="site-header">
     <div class="wrap header-inner">
-      <a class="brand" href="index.html" aria-label="Stackarr home">
+      <a class="brand" href="index.html" aria-label="Arrk home">
         <img src="assets/logo.svg" alt="" width="34" height="34">
-        <span>Stackarr</span>
+        <span>Arrk</span>
       </a>
       <nav class="site-nav" id="site-nav" aria-label="Main navigation">
         <a href="index.html">Overview</a>
@@ -33,7 +33,7 @@
         <a href="faq.html">FAQ</a>
       </nav>
       <div class="header-actions">
-        <a class="icon-link" href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="Stackarr on GitHub">
+        <a class="icon-link" href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener" aria-label="Arrk on GitHub">
           <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
         </a>
         <a class="btn btn-primary" href="setup.html">Get started</a>
@@ -51,7 +51,7 @@
         <span class="pill pill--pink"><span class="pill-dot"></span> The honest answers</span>
         <h1 style="margin-top: 18px">Questions,<br><span class="grad-text">answered plainly.</span></h1>
         <p class="lead">
-          What Stackarr is, what it is not, what it needs, and what to expect while it is still
+          What Arrk is, what it is not, what it needs, and what to expect while it is still
           early. If something is missing, the source docs and GitHub issues are the next stop.
         </p>
         <div class="faq-search">
@@ -67,16 +67,16 @@
           <h2>Project &amp; philosophy</h2>
 
           <details class="faq-item" id="project" open>
-            <summary>What is Stackarr? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <summary>What is Arrk? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                Stackarr is one web UI and one config for a self-hosted media stack. It
+                Arrk is one web UI and one config for a self-hosted media stack. It
                 provisions and configures the services around your library — movies, shows,
                 music, downloads, subtitles, players — and gives you a single place to discover,
                 request, watch, listen and clean up.
               </p>
               <p>
-                It does not replace those services. They still do the heavy lifting. Stackarr
+                It does not replace those services. They still do the heavy lifting. Arrk
                 orchestrates them, talks to their APIs and smooths over the seams between them.
               </p>
             </div>
@@ -99,12 +99,12 @@
           </details>
 
           <details class="faq-item">
-            <summary>Why does Stackarr exist? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <summary>Why does Arrk exist? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
                 Because a self-hosted media setup should not feel like a second job. The usual
                 stack solves each individual problem well, but the whole experience is a dozen
-                tabs, a dozen logins and configuration that drifts. Stackarr started as one
+                tabs, a dozen logins and configuration that drifts. Arrk started as one
                 person's answer to those headaches.
               </p>
             </div>
@@ -126,7 +126,7 @@
             <summary>Does it phone home? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                There is no telemetry or analytics built in. Stackarr talks to the services and
+                There is no telemetry or analytics built in. Arrk talks to the services and
                 metadata providers you configure — for example TMDb, Deezer, OpenSubtitles, Discord,
                 MyAnimeList, indexers and your chosen AI provider. If you use a local AI endpoint,
                 even that traffic stays on your network.
@@ -138,7 +138,7 @@
             <summary>What does it run on? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                A Linux host with Docker. Stackarr needs the Docker socket to create sibling
+                A Linux host with Docker. Arrk needs the Docker socket to create sibling
                 containers and uses three host folders for config, downloads and media. Docker
                 Desktop on macOS or Windows is not a supported host; the container expects a real
                 Linux Docker daemon.
@@ -169,7 +169,7 @@
                 No. Modules can be disabled and their UI hides live. A sensible small setup can
                 start with movies/shows and downloads, add Jellyfin later, and leave music,
                 subtitles, MyAnimeList and AI off until you want them. Some infrastructure —
-                the reverse proxy, for example — is core to how Stackarr exposes things.
+                the reverse proxy, for example — is core to how Arrk exposes things.
               </p>
             </div>
           </details>
@@ -179,7 +179,7 @@
             <div class="accordion-body">
               <p>
                 Your media folders are just folders: point the storage mounts at them and let the
-                library managers see the right paths. What Stackarr does not do yet is adopt an
+                library managers see the right paths. What Arrk does not do yet is adopt an
                 existing stack's service configurations wholesale — it expects to provision and
                 own the containers it manages. Migrate in stages and keep a backup of the old
                 setup.
@@ -191,7 +191,7 @@
             <summary>Do I need a domain or Cloudflare? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                No. Stackarr works on a LAN with a published port. Traefik is there for path-based
+                No. Arrk works on a LAN with a published port. Traefik is there for path-based
                 routing, and a Cloudflare tunnel is optional for remote access without opening host
                 ports. Set <code>routes.publicUrl</code> to whatever URL you actually use.
               </p>
@@ -203,7 +203,7 @@
             <div class="accordion-body">
               <p>
                 Not automatically yet. Traefik routing and middleware exist, but certificate
-                provisioning is still a gap. Put Stackarr behind a TLS-terminating proxy or tunnel,
+                provisioning is still a gap. Put Arrk behind a TLS-terminating proxy or tunnel,
                 and enable <code>auth.requireHttps</code> once it is served over HTTPS.
               </p>
             </div>
@@ -237,7 +237,7 @@
             <div class="accordion-body">
               <p>
                 No. Jellyfin still produces the video stream; Radarr and Sonarr still own the movie
-                and show libraries; Prowlarr still owns indexers. Stackarr provisions them,
+                and show libraries; Prowlarr still owns indexers. Arrk provisions them,
                 configures them through their APIs and puts a single UI in front. Their own UIs
                 stay reachable for advanced work.
               </p>
@@ -252,7 +252,7 @@
             <summary>How does the music stack work? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                Stackarr owns the library itself: artists, albums, tracks, playlists and
+                Arrk owns the library itself: artists, albums, tracks, playlists and
                 acquisition. Deezer supplies identity and metadata. Torrents and Soulseek bring the
                 files. Releases are identified before they are placed, so tags, artwork and folder
                 names match. Navidrome plays the result, both in-site and through Subsonic clients.
@@ -325,16 +325,16 @@
             <summary>Is mounting the Docker socket safe? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                It is powerful. Anyone who controls the Stackarr container can control the Docker
-                daemon, which is effectively root on the host. Run Stackarr on a dedicated media
+                It is powerful. Anyone who controls the Arrk container can control the Docker
+                daemon, which is effectively root on the host. Run Arrk on a dedicated media
                 host, keep the UI behind authentication and HTTPS, and do not expose the Docker
-                socket or the Stackarr container to untrusted users.
+                socket or the Arrk container to untrusted users.
               </p>
             </div>
           </details>
 
           <details class="faq-item">
-            <summary>Can I expose Stackarr to the internet? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
+            <summary>Can I expose Arrk to the internet? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
                 You can, but only the sign-in surface is meant to be public. Put it behind HTTPS,
@@ -349,10 +349,10 @@
             <summary>How are accounts managed? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                Stackarr is the account authority and can act as an OpenID Connect provider for
+                Arrk is the account authority and can act as an OpenID Connect provider for
                 players. Registration can be open, approval-based or admin-only. Discord and
                 MyAnimeList can federate in. Jellyfin and Navidrome keep their own credentials,
-                which Stackarr can provision for clients without OIDC.
+                which Arrk can provision for clients without OIDC.
               </p>
             </div>
           </details>
@@ -377,7 +377,7 @@
             <summary>Where do I look first? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                Start with <code>docker logs -f stackarr</code>, then the in-app
+                Start with <code>docker logs -f arrk</code>, then the in-app
                 <code>/events</code> feed and <code>/logs</code>. The service's own UI is still
                 available for a deeper view. Most first-run issues are permissions, ports or a
                 public URL that does not match the browser.
@@ -391,7 +391,7 @@
               <p>
                 Traefik publishes them by default. Change <code>routes.httpPort</code> and
                 <code>routes.httpsPort</code>, or set both to <code>0</code> for a tunnel-only
-                deployment. The direct Stackarr port is <code>5186</code>.
+                deployment. The direct Arrk port is <code>5186</code>.
               </p>
             </div>
           </details>
@@ -401,7 +401,7 @@
             <div class="accordion-body">
               <p>
                 Set <code>routes.publicUrl</code> to the exact URL in your browser, including the
-                scheme. If TLS terminates in front of Stackarr, enable
+                scheme. If TLS terminates in front of Arrk, enable
                 <code>auth.requireHttps</code> and make sure forwarded headers are trusted from
                 your proxy network. Changing the public URL can invalidate cookies; sign in again.
               </p>
@@ -424,7 +424,7 @@
             <summary>Where can I ask for help? <svg aria-hidden="true"><use href="assets/icons.svg#i-chevron-down"></use></svg></summary>
             <div class="accordion-body">
               <p>
-                Open an issue on GitHub with the relevant logs, your Stackarr version, host setup
+                Open an issue on GitHub with the relevant logs, your Arrk version, host setup
                 and what you expected to happen. Please remove API keys, passwords and personal
                 paths before posting. There is no guaranteed response time, but clear reports are
                 genuinely appreciated.
@@ -441,7 +441,7 @@
           <p>The setup guide handles configuration; the architecture page explains the machine underneath; the source docs hold the detail.</p>
           <div class="btn-row">
             <a class="btn btn-primary" href="guide.html">Setup guide <svg aria-hidden="true"><use href="assets/icons.svg#i-arrow-right"></use></svg></a>
-            <a class="btn btn-ghost" href="https://github.com/dynamiquel/Stackarr/tree/main/docs" target="_blank" rel="noopener">Source documentation</a>
+            <a class="btn btn-ghost" href="https://github.com/dynamiquel/Arrk/tree/main/docs" target="_blank" rel="noopener">Source documentation</a>
           </div>
         </div>
       </div>
@@ -454,7 +454,7 @@
         <div class="footer-brand">
           <a class="brand" href="index.html">
             <img src="assets/logo.svg" alt="" width="34" height="34">
-            <span>Stackarr</span>
+            <span>Arrk</span>
           </a>
           <p>One web UI and one config for a self-hosted media stack. Movies, shows, music and the services behind them.</p>
         </div>
@@ -477,17 +477,17 @@
         <div class="footer-col">
           <h4>Project</h4>
           <ul>
-            <li><a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener">GitHub</a></li>
-            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
-            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Stackarr. Built for the self-hosted corner of the internet.</span>
+        <span>© <span data-year>2026</span> Arrk. Built for the self-hosted corner of the internet.</span>
         <span class="footer-note"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg> Early alpha — expect changes.</span>
         <div class="footer-social">
-          <a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="GitHub">
+          <a href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener" aria-label="GitHub">
             <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
           </a>
         </div>

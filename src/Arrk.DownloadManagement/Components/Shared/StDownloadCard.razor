@@ -1,0 +1,104 @@
+@* One card on the unified Downloads page. Torrents and Soulseek transfers share this component;
+   the source is a small subline at the top, not a coloured tag. *@
+@using Arrk.DownloadManagement.Components.Shared
+
+<div class="st-torrent-card @(Selected ? "st-torrent-card--selected" : "")">
+    <div class="st-torrent-card-head">
+        <div class="st-download-headmain">
+            <div class="st-download-source-line">
+                <MudIcon Icon="@Item.SourceIcon" Size="Size.Small" Style="font-size:0.85rem;vertical-align:-2px;" />
+                @SourceLine
+            </div>
+            <div class="st-torrent-card-name" title="@Item.Name">@Item.Name</div>
+        </div>
+        <StChip Variant="@Item.StateVariant">@Item.State</StChip>
+    </div>
+    <div class="st-torrent-card-progress">
+        <MudProgressLinear Value="@Item.Percent" Color="Color.Primary" Size="Size.Small" Rounded="true" />
+        <span class="st-torrent-card-pct">@($"{Item.PercentDisplay:F1}%")</span>
+    </div>
+    <div class="st-torrent-card-meta">
+        <span><MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Style="font-size:0.9rem;" />@FormatHelper.FormatBytes(Item.Downloaded) / @FormatHelper.FormatBytes(Item.Size)</span>
+        @if (Item.IsTorrent)
+        {
+            <span><MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="font-size:0.9rem;" />@(string.IsNullOrEmpty(Item.RemainingTime) ? "—" : Item.RemainingTime)</span>
+            <span><MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" Style="font-size:0.9rem;" />@FormatHelper.FormatRate(Item.DownloadSpeed)</span>
+            <span><MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Style="font-size:0.9rem;" />@FormatHelper.FormatRate(Item.UploadSpeed)</span>
+            <span><MudIcon Icon="@Icons.Material.Filled.SwapVert" Size="Size.Small" Style="font-size:0.9rem;" />@Item.Ratio.ToString("F2")</span>
+            <span><MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Style="font-size:0.9rem;" />@Item.Seeds / @Item.Peers</span>
+        }
+    </div>
+    @if (Item.PenaltyLabel is not null && OnRevoke.HasDelegate)
+    {
+        <div class="st-torrent-strike">
+            <span aria-hidden="true">🐢</span>
+            <span class="st-torrent-strike-label">@Item.PenaltyLabel</span>
+            @if (IsAdmin)
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Warning"
+                           Class="st-torrent-strike-revoke"
+                           StartIcon="@Icons.Material.Filled.Undo"
+                           OnClick="() => OnRevoke.InvokeAsync(Item)">Revoke</MudButton>
+            }
+        </div>
+    }
+    <div class="st-torrent-card-foot">
+        @if (!string.IsNullOrEmpty(Item.Detail))
+        {
+            <span class="st-download-detail" title="@Item.Detail">@Item.Detail</span>
+        }
+        @if (Item.AddedOn > DateTime.MinValue)
+        {
+            <span style="font-size:0.8125rem;color:var(--st-text-muted);">@FormatHelper.FormatRelativeTime(Item.AddedOn)</span>
+        }
+        <div class="st-torrent-card-actions">
+            @if (IsAdmin)
+            {
+                @if (Item.CanPause && OnPause.HasDelegate)
+                {
+                    <StIconButton Icon="@Icons.Material.Filled.Pause" Title="Pause" Variant="ActionVariant.Neutral"
+                                  OnClick="() => OnPause.InvokeAsync(Item)" />
+                }
+                @if (Item.CanResume && OnResume.HasDelegate)
+                {
+                    <StIconButton Icon="@Icons.Material.Filled.PlayArrow" Title="Resume" Variant="ActionVariant.Neutral"
+                                  OnClick="() => OnResume.InvokeAsync(Item)" />
+                }
+                @if (Item.CanCancel && OnCancel.HasDelegate)
+                {
+                    <StIconButton Icon="@Icons.Material.Filled.Close" Title="Cancel" Variant="ActionVariant.Danger"
+                                  OnClick="() => OnCancel.InvokeAsync(Item)" />
+                }
+                @if (Item.CanDelete && OnDelete.HasDelegate)
+                {
+                    <StIconButton Icon="@Icons.Material.Filled.Delete" Title="Delete" Variant="ActionVariant.Danger"
+                                  OnClick="() => OnDelete.InvokeAsync(Item)" />
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DownloadItem Item { get; set; } = new();
+    [Parameter] public bool IsAdmin { get; set; }
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public EventCallback<DownloadItem> OnPause { get; set; }
+    [Parameter] public EventCallback<DownloadItem> OnResume { get; set; }
+    [Parameter] public EventCallback<DownloadItem> OnDelete { get; set; }
+    [Parameter] public EventCallback<DownloadItem> OnCancel { get; set; }
+    [Parameter] public EventCallback<DownloadItem> OnRevoke { get; set; }
+
+    string SourceLine
+    {
+        get
+        {
+            List<string> parts = [Item.SourceLabel];
+            if (!string.IsNullOrEmpty(Item.Category))
+                parts.Add(Item.Category);
+            if (!string.IsNullOrEmpty(Item.Meta))
+                parts.Add(Item.Meta);
+            return string.Join(" · ", parts);
+        }
+    }
+}

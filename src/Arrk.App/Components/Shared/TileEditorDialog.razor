@@ -1,0 +1,359 @@
+@inject DashboardLayoutService Layouts
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+@* The Tile Editor is a card-sheet dialog over the dashboard. The page behind it stays visible, and
+   Save closes the sheet so the dashboard can reload the new layout. *@
+
+<StCardSheetDialog Icon="@Icons.Material.Filled.DashboardCustomize"
+                   Title="Edit Dashboard"
+                   Class="st-tile-editor-dialog st-card-sheet-dialog--wide"
+                   BodyClass="st-tile-editor-dialog-body"
+                   FullHeight="true">
+    <ChildContent>
+    @if (!_loaded)
+    {
+        <LoadingView />
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Style="color:var(--st-text-secondary);margin-bottom:var(--st-space-md);">
+            Build your dashboard from the shared tile collection. Sections keep related tiles together.
+        </MudText>
+
+        @if (_errors.Count > 0)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                <ul class="st-tile-editor-errors">
+                    @foreach (DashboardLayoutError error in _errors)
+                    {
+                        <li>@error.Message</li>
+                    }
+                </ul>
+            </MudAlert>
+        }
+
+        <StTabs T="int" Items="_tabs" Value="_tab" ValueChanged="SetTab" Variant="segmented" Class="mb-4 st-tile-editor-tabs" />
+
+        @if (_tab == 0)
+        {
+            <div class="st-tile-editor-toolbar">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="AddSection"
+                           StartIcon="@Icons.Material.Filled.Add">
+                    Add tile section
+                </MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Warning" OnClick="ResetAsync"
+                           StartIcon="@Icons.Material.Filled.RestartAlt">
+                    Reset to default
+                </MudButton>
+            </div>
+
+            @foreach (TileSection section in _layout.Sections)
+            {
+                <div class="st-card st-tile-editor-section" @key="section">
+                    <div class="st-tile-editor-section-head">
+                        <MudTextField T="string" Value="section.Title" ValueChanged="v => SetSectionTitle(section, v)"
+                                      Label="Tile section" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Class="st-tile-editor-title" />
+                        <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
+                                       OnClick="() => MoveSection(section, -1)" title="Move section up" />
+                        <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                       OnClick="() => MoveSection(section, 1)" title="Move section down" />
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => RemoveSection(section)" title="Remove section" />
+                    </div>
+
+                    @if (section.Tiles.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Style="color:var(--st-text-muted);padding:var(--st-space-sm) 0;">
+                            No tiles in this section yet.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <div class="st-tile-editor-tiles">
+                            @foreach (DashboardTile tile in section.Tiles)
+                            {
+                                TileDefinition? definition = Layouts.FindTile(tile.Id);
+                                <div class="st-tile-editor-row" @key="tile">
+                                    <MudIcon Icon="@(definition?.Icon ?? Icons.Material.Filled.HelpOutline)" Size="Size.Small" />
+                                    <div class="st-tile-editor-name">
+                                        <span class="st-tile-editor-tile-title">@(definition?.Title ?? tile.Id)</span>
+                                        <span class="st-tile-editor-tile-category">@(definition?.Category ?? "Unknown")</span>
+                                    </div>
+                                    <MudSelect T="TileSize"
+                                               Value="tile.Size ?? definition?.DefaultSize ?? TileSize.Medium"
+                                               ValueChanged="v => SetSize(tile, v)"
+                                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true"
+                                               Class="st-tile-editor-size">
+                                        <MudSelectItem T="TileSize" Value="TileSize.Small">Small</MudSelectItem>
+                                        <MudSelectItem T="TileSize" Value="TileSize.Medium">Medium</MudSelectItem>
+                                        <MudSelectItem T="TileSize" Value="TileSize.Large">Large</MudSelectItem>
+                                        <MudSelectItem T="TileSize" Value="TileSize.VeryLarge">Very Large</MudSelectItem>
+                                    </MudSelect>
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
+                                                   OnClick="() => MoveTile(section, tile, -1)" title="Move tile up" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
+                                                   OnClick="() => MoveTile(section, tile, 1)" title="Move tile down" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Size="Size.Small" Color="Color.Error"
+                                                   OnClick="() => RemoveTile(section, tile)" title="Remove tile" />
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <MudSelect T="string" Label="Add a tile" Variant="Variant.Outlined" Margin="Margin.Dense"
+                               Dense="true" Clearable="true"
+                               Value="@AddSelection(section)"
+                               ValueChanged="@(id => AddTile(section, id))"
+                               Class="st-tile-editor-add">
+                        @foreach (IGrouping<string, TileDefinition> group in AvailableTiles().GroupBy(t => t.Category))
+                        {
+                            <MudSelectItem T="string" Value="@($"__group:{group.Key}")" Disabled="true">@group.Key</MudSelectItem>
+                            @foreach (TileDefinition definition in group)
+                            {
+                                <MudSelectItem T="string" Value="@definition.Id">@definition.Title</MudSelectItem>
+                            }
+                        }
+                    </MudSelect>
+                </div>
+            }
+
+            @if (_layout.Sections.Count == 0)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.DashboardCustomize"
+                            Message="No tile sections yet." Detail="Add a tile section to start building this dashboard." />
+            }
+        }
+        @if (_yamlMounted)
+        {
+            <div style="display:@(_tab == 1 ? "block" : "none")">
+            <div class="st-tile-yaml-editor">
+                <MonacoYamlEditor @bind-Value="_yaml" Schema="_yamlSchema" />
+            </div>
+            <div class="st-tile-editor-toolbar mt-3">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ApplyYaml"
+                           StartIcon="@Icons.Material.Filled.Check">
+                    Apply YAML
+                </MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="ReloadYaml"
+                           StartIcon="@Icons.Material.Filled.Refresh">
+                    Reload saved YAML
+                </MudButton>
+            </div>
+            </div>
+        }
+    }
+    </ChildContent>
+
+    <Footer>
+        <div class="st-tile-editor-footer">
+            <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="() => MudDialog.Cancel()">
+                Cancel
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                       OnClick="SaveAsync" Disabled="@_saving" StartIcon="@Icons.Material.Filled.Save">
+                <span class="st-btn-label">Save</span>
+            </MudButton>
+        </div>
+    </Footer>
+</StCardSheetDialog>
+
+@code {
+    readonly IReadOnlyList<StTabItem<int>> _tabs =
+    [
+        new(0, "Visual"),
+        new(1, "YAML")
+    ];
+
+    readonly Dictionary<string, string?> _addSelections = new(StringComparer.OrdinalIgnoreCase);
+
+    DashboardLayout _layout = new();
+    IReadOnlyList<DashboardLayoutError> _errors = [];
+    string _yaml = "";
+    string _yamlSchema = "{}";
+    bool _loaded;
+    bool _saving;
+    bool _yamlMounted;
+    int _tab;
+
+    /// <summary>The account whose dashboard is being edited.</summary>
+    [Parameter] public int UserId { get; set; }
+
+    /// <summary>Whether the account is an admin (controls which tiles are offered).</summary>
+    [Parameter] public bool IsAdmin { get; set; }
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserId <= 0)
+            return;
+
+        await ReloadAsync();
+        _yamlSchema = Layouts.BuildSchema(IsAdmin);
+        _loaded = true;
+    }
+
+    async Task ReloadAsync()
+    {
+        _layout = await Layouts.GetAsync(UserId, IsAdmin);
+        _yaml = await Layouts.GetYamlAsync(UserId, IsAdmin);
+        _errors = [];
+    }
+
+    void SetTab(int tab)
+    {
+        _yamlMounted |= tab == 1;
+        _tab = tab;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_tab != 1)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("arrkLayout.resize");
+        }
+        catch
+        {
+            /* Monaco layout is non-critical. */
+        }
+    }
+
+    IReadOnlyList<TileDefinition> AvailableTiles() => Layouts.AvailableTiles(IsAdmin);
+
+    string? AddSelection(TileSection section) =>
+        _addSelections.TryGetValue(section.Id, out string? value) ? value : null;
+
+    void AddTile(TileSection section, string? id)
+    {
+        _addSelections[section.Id] = null;
+        if (string.IsNullOrWhiteSpace(id) || id.StartsWith("__group:", StringComparison.Ordinal))
+            return;
+
+        TileDefinition? definition = Layouts.FindTile(id);
+        if (definition is null)
+            return;
+
+        if (section.Tiles.Any(t => string.Equals(t.Id, id, StringComparison.OrdinalIgnoreCase)))
+        {
+            Snackbar.Add("That tile is already in this section.", Severity.Warning);
+            return;
+        }
+
+        section.Tiles.Add(new DashboardTile { Id = definition.Id, Size = definition.DefaultSize });
+        _errors = Layouts.Validate(_layout, IsAdmin);
+    }
+
+    void RemoveTile(TileSection section, DashboardTile tile)
+    {
+        section.Tiles.Remove(tile);
+        _errors = Layouts.Validate(_layout, IsAdmin);
+    }
+
+    void MoveTile(TileSection section, DashboardTile tile, int direction)
+    {
+        int index = section.Tiles.IndexOf(tile);
+        int target = index + direction;
+        if (index < 0 || target < 0 || target >= section.Tiles.Count)
+            return;
+
+        (section.Tiles[index], section.Tiles[target]) = (section.Tiles[target], section.Tiles[index]);
+    }
+
+    void SetSize(DashboardTile tile, TileSize size) => tile.Size = size;
+
+    void SetSectionTitle(TileSection section, string title) => section.Title = title;
+
+    void AddSection()
+    {
+        int number = _layout.Sections.Count + 1;
+        _layout.Sections.Add(new TileSection
+        {
+            Id = $"section-{number}",
+            Title = "New tile section"
+        });
+        _errors = Layouts.Validate(_layout, IsAdmin);
+    }
+
+    void RemoveSection(TileSection section)
+    {
+        _layout.Sections.Remove(section);
+        _errors = Layouts.Validate(_layout, IsAdmin);
+    }
+
+    void MoveSection(TileSection section, int direction)
+    {
+        int index = _layout.Sections.IndexOf(section);
+        int target = index + direction;
+        if (index < 0 || target < 0 || target >= _layout.Sections.Count)
+            return;
+
+        (_layout.Sections[index], _layout.Sections[target]) = (_layout.Sections[target], _layout.Sections[index]);
+    }
+
+    async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            if (_tab == 1)
+                await Layouts.SaveYamlAsync(UserId, _yaml, IsAdmin);
+            else
+                await Layouts.SaveAsync(UserId, _layout, IsAdmin);
+
+            Snackbar.Add("Dashboard saved.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (DashboardLayoutException ex)
+        {
+            _errors = ex.Errors;
+            Snackbar.Add("Fix the highlighted tile section problems before saving.", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    void ApplyYaml()
+    {
+        try
+        {
+            _layout = Layouts.ParseAndValidate(_yaml, IsAdmin);
+            _yaml = Layouts.Serialize(_layout);
+            _errors = [];
+            Snackbar.Add("YAML applied.", Severity.Success);
+            _tab = 0;
+        }
+        catch (DashboardLayoutException ex)
+        {
+            _errors = ex.Errors;
+        }
+        catch (Exception ex)
+        {
+            _errors = [new($"Could not parse YAML: {ex.Message}")];
+        }
+    }
+
+    async Task ReloadYaml()
+    {
+        _yaml = await Layouts.GetYamlAsync(UserId, IsAdmin);
+        _errors = [];
+        Snackbar.Add("Saved YAML reloaded.", Severity.Info);
+    }
+
+    async Task ResetAsync()
+    {
+        await Layouts.ResetAsync(UserId);
+        await ReloadAsync();
+        Snackbar.Add("Dashboard reset to the default layout.", Severity.Success);
+    }
+}

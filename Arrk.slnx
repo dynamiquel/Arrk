@@ -1,0 +1,64 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Arrk.App/Arrk.App.csproj" />
+    <Project Path="src/Arrk.Auth.Abstractions/Arrk.Auth.Abstractions.csproj" />
+    <Project Path="src/Arrk.Auth/Arrk.Auth.csproj" />    <Project Path="src/Arrk.Bazarr/Arrk.Bazarr.csproj" />
+    <Project Path="src/Arrk.Subtitles/Arrk.Subtitles.csproj" />
+    <Project Path="src/Arrk.Subtitles.Abstractions/Arrk.Subtitles.Abstractions.csproj" />
+    <Project Path="src/Arrk.Subtitles.OpenSubtitles/Arrk.Subtitles.OpenSubtitles.csproj" />
+    <Project Path="src/Arrk.Ai/Arrk.Ai.csproj" />
+    <Project Path="src/Arrk.Cloudflared/Arrk.Cloudflared.csproj" />
+    <Project Path="src/Arrk.Configuration/Arrk.Configuration.csproj" />
+    <Project Path="src/Arrk.Core/Arrk.Core.csproj" />
+    <Project Path="src/Arrk.Docker/Arrk.Docker.csproj" />
+    <Project Path="src/Arrk.DownloadManagement/Arrk.DownloadManagement.csproj" />
+    <Project Path="src/Arrk.Downloads.Abstractions/Arrk.Downloads.Abstractions.csproj" />
+    <Project Path="src/Arrk.Jellyfin/Arrk.Jellyfin.csproj" />
+    <Project Path="src/Arrk.Music.Abstractions/Arrk.Music.Abstractions.csproj" />
+    <Project Path="src/Arrk.Music/Arrk.Music.csproj" />
+    <Project Path="src/Arrk.Mal/Arrk.Mal.csproj" />
+    <Project Path="src/Arrk.Media.Abstractions/Arrk.Media.Abstractions.csproj" />
+    <Project Path="src/Arrk.MediaLifecycle/Arrk.MediaLifecycle.csproj" />
+    <Project Path="src/Arrk.WatchActivity/Arrk.WatchActivity.csproj" />
+    <Project Path="src/Arrk.Slskd/Arrk.Slskd.csproj" />
+    <Project Path="src/Arrk.Navidrome/Arrk.Navidrome.csproj" />
+    <Project Path="src/Arrk.Notifications/Arrk.Notifications.csproj" />
+    <Project Path="src/Arrk.Orchestration/Arrk.Orchestration.csproj" />
+    <Project Path="src/Arrk.Prowlarr/Arrk.Prowlarr.csproj" />
+    <Project Path="src/Arrk.Requests/Arrk.Requests.csproj" />
+    <Project Path="src/Arrk.Transmission/Arrk.Transmission.csproj" />
+    <Project Path="src/Arrk.Speedtest/Arrk.Speedtest.csproj" />
+    <Project Path="src/Arrk.Ui/Arrk.Ui.csproj" />
+    <Project Path="src/Arrk.Tv.Abstractions/Arrk.Tv.Abstractions.csproj" />
+    <Project Path="src/Arrk.Tvarr/Arrk.Tvarr.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Arrk.SamplePlugin/Arrk.SamplePlugin.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Arrk.App.Tests/Arrk.App.Tests.csproj" />    <Project Path="tests/Arrk.Auth.Tests/Arrk.Auth.Tests.csproj" />
+    <Project Path="tests/Arrk.Ai.Tests/Arrk.Ai.Tests.csproj" />
+    <Project Path="tests/Arrk.Cloudflared.Tests/Arrk.Cloudflared.Tests.csproj" />
+    <Project Path="tests/Arrk.Configuration.Tests/Arrk.Configuration.Tests.csproj" />
+    <Project Path="tests/Arrk.Core.Tests/Arrk.Core.Tests.csproj" />
+    <Project Path="tests/Arrk.Docker.Tests/Arrk.Docker.Tests.csproj" />
+    <Project Path="tests/Arrk.DownloadManagement.Tests/Arrk.DownloadManagement.Tests.csproj" />
+    <Project Path="tests/Arrk.IntegrationTests/Arrk.IntegrationTests.csproj" />
+    <Project Path="tests/Arrk.Jellyfin.Tests/Arrk.Jellyfin.Tests.csproj" />
+    <Project Path="tests/Arrk.Music.Tests/Arrk.Music.Tests.csproj" />    <Project Path="tests/Arrk.Mal.Tests/Arrk.Mal.Tests.csproj" />
+    <Project Path="tests/Arrk.MediaLifecycle.Tests/Arrk.MediaLifecycle.Tests.csproj" />    <Project Path="tests/Arrk.Slskd.Tests/Arrk.Slskd.Tests.csproj" />
+    <Project Path="tests/Arrk.Navidrome.Tests/Arrk.Navidrome.Tests.csproj" />
+    <Project Path="tests/Arrk.Notifications.Tests/Arrk.Notifications.Tests.csproj" />
+    <Project Path="tests/Arrk.Orchestration.Tests/Arrk.Orchestration.Tests.csproj" />
+    <Project Path="tests/Arrk.Prowlarr.Tests/Arrk.Prowlarr.Tests.csproj" />
+    <Project Path="tests/Arrk.Requests.Tests/Arrk.Requests.Tests.csproj" />
+    <Project Path="tests/Arrk.Speedtest.Tests/Arrk.Speedtest.Tests.csproj" />
+    <Project Path="tests/Arrk.TestSupport/Arrk.TestSupport.csproj" />
+    <Project Path="tests/Arrk.Transmission.Tests/Arrk.Transmission.Tests.csproj" />
+    <Project Path="tests/Arrk.Tvarr.Tests/Arrk.Tvarr.Tests.csproj" />
+    <Project Path="tests/Arrk.Ui.Tests/Arrk.Ui.Tests.csproj" />
+    <Project Path="tests/Arrk.Bazarr.Tests/Arrk.Bazarr.Tests.csproj" />
+    <Project Path="tests/Arrk.Subtitles.Tests/Arrk.Subtitles.Tests.csproj" />
+    <Project Path="tests/Arrk.Subtitles.OpenSubtitles.Tests/Arrk.Subtitles.OpenSubtitles.Tests.csproj" />
+  </Folder>
+</Solution>

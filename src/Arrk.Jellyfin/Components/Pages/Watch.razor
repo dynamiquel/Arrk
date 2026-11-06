@@ -1,0 +1,333 @@
+@page "/watch/{ItemId}"
+@layout Arrk.Jellyfin.Components.Layout.PlayerLayout
+@attribute [Authorize]
+@using Arrk.Jellyfin.Playback
+@inject IJSRuntime JS
+@inject JellyfinLinkService JellyfinLink
+@inject JellyfinPlaybackService Playback
+@inject MediaDetailLauncher MediaDetails
+@inject SubtitleSearchLauncher SubtitleSearch
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<PageTitle>@(string.IsNullOrEmpty(DisplayTitle) ? "Playback" : DisplayTitle)</PageTitle>
+
+<div class="st-player-page" id="st-player-page">
+    <video id="st-player-video" class="st-player-video" playsinline preload="auto" x-webkit-airplay="allow"></video>
+
+    <div class="st-player-topbar" id="st-player-topbar">
+        <a class="st-player-ghost-btn" href="@BackUrl">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            <span>Back</span>
+        </a>
+        <span class="st-player-spacer"></span>
+        @if (JellyfinUrl is not null)
+        {
+            <a id="st-player-jellyfin" class="st-player-jellyfin-btn" href="@JellyfinUrl" target="_blank" rel="noopener" title="Open this title in Jellyfin">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                <span>Watch in Jellyfin</span>
+            </a>
+        }
+    </div>
+
+    @* End-of-episode autoplay card. The player script fills it in when Jellyfin reports a next episode. *@
+    <div class="st-player-next" id="st-player-next" role="dialog" aria-modal="true" aria-labelledby="st-player-next-title" hidden>
+        <div class="st-player-next-card">
+            <button type="button" class="st-player-next-close" id="st-player-next-close" aria-label="Cancel autoplay">✕</button>
+            <img class="st-player-next-image" id="st-player-next-image" alt="" />
+            <div class="st-player-next-body">
+                <span class="st-player-next-label">Next episode</span>
+                <span class="st-player-next-title" id="st-player-next-title"></span>
+                <span class="st-player-next-sub" id="st-player-next-sub"></span>
+            </div>
+            <div class="st-player-next-actions">
+                <button type="button" class="st-player-next-play" id="st-player-next-play">Play now</button>
+                <span class="st-player-next-countdown" id="st-player-next-countdown" aria-live="polite"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="st-player-status" class="st-player-status"></div>
+    <div class="st-player-spinner" id="st-player-spinner"></div>
+
+    <div class="st-player-controls" id="st-player-controls">
+        @* Apple-TV-style now-playing block: poster art plus the episode/movie title, bottom left
+           and large, directly above the scrubber. *@
+        <div class="st-player-nowplaying" id="st-player-nowplaying" hidden="@(string.IsNullOrEmpty(DisplayTitle) && PlayerArt is null)">
+            @if (PlayerArt is not null)
+            {
+                <img class="st-player-art" id="st-player-art" src="@PlayerArt" alt="" decoding="async" onerror="this.hidden=true" />
+            }
+            <div class="st-player-nowplaying-text">
+                @if (!string.IsNullOrEmpty(DisplayTitle))
+                {
+                    <button type="button" class="st-player-title st-player-title--button" @onclick="OpenDetailsAsync" title="Show movie/series details">@DisplayTitle</button>
+                }
+                @if (!string.IsNullOrEmpty(DisplaySubtitle))
+                {
+                    <span class="st-player-subtitle">@DisplaySubtitle</span>
+                }
+            </div>
+        </div>
+
+        <div class="st-player-progress" id="st-player-progress">
+            <div class="st-player-progress-buffer" id="st-player-buffer"></div>
+            <div class="st-player-progress-fill" id="st-player-fill">
+                <span class="st-player-progress-handle"></span>
+            </div>
+        </div>
+
+        <div class="st-player-controls-row">
+            <button type="button" class="st-player-btn" id="st-player-toggle" aria-label="Play/Pause">
+                <svg class="st-icon-play" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                <svg class="st-icon-pause" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+            </button>
+
+            <button type="button" class="st-player-btn st-player-skip" id="st-player-back10" aria-label="Back 10 seconds">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+            </button>
+            <button type="button" class="st-player-btn st-player-skip" id="st-player-fwd10" aria-label="Forward 10 seconds">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 5V1l5 5-5 5V7a5 5 0 1 0 5 5h2a7 7 0 1 1-7-7z"/></svg>
+            </button>
+
+            <span class="st-player-time" id="st-player-time">0:00 / 0:00</span>
+            <span class="st-player-spacer"></span>
+
+            <button type="button" class="st-player-btn" id="st-player-mute" aria-label="Mute">
+                <svg class="st-icon-vol" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4.03v8.06A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54z"/></svg>
+                <svg class="st-icon-muted" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.5 12a4.5 4.5 0 0 0-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM19 12c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.9 8.9 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+            </button>
+            <input type="range" class="st-player-volume" id="st-player-volume" min="0" max="1" step="0.05" value="1" aria-label="Volume" />
+
+            <div class="st-player-menu-anchor">
+                <button type="button" class="st-player-btn" id="st-player-audio" aria-label="Audio track" aria-haspopup="menu" aria-expanded="false" title="Audio track" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+                </button>
+                <div class="st-player-menu" id="st-player-audio-menu" role="menu" aria-label="Audio track" hidden></div>
+            </div>
+
+            <div class="st-player-menu-anchor">
+                <button type="button" class="st-player-btn" id="st-player-subtitles" aria-label="Subtitles" aria-haspopup="menu" aria-expanded="false" title="Subtitles" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1z"/></svg>
+                </button>
+                <div class="st-player-menu" id="st-player-subtitles-menu" role="menu" aria-label="Subtitles" hidden></div>
+            </div>
+
+            <div class="st-player-menu-anchor">
+                <button type="button" class="st-player-btn" id="st-player-cue" aria-label="Subtitle style" aria-haspopup="menu" aria-expanded="false" title="Subtitle style" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M9 4v3h5v12h3V7h5V4H9zm-6 8h3v7h3v-7h3V9H3v3z"/></svg>
+                </button>
+                <div class="st-player-menu" id="st-player-cue-menu" role="menu" aria-label="Subtitle style" hidden></div>
+            </div>
+
+            <button type="button" class="st-player-btn" id="st-player-airplay" aria-label="AirPlay" title="AirPlay" style="display:none;">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6 22h12l-6-6-6 6zM21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v-2H3V5h18v12h-4v2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>
+            </button>
+
+            <button type="button" class="st-player-btn" id="st-player-fullscreen" aria-label="Fullscreen">
+                <svg class="st-icon-full" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                <svg class="st-icon-exit-full" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    @* Media-module contribution: opens the movie/series detail dialog when the title is clicked. *@
+    <UiRegion Name="@UiRegions.PlayerOverlays" />
+</div>
+
+@code {
+    /// <summary>The Jellyfin item id to play.</summary>
+    [Parameter] public string ItemId { get; set; } = "";
+
+    /// <summary>Optional resume position in ticks (otherwise Jellyfin's saved position is used).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "start")] public long? Start { get; set; }
+
+    /// <summary>Optional title shown in the top bar.</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "title")] public string? Title { get; set; }
+
+    /// <summary>
+    /// Optional artwork URL (Arrk's own TMDb-derived poster/still) used for the OS media
+    /// session (lock screen / Control Center). Never sourced from Jellyfin.
+    /// </summary>
+    [Parameter, SupplyParameterFromQuery(Name = "art")] public string? Art { get; set; }
+
+    /// <summary>Where the Back button returns to (defaults to home).</summary>
+    [Parameter, SupplyParameterFromQuery(Name = "back")] public string? Back { get; set; }
+
+    string BackUrl => string.IsNullOrWhiteSpace(Back) || !Back.StartsWith('/') ? "/" : Back;
+
+    /// <summary>
+    /// Artwork for the bottom-left now-playing block: Arrk's TMDb-derived poster/still when the
+    /// watch URL carries one, otherwise the item's own image through the authenticated proxy.
+    /// </summary>
+    string? PlayerArt => !string.IsNullOrWhiteSpace(Art)
+        ? Art
+        : Guid.TryParse(ItemId, out _)
+            ? $"/api/media/player/image/{Uri.EscapeDataString(ItemId)}"
+            : null;
+
+    string? JellyfinUrl => JellyfinLink.IsAvailable && !string.IsNullOrEmpty(ItemId)
+        ? JellyfinLink.ItemUrl(ItemId)
+        : null;
+
+    PlaybackItemInfo? _info;
+
+    /// <summary>Primary header line: the episode/movie title (falls back to the query title).</summary>
+    string DisplayTitle => !string.IsNullOrEmpty(_info?.Title) ? _info!.Title : Title ?? "";
+
+    /// <summary>Secondary header line, e.g. "Game of Thrones · S03E01".</summary>
+    string DisplaySubtitle => _info?.Subtitle ?? "";
+
+    bool _started;
+    bool _resumeAfterDetails;
+    DotNetObjectReference<Watch>? _self;
+
+    /// <summary>
+    /// Opens the shared subtitle search popup from the player's subtitle menu. The popup belongs to
+    /// the subtitles module; the player only publishes its own item identity.
+    /// </summary>
+    [JSInvokable]
+    public async Task OpenSubtitleSearchAsync()
+    {
+        if (!SubtitleSearch.IsAvailable)
+        {
+            Snackbar.Add("Subtitle search is not enabled.", Severity.Warning);
+            return;
+        }
+
+        if (_info is null)
+        {
+            try
+            {
+                _info = await Playback.GetItemInfoAsync(ItemId, CancellationToken.None);
+            }
+            catch
+            {
+                /* fall through to the warning below */
+            }
+        }
+
+        if (_info is null)
+        {
+            Snackbar.Add("Subtitle search is not available for this title yet.", Severity.Warning);
+            return;
+        }
+
+        bool wasPlaying = false;
+        try
+        {
+            wasPlaying = await JS.InvokeAsync<bool>("arrkPlayer.isPlaying");
+            if (wasPlaying)
+                await JS.InvokeVoidAsync("arrkPlayer.pause");
+
+            await SubtitleSearch.ShowAsync(new PlayerSubtitleSearchRequest(
+                DisplayTitle,
+                DisplaySubtitle,
+                _info.IsMovie,
+                _info.TmdbId,
+                _info.TvdbId,
+                _info.SeasonNumber,
+                _info.EpisodeNumber));
+        }
+        catch
+        {
+            /* the dialog is an enhancement */
+        }
+        finally
+        {
+            if (wasPlaying)
+            {
+                try { await JS.InvokeVoidAsync("arrkPlayer.resume"); }
+                catch { /* player already gone */ }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Opens the TV module's movie/series dialog on top of the player. Playback is paused while
+    /// the dialog is open (and resumed only if it was playing) so the episode cannot run on behind
+    /// the overlay.
+    /// </summary>
+    async Task OpenDetailsAsync()
+    {
+        if (string.IsNullOrEmpty(ItemId) || !MediaDetails.IsAvailable)
+            return;
+
+        try
+        {
+            _resumeAfterDetails = await JS.InvokeAsync<bool>("arrkPlayer.isPlaying");
+            if (_resumeAfterDetails)
+                await JS.InvokeVoidAsync("arrkPlayer.pause");
+
+            await MediaDetails.ShowAsync(new MediaDetailRequest(ItemId));
+        }
+        catch
+        {
+            /* the dialog is an enhancement */
+        }
+        finally
+        {
+            if (_resumeAfterDetails)
+            {
+                try { await JS.InvokeVoidAsync("arrkPlayer.resume"); }
+                catch { /* player already gone */ }
+            }
+            _resumeAfterDetails = false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(ItemId))
+            return;
+
+        try
+        {
+            _info = await Playback.GetItemInfoAsync(ItemId, CancellationToken.None);
+        }
+        catch
+        {
+            /* header falls back to the query title */
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _started || string.IsNullOrEmpty(ItemId))
+            return;
+
+        _started = true;
+        try
+        {
+            object meta = new { title = DisplayTitle, subtitle = DisplaySubtitle, artwork = Art ?? "" };
+            await JS.InvokeVoidAsync("arrkPlayer.play", "st-player-video", ItemId, Start ?? 0, meta);
+            _self ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("arrkPlayer.setSubtitleSearchHandler", _self);
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("arrkPlayer.showError", ex.Message);
+            }
+            catch
+            {
+                /* nothing else we can do */
+            }
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        _self?.Dispose();
+        _self = null;
+        try
+        {
+            await JS.InvokeVoidAsync("arrkPlayer.stop");
+        }
+        catch
+        {
+            /* navigation already tore the circuit down */
+        }
+    }
+}

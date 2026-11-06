@@ -89,7 +89,7 @@ jobs:
             git push origin "HEAD:${RELEASE_REF}"
           fi
 
-          git tag -a "${TAG}" -m "Stackarr ${TAG}"
+          git tag -a "${TAG}" -m "Arrk ${TAG}"
           git push origin "${TAG}"
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -124,4 +124,4 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.prepare.outputs.tag }}
           VERSION: ${{ needs.prepare.outputs.version }}
-        run: gh release create "$TAG" --verify-tag --generate-notes --title "Stackarr ${VERSION}"
+        run: gh release create "$TAG" --verify-tag --generate-notes --title "Arrk ${VERSION}"

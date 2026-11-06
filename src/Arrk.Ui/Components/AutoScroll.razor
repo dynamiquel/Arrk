@@ -1,0 +1,36 @@
+@inject IJSRuntime JS
+
+<div class="st-autoscroll @Class" @ref="_root" title="@Title">
+    <div class="st-autoscroll-inner @InnerClass">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string InnerClass { get; set; } = "";
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    ElementReference _root;
+    bool _needsMeasure = true;
+
+    protected override void OnParametersSet() => _needsMeasure = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_needsMeasure)
+        {
+            return;
+        }
+
+        _needsMeasure = false;
+        try
+        {
+            await JS.InvokeVoidAsync("arrkAutoScroll.init", _root);
+        }
+        catch
+        {
+        }
+    }
+}

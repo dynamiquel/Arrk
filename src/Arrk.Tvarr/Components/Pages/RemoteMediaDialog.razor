@@ -1,0 +1,642 @@
+@using Arrk.Requests
+@using Arrk.Core.Requests
+@inject TmdbService TmdbService
+@inject MediaCatalogService Catalog
+@inject RadarrService RadarrService
+@inject SonarrService SonarrService
+@inject ActivityService Activity
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject RequestService RequestService
+@inject IOptionsMonitor<TvConfig> TvOptions
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <MediaDetailHero Title="@Item.Title"
+                         Year="Item.Year"
+                         PosterUrl="@Item.PosterUrl"
+                         BackdropUrl="@_backdropUrl"
+                         LogoUrl="@_logoUrl"
+                         Rating="_rating"
+                         RuntimeMinutes="_runtime"
+                         Certification="@_certification"
+                         Tagline="@_tagline"
+                         TmdbId="Item.TmdbId"
+                         ImdbId="@Item.ImdbId"
+                         TrailerKey="@(_trailerKey ?? string.Empty)"
+                         IsTrailerPlaying="_showTrailer"
+                         MediaType="@(IsShow ? "tv" : "movie")"
+                         OnClose="() => MudDialog.Cancel()"
+                         OnPlayTrailer="() => _showTrailer = !_showTrailer">
+            <Badges>
+                <StatusPill Variant="remote" Icon="@Icons.Material.Filled.AddCircleOutline" Label="Not in Library" />
+                @if (Item.NotYetReleased)
+                {
+                    <StatusPill Variant="unreleased" Icon="@Icons.Material.Filled.Schedule" Label="Not Released" />
+                }
+                @if (Item.HasRequestState)
+                {
+                    <StatusPill Variant="@RequestStateVariant" Icon="@RequestStateIcon" Label="@RequestStateLabel" />
+                }
+                @if (Item.IsAnime)
+                {
+                    <StatusPill Variant="anime" Icon="@Icons.Material.Filled.AutoAwesome" Label="Anime" />
+                }
+            </Badges>
+            <Links>
+                <UiRegion Name="@(IsShow ? "tv.series.links" : "tv.movie.links")"
+                          Context="new TvMediaLinkContext(Item.TmdbId, !IsShow)" />
+            </Links>
+        </MediaDetailHero>
+
+        @if (_loading)
+        {
+            <div style="padding:24px;"><LoadingView /></div>
+        }
+        else
+        {
+            <div class="st-detail-body">
+                @if (_showTrailer)
+                {
+                    <MediaTrailer TrailerKey="@_trailerKey" Title="@Item.Title" />
+                }
+
+                @if (!string.IsNullOrEmpty(Item.Overview))
+                {
+                    <MudText Typo="Typo.body2" Class="st-detail-overview">@Item.Overview</MudText>
+                }
+
+                @if (_genres.Count > 0)
+                {
+                    <div class="st-detail-chips">
+                        @foreach (string genre in _genres)
+                        {
+                            <StChip Variant="neutral">@genre</StChip>
+                        }
+                    </div>
+                }
+
+                <MetaGrid>
+                    @if (!string.IsNullOrEmpty(_releaseDate))
+                    {
+                        <MetaItem Label="@(IsShow ? "First Aired" : "Release Date")" Value="@FormatHelper.FormatReleaseDate(_releaseDate)" />
+                    }
+                    @if (IsShow && !string.IsNullOrEmpty(_lastAirDate))
+                    {
+                        <MetaItem Label="Last Aired" Value="@FormatHelper.FormatReleaseDate(_lastAirDate)" />
+                    }
+                    @if (!IsShow && !string.IsNullOrEmpty(_physicalRelease) && !FormatHelper.IsReleased(_physicalRelease))
+                    {
+                        <MetaItem Label="Physical Release" Value="@FormatHelper.FormatReleaseDate(_physicalRelease)" />
+                    }
+                    @if (!IsShow && !string.IsNullOrEmpty(_digitalRelease) && !FormatHelper.IsReleased(_digitalRelease))
+                    {
+                        <MetaItem Label="Web Release" Value="@FormatHelper.FormatReleaseDate(_digitalRelease)" />
+                    }
+                    @if (_runtime is > 0)
+                    {
+                        <MetaItem Label="Runtime" Value="@FormatRuntime(_runtime.Value)" />
+                    }
+                    @if (!string.IsNullOrEmpty(_certification))
+                    {
+                        <MetaItem Label="Age Rating" Value="@FormatHelper.ToUkCertification(_certification)" />
+                    }
+                    @if (!string.IsNullOrEmpty(ReleaseStatusText))
+                    {
+                        <MetaItem Label="Status" Value="@ReleaseStatusText" />
+                    }
+                    @if (!string.IsNullOrEmpty(_language))
+                    {
+                        <MetaItem Label="Language" Value="@FormatHelper.LanguageName(_language)" />
+                    }
+                    @if (!string.IsNullOrEmpty(_country))
+                    {
+                        <MetaItem Label="Country" Value="@_country" />
+                    }
+                    @if (!string.IsNullOrEmpty(_studio))
+                    {
+                        <MetaItem Label="@(IsShow ? "Network" : "Studio")" Value="@_studio" />
+                    }
+                    @if (IsShow && _seasonCount > 0)
+                    {
+                        <MetaItem Label="Seasons" Value="@_seasonCount.ToString()" />
+                    }
+                    @if (IsShow && _episodeCount > 0)
+                    {
+                        <MetaItem Label="Episodes" Value="@_episodeCount.ToString()" />
+                    }
+                </MetaGrid>
+
+                <MediaCastRow Cast="_cast" />
+
+                <MediaRecommendations MediaType="@(IsShow ? TmdbMediaType.Tv : TmdbMediaType.Movie)" TmdbId="Item.TmdbId" />
+
+                @if (!IsAdmin && SearchEnabled)
+                {
+                    <div class="st-add-to-library">
+                        <div class="st-detail-section-label">
+                            <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Small" /> Request
+                        </div>
+
+                        @if (Item.HasRequestState)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                                You've already requested this. Track it on the
+                                <MudLink Href="/requests">Requests</MudLink> page.
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Class="mb-3">
+                                Request @Item.Title and wait for approval.
+                            </MudText>
+
+                            @if (IsShow && _seasons.Count > 0)
+                            {
+                                <MudSelect T="int" Label="Request" @bind-Value="_requestSeason"
+                                           Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                                    <MudSelectItem T="int" Value="0">Entire Show</MudSelectItem>
+                                    @foreach (int sn in _seasons)
+                                    {
+                                        <MudSelectItem T="int" Value="@sn">@($"Season {sn}")</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+
+                            <MudSelect T="string" Label="Quality" @bind-Value="_requestQualityKey"
+                                       Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                                @foreach (RequestQualityOption option in _requestQualityOptions)
+                                {
+                                    <MudSelectItem T="string" Value="@option.Key">@option.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            @if (!string.IsNullOrEmpty(_requestError))
+                            {
+                                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_requestError</MudAlert>
+                            }
+
+                            <MudButton OnClick="SubmitRequest" Variant="Variant.Filled" Color="Color.Primary"
+                                       Class="st-btn-gradient"
+                                       StartIcon="@Icons.Material.Filled.Send" Disabled="@_requesting"
+                                       title="Request" AriaLabel="Request">
+                                <span class="st-btn-label">@(_requesting ? "Requesting…" : $"Request {(IsShow ? "Show" : "Movie")}")</span>
+                            </MudButton>
+                        }
+                    </div>
+                }
+                else if (!IsAdmin)
+                {
+                    @* Requests need search; a local-only library only offers upload to administrators. *@
+                }
+                else
+                {
+                <div class="st-add-to-library">
+                    <div class="st-detail-section-label">
+                        <MudIcon Icon="@Icons.Material.Filled.LibraryAdd" Size="Size.Small" /> Add to Library
+                    </div>
+
+                    @if (SearchEnabled)
+                    {
+                        <MudSelect T="int" Label="Quality Profile" @bind-Value="_selectedProfileId"
+                                   Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                            @foreach (QualityProfile profile in _profiles)
+                            {
+                                <MudSelectItem T="int" Value="@profile.Id">@profile.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        @if (IsShow && _seasons.Count > 0)
+                        {
+                            <div class="mb-3">
+                                <MudText Typo="Typo.caption" Class="st-add-label">Seasons to monitor</MudText>
+                                <div class="st-season-select">
+                                    @foreach (int sn in _seasons)
+                                    {
+                                        int seasonNum = sn;
+                                        <MudChip T="int"
+                                                 Variant="@(_selectedSeasons.Contains(seasonNum) ? Variant.Filled : Variant.Outlined)"
+                                                 Color="@(_selectedSeasons.Contains(seasonNum) ? Color.Primary : Color.Default)"
+                                                 OnClick="() => ToggleSeason(seasonNum)" Size="Size.Small">
+                                            @($"S{seasonNum}")
+                                        </MudChip>
+                                    }
+                                </div>
+                            </div>
+                            <MudSwitch T="bool" @bind-Value="_monitorFutureSeasons" Label="Monitor future seasons"
+                                       Color="Color.Primary" Class="mb-3" LabelPlacement="Placement.Start" />
+                        }
+
+                        @if (!string.IsNullOrEmpty(_errorMessage))
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-3">@_errorMessage</MudAlert>
+                        }
+                    }
+
+                    <div style="display:flex;gap:var(--st-space-sm);align-items:center;flex-wrap:wrap;">
+                        @if (SearchEnabled)
+                        {
+                            <MudButton OnClick="AddToLibrary" Variant="Variant.Filled" Color="Color.Primary"
+                                       Class="st-btn-gradient"
+                                       StartIcon="@Icons.Material.Filled.Add" Disabled="@_adding"
+                                       title="@($"Add {(IsShow ? "show" : "movie")}")"
+                                       AriaLabel="@($"Add {(IsShow ? "show" : "movie")}")">
+                                <span class="st-btn-label">Add @(IsShow ? "Show" : "Movie")</span>
+                            </MudButton>
+                        }
+                        <MudButton OnClick="UploadFromComputer" Variant="Variant.Outlined" Color="Color.Default"
+                                   StartIcon="@Icons.Material.Filled.CloudUpload" Disabled="@_adding"
+                                   title="Upload a file from this computer"
+                                   AriaLabel="Upload a file from this computer">
+                            <span class="st-btn-label">Upload</span>
+                        </MudButton>
+                    </div>
+                </div>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <WatchlistButton ProviderKey="@WatchActivityServices.Tv"
+                         Domain="@(IsShow ? TvMediaDomains.Tv : TvMediaDomains.Movie)"
+                         ItemKey="@StaleMediaEnricher.KeyFor(Item)"
+                         Title="@Item.Title"
+                         Subtitle="@(Item.Year > 0 ? Item.Year.ToString() : null)"
+                         PosterUrl="@Item.PosterUrl" Year="Item.Year"
+                         TmdbId="Item.TmdbId" TvdbId="Item.TvdbId"
+                         AsButton="true" />
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    [Parameter] public MediaItem Item { get; set; } = new();
+    [Parameter] public bool IsAdmin { get; set; } = true;
+
+    int _userId;
+    string _username = "";
+    List<RequestQualityOption> _requestQualityOptions = [];
+    string _requestQualityKey = "";
+    int _requestSeason;
+    string? _requestError;
+    bool _requesting;
+
+    bool _loading = true;
+    bool _adding;
+    bool _showTrailer;
+    string? _errorMessage;
+    string _backdropUrl = "";
+    string _logoUrl = "";
+    string? _trailerKey;
+    string _certification = "";
+    string _tagline = "";
+    double? _rating;
+    int? _runtime;
+    string _releaseDate = "";
+    string _lastAirDate = "";
+    string _theatricalRelease = "";
+    string _physicalRelease = "";
+    string _digitalRelease = "";
+    string _status = "";
+    string _language = "";
+    string _country = "";
+    string _studio = "";
+    int _seasonCount;
+    int _episodeCount;
+    List<string> _genres = [];
+    List<TmdbCreditPerson> _cast = [];
+    List<QualityProfile> _profiles = [];
+    List<int> _seasons = [];
+    HashSet<int> _selectedSeasons = [];
+    bool _monitorFutureSeasons = true;
+    int _selectedProfileId;
+
+    bool IsShow => string.Equals(Item.MediaType, TmdbMediaType.Tv, StringComparison.OrdinalIgnoreCase) || Item.TvdbId > 0;
+
+    bool SearchEnabled => TvOptions.CurrentValue.Search.Enabled;
+
+    DateTime? TheatricalDate => FormatHelper.ParseReleaseDate(_theatricalRelease) ?? FormatHelper.ParseReleaseDate(_releaseDate);
+    DateTime? DigitalDate => FormatHelper.ParseReleaseDate(_digitalRelease);
+    DateTime? PhysicalDate => FormatHelper.ParseReleaseDate(_physicalRelease);
+
+    /// <summary>
+    /// TMDB's generic "Released" is replaced with the specific release window a movie is in
+    /// (In Cinema / Web Release / Physical Release) so the three stages are clearly distinct.
+    /// </summary>
+    string ReleaseStatusText => IsShow
+        ? _status
+        : ReleaseStatus.MovieReleaseLabel(_status, TheatricalDate, DigitalDate, PhysicalDate);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _backdropUrl = Item.BackdropUrl;
+        _genres = Item.Genres;
+        _rating = Item.Rating;
+
+        if (!IsAdmin && AuthStateTask is not null)
+        {
+            System.Security.Claims.ClaimsPrincipal user = (await AuthStateTask).User;
+            int.TryParse(user.FindFirst(ArrkClaims.UserIdClaim)?.Value, out _userId);
+            _username = user.Identity?.Name ?? "";
+        }
+
+        try
+        {
+            _profiles = IsShow ? await SonarrService.GetQualityProfiles() : await RadarrService.GetQualityProfiles();
+            if (_profiles.Count > 0)
+                _selectedProfileId = _profiles.First().Id;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Could not load quality profiles: {ex.Message}";
+        }
+
+        await LoadDetail();
+        if (!IsAdmin && !Item.HasRequestState)
+            await LoadRequestQualityOptionsAsync();
+        _loading = false;
+    }
+
+    string RequestStateLabel => Item.RequestState switch
+    {
+        "approved" => "Approved",
+        "denied" => "Denied",
+        "blacklisted" => "Blacklisted",
+        _ => "Requested"
+    };
+
+    // Matches the media card badge: pending = yellow, approved = blue, denied = red, blacklisted = neutral.
+    string RequestStateVariant => Item.RequestState switch
+    {
+        "approved" => "info",
+        "denied" => "error",
+        "blacklisted" => "neutral",
+        _ => "warning"
+    };
+
+    string RequestStateIcon => Item.RequestState switch
+    {
+        "approved" => Icons.Material.Filled.CheckCircle,
+        "denied" or "blacklisted" => Icons.Material.Filled.Block,
+        _ => Icons.Material.Filled.HourglassTop
+    };
+
+    async Task LoadRequestQualityOptionsAsync()
+    {
+        _requestQualityOptions = [];
+        (MediaDomain domain, RequestKind kind) = IsShow ? (TvMediaDomains.Tv, RequestKind.Series) : (TvMediaDomains.Movie, RequestKind.Movie);
+        IMediaRequestHandler? handler = RequestService.Registry.GetHandler(domain, kind);
+        if (handler is null || !handler.IsAvailable)
+            return;
+
+        try
+        {
+            _requestQualityOptions = (await handler.GetQualityOptionsAsync()).ToList();
+            if (_requestQualityOptions.Count > 0)
+                _requestQualityKey = _requestQualityOptions[0].Key;
+        }
+        catch
+        {
+            /* quality options are optional; the backend default applies */
+        }
+    }
+
+    async Task SubmitRequest()
+    {
+        if (!SearchEnabled)
+            return;
+
+        if (_userId <= 0)
+        {
+            _requestError = "You must be signed in to request media.";
+            return;
+        }
+
+        _requesting = true;
+        _requestError = null;
+        try
+        {
+            RequestTarget target = await BuildRequestTargetAsync();
+            RequestOperationResult result = await RequestService.CreateAsync(
+                _userId, _username, target,
+                string.IsNullOrWhiteSpace(_requestQualityKey) ? null : _requestQualityKey);
+
+            if (!result.Success)
+            {
+                _requestError = result.Message ?? "Request failed.";
+                _requesting = false;
+                return;
+            }
+
+            Snackbar.Add(result.Message ?? $"Requested {Item.Title}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            _requestError = ex.Message;
+            _requesting = false;
+        }
+    }
+
+    async Task<RequestTarget> BuildRequestTargetAsync()
+    {
+        if (!IsShow)
+            return TvRequestTargets.ForMovie(Item);
+
+        MediaItem item = Item;
+        if (item.TvdbId <= 0 && item.TmdbId > 0)
+        {
+            int tvdb = await Catalog.ResolveTvdbIdAsync(item.TmdbId);
+            if (tvdb > 0)
+                item = item with { TvdbId = tvdb };
+        }
+
+        return _requestSeason > 0
+            ? TvRequestTargets.ForSeason(item, _requestSeason)
+            : TvRequestTargets.ForSeries(item);
+    }
+
+    async Task LoadDetail()
+    {
+        if (!TmdbService.IsConfigured || Item.TmdbId <= 0)
+            return;
+
+        if (IsShow)
+        {
+            TmdbTvDetail? detail = await TmdbService.GetTvDetailAsync(Item.TmdbId);
+            if (detail == null) return;
+
+            _backdropUrl = !string.IsNullOrEmpty(detail.BackdropPath) ? TmdbService.GetBackdropUrl(detail.BackdropPath, "w1280") : _backdropUrl;
+            _logoUrl = TmdbService.FindBestLogo(detail.Images?.Logos);
+            _genres = detail.Genres.Select(g => g.Name).ToList();
+            _runtime = detail.Runtime;
+            _rating = detail.VoteAverage > 0 ? detail.VoteAverage : _rating;
+            _certification = ResolveCertification(detail.ContentRatings?.Results?.Select(r => (r.Country, r.Rating)).ToList());
+            _tagline = detail.Tagline;
+            _cast = detail.Credits?.Cast.Take(20).ToList() ?? [];
+            _trailerKey = TmdbService.FindYouTubeTrailer(detail.Videos?.Results);
+            _releaseDate = detail.FirstAirDate ?? "";
+            _lastAirDate = detail.LastAirDate ?? "";
+            _status = detail.Status;
+            _language = detail.OriginalLanguage;
+            _country = string.Join(", ", detail.OriginCountry);
+            _studio = detail.Networks.FirstOrDefault()?.Name ?? "";
+            _seasonCount = detail.NumberOfSeasons;
+            _episodeCount = detail.NumberOfEpisodes;
+            _seasons = detail.Seasons.Where(s => s.SeasonNumber > 0 && s.EpisodeCount > 0)
+                .Select(s => s.SeasonNumber).OrderBy(n => n).ToList();
+            _selectedSeasons = _seasons.ToHashSet();
+            Item = Item with
+            {
+                TvdbId = detail.ExternalIds?.TvdbId ?? Item.TvdbId,
+                ImdbId = detail.ExternalIds?.ImdbId ?? Item.ImdbId,
+                SeasonCount = _seasons.Count,
+                NotYetReleased = ReleaseStatus.SeriesNotYetReleased(_status, FormatHelper.ParseReleaseDate(_releaseDate))
+            };
+        }
+        else
+        {
+            TmdbMovieDetail? detail = await TmdbService.GetMovieDetailAsync(Item.TmdbId);
+            if (detail == null) return;
+
+            _backdropUrl = !string.IsNullOrEmpty(detail.BackdropPath) ? TmdbService.GetBackdropUrl(detail.BackdropPath, "w1280") : _backdropUrl;
+            _logoUrl = TmdbService.FindBestLogo(detail.Images?.Logos);
+            _genres = detail.Genres.Select(g => g.Name).ToList();
+            _runtime = detail.Runtime;
+            _rating = detail.VoteAverage > 0 ? detail.VoteAverage : _rating;
+            _certification = ResolveCertification(detail.ReleaseDates?.Results
+                ?.SelectMany(c => c.ReleaseDates.Select(r => (c.Country, r.Certification))).ToList());
+            _tagline = detail.Tagline;
+            _cast = detail.Credits?.Cast.Take(20).ToList() ?? [];
+            _trailerKey = TmdbService.FindYouTubeTrailer(detail.Videos?.Results);
+            _releaseDate = detail.ReleaseDate ?? "";
+            _theatricalRelease = TmdbService.FindReleaseDate(detail.ReleaseDates, TmdbReleaseType.Theatrical, "GB", "US") ?? "";
+            _physicalRelease = TmdbService.FindReleaseDate(detail.ReleaseDates, TmdbReleaseType.Physical, "GB", "US") ?? "";
+            _digitalRelease = TmdbService.FindReleaseDate(detail.ReleaseDates, TmdbReleaseType.Digital, "GB", "US") ?? "";
+            _status = detail.Status;
+            _language = detail.OriginalLanguage;
+            _studio = detail.ProductionCompanies.FirstOrDefault()?.Name ?? "";
+            Item = Item with
+            {
+                ImdbId = detail.ExternalIds?.ImdbId ?? Item.ImdbId,
+                RuntimeMinutes = detail.Runtime ?? Item.RuntimeMinutes,
+                NotYetReleased = ReleaseStatus.MovieNotYetReleased(_status, TheatricalDate, DigitalDate, PhysicalDate)
+            };
+        }
+    }
+
+    static string ResolveCertification(List<(string Country, string Rating)>? ratings)
+    {
+        if (ratings == null) return "";
+        (string Country, string Rating)? gb = ratings.FirstOrDefault(r => r.Country == "GB" && !string.IsNullOrWhiteSpace(r.Rating));
+        if (gb is { Rating.Length: > 0 }) return gb.Value.Rating;
+        (string Country, string Rating)? us = ratings.FirstOrDefault(r => r.Country == "US" && !string.IsNullOrWhiteSpace(r.Rating));
+        if (us is { Rating.Length: > 0 }) return us.Value.Rating;
+        return ratings.FirstOrDefault(r => !string.IsNullOrWhiteSpace(r.Rating)).Rating ?? "";
+    }
+
+    static string FormatRuntime(int minutes)
+    {
+        if (minutes <= 0) return "";
+        if (minutes < 60) return $"{minutes}m";
+        int h = minutes / 60;
+        int m = minutes % 60;
+        return m == 0 ? $"{h}h" : $"{h}h {m}m";
+    }
+
+    void ToggleSeason(int seasonNumber)
+    {
+        if (!_selectedSeasons.Remove(seasonNumber))
+            _selectedSeasons.Add(seasonNumber);
+    }
+
+    async Task UploadFromComputer()
+    {
+        int tvdbId = Item.TvdbId;
+        if (IsShow && tvdbId <= 0 && Item.TmdbId > 0)
+            tvdbId = await Catalog.ResolveTvdbIdAsync(Item.TmdbId);
+
+        DialogParameters<TvUploadDialog> parameters = new()
+        {
+            { x => x.IsAdmin, true },
+            { x => x.AutoDetect, false },
+            { x => x.MediaType, IsShow ? "tv" : "movie" },
+            { x => x.TmdbId, Item.TmdbId },
+            { x => x.TvdbId, tvdbId },
+            { x => x.Title, Item.Title },
+            { x => x.Year, Item.Year },
+            { x => x.PosterUrl, Item.PosterUrl },
+            { x => x.SeasonNumber, _selectedSeasons.Count == 1 ? _selectedSeasons.First() : 0 },
+            { x => x.Seasons, _selectedSeasons.OrderBy(number => number).ToList() }
+        };
+
+        DialogOptions options = new()
+        {
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium,
+            CloseOnEscapeKey = true
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<TvUploadDialog>($"Upload {Item.Title}", parameters, options);
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false })
+            MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    async Task AddToLibrary()
+    {
+        if (!SearchEnabled)
+            return;
+
+        if (_selectedProfileId == 0)
+        {
+            _errorMessage = "No quality profile is available yet.";
+            return;
+        }
+
+        _adding = true;
+        _errorMessage = null;
+        ActivityHandle handle = Activity.Begin($"Adding {Item.Title}", "Sending request to library", Icons.Material.Filled.Download);
+
+        try
+        {
+            if (IsShow)
+            {
+                int tvdbId = Item.TvdbId;
+                if (tvdbId <= 0)
+                {
+                    handle.Report(0.4, "Resolving TVDB id…");
+                    tvdbId = await Catalog.ResolveTvdbIdAsync(Item.TmdbId);
+                }
+
+                if (tvdbId <= 0)
+                {
+                    handle.Fail("Could not resolve TVDB id for this show.");
+                    _errorMessage = "Could not resolve TVDB id for this show.";
+                    _adding = false;
+                    return;
+                }
+
+                handle.Report(0.7, "Adding to your library…");
+                await SonarrService.AddSeriesWithOptions(tvdbId, Item.Title, _selectedProfileId, _selectedSeasons, _monitorFutureSeasons);
+            }
+            else
+            {
+                handle.Report(0.7, "Adding to your library…");
+                await RadarrService.SearchAndAddMovie(Item.TmdbId, _selectedProfileId);
+            }
+
+            Catalog.InvalidateLibraryCache();
+            handle.Complete($"{Item.Title} added — search started");
+            Snackbar.Add($"{Item.Title} added to library. Search started automatically.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            handle.Fail(ex.Message);
+            _errorMessage = $"Failed to add: {ex.Message}";
+            _adding = false;
+        }
+    }
+}

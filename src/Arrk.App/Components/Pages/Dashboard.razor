@@ -1,0 +1,112 @@
+@page "/"
+@attribute [Authorize]
+@inject DashboardLayoutService Layouts
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+
+<PageTitle>Arrk - Dashboard</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Dashboard" Title="Dashboard" Subtitle="@_greeting">
+    <Actions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="OpenTileEditorAsync"
+                   StartIcon="@Icons.Material.Filled.DashboardCustomize" title="Edit dashboard tiles">
+            <span class="st-btn-label">Edit Dashboard</span>
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+@if (!_loaded)
+{
+    <LoadingView />
+}
+else if (_layout.Sections.Count == 0)
+{
+    <EmptyState Icon="@Icons.Material.Filled.DashboardCustomize"
+                Message="This dashboard has no tile sections yet."
+                Detail="Edit the dashboard to add a section and choose tiles." />
+    <div class="mt-4">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                   OnClick="OpenTileEditorAsync" StartIcon="@Icons.Material.Filled.Add">
+            Edit Dashboard
+        </MudButton>
+    </div>
+}
+else
+{
+    @foreach (TileSection section in _layout.Sections)
+    {
+        <TileSectionView Section="section" UserId="_userId" IsAdmin="_isAdmin" />
+    }
+}
+
+@if (_isAdmin)
+{
+    <UiRegion Name="@UiRegions.DashboardAlerts" />
+}
+
+@code {
+    DashboardLayout _layout = new();
+    bool _loaded;
+    bool _isAdmin;
+    int _userId;
+    string _username = "";
+    string? _greeting;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is null)
+            return;
+
+        AuthenticationState auth = await AuthStateTask;
+        _isAdmin = auth.User.IsInRole(ArrkRoles.Admin);
+        _username = auth.User.Identity?.Name
+            ?? auth.User.FindFirst(ArrkClaims.DisplayNameClaim)?.Value
+            ?? "";
+        if (!int.TryParse(auth.User.FindFirst(ArrkClaims.UserIdClaim)?.Value, out _userId))
+            return;
+
+        _layout = await Layouts.GetAsync(_userId, _isAdmin);
+        _loaded = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        int hour;
+        try
+        {
+            hour = await JS.InvokeAsync<int>("arrkLocalTime.hour");
+        }
+        catch
+        {
+            // A JS hiccup must not hide the greeting; the server clock is the closest fallback.
+            hour = DateTime.Now.Hour;
+        }
+
+        _greeting = DashboardGreeting.For(hour, _username);
+        StateHasChanged();
+    }
+
+    async Task OpenTileEditorAsync()
+    {
+        if (_userId <= 0)
+            return;
+
+        DialogParameters parameters = new()
+        {
+            [nameof(TileEditorDialog.UserId)] = _userId,
+            [nameof(TileEditorDialog.IsAdmin)] = _isAdmin
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<TileEditorDialog>(
+            "Edit Dashboard", parameters, StCardSheetOptions.Create(MaxWidth.ExtraLarge));
+
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false })
+            _layout = await Layouts.GetAsync(_userId, _isAdmin);
+    }
+}

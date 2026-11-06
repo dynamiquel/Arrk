@@ -1,0 +1,432 @@
+@page "/downloads"
+@attribute [Authorize]
+@inject ITorrentDownloader TorrentService
+@inject ITorrentPenaltyService PenaltyService
+@inject IOptionsMonitor<TorrentDownloaderConfig> Config
+@inject SlskdService Slskd
+@inject NavigationManager Nav
+@using Arrk.Core
+@using Arrk.DownloadManagement
+@using Arrk.Core.Models
+@using Arrk.Slskd
+@using Arrk.DownloadManagement.Components.Shared
+@implements IDisposable
+
+<PageTitle>Arrk - Downloads</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.CloudDownload" Title="Downloads">
+    <Actions>
+        @if (_isAdmin)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       OnClick="PauseAll" Disabled="@_loading"
+                       StartIcon="@Icons.Material.Filled.Pause" title="Pause all" AriaLabel="Pause all">
+                <span class="st-btn-label">Pause All</span>
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       OnClick="ResumeAll" Disabled="@_loading"
+                       StartIcon="@Icons.Material.Filled.PlayArrow" title="Resume all" AriaLabel="Resume all">
+                <span class="st-btn-label">Resume All</span>
+            </MudButton>
+        }
+    </Actions>
+</PageHeader>
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close"
+              OnClose="() => _errorMessage = null">@_errorMessage</MudAlert>
+}
+
+@if (!_loaded)
+{
+    <LoadingView />
+}
+else
+{
+    <SectionContainer Icon="@Icons.Material.Filled.SettingsSuggest" Title="Active Configuration" Class="mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <StInfoTile Icon="@Icons.Material.Filled.Speed" Title="Speeds" Rows="SpeedRows" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <StInfoTile Icon="@Icons.Material.Filled.Tune" Title="Limits" Rows="LimitRows" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <StInfoTile Icon="@Icons.Material.Filled.AccessTime" Title="Seeding Rules" Rows="SeedingRows" />
+            </MudItem>
+        </MudGrid>
+    </SectionContainer>
+
+    <MudGrid Class="mb-4">
+        <MudItem xs="6" sm="3">
+            <TileView Id="torrents.download" Placement="TilePlacement.Page" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <TileView Id="torrents.upload" Placement="TilePlacement.Page" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <TileView Id="torrents.active" Placement="TilePlacement.Page" />
+        </MudItem>
+        <MudItem xs="6" sm="3">
+            <TileView Id="torrents.seeding" Placement="TilePlacement.Page" />
+        </MudItem>
+    </MudGrid>
+
+    <div style="margin-bottom:var(--st-space-md);display:flex;flex-direction:column;gap:8px;">
+        <StTabs T="DownloadFilter" Items="FilterTabs" Value="_filter" ValueChanged="SetFilter" />
+        @if (_penalties.Count > 0)
+        {
+            <div><StChip Variant="warning" Class="st-torrent-risk-chip">🥊 @_penalties.Count at risk</StChip></div>
+        }
+    </div>
+
+    @if (_visible.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.CloudDownload" Message="@(_downloads.Count == 0 ? "No downloads found" : "No downloads match this filter")" />
+    }
+    else
+    {
+        @foreach (StatusGroup<DownloadItem> group in Groups)
+        {
+            <StCollapsibleSection @key="group.Kind" Icon="@group.Icon" Title="@group.Title"
+                                  Count="@group.Count" Accent="@group.Accent" BodyClass="st-torrent-group-body">
+                <div class="st-card-grid">
+                    @foreach (DownloadItem item in group.Items)
+                    {
+                        bool selected = _selectHash != null && item.IsTorrent && item.Id == _selectHash;
+                        <StDownloadCard Item="item" IsAdmin="_isAdmin" Selected="selected"
+                                        OnPause="PauseDownload"
+                                        OnResume="ResumeDownload"
+                                        OnCancel="CancelDownload"
+                                        OnRevoke="RevokePenaltyItem" />
+                    }
+                </div>
+            </StCollapsibleSection>
+        }
+    }
+}
+
+@code {
+    enum DownloadFilter { All, Torrents, Soulseek }
+
+    List<DownloadItem> _downloads = [];
+    bool _loaded;
+    bool _loading;
+    string? _errorMessage;
+    CancellationTokenSource? _cts;
+    Timer? _refreshTimer;
+    string? _selectHash;
+    DownloadFilter _filter = DownloadFilter.All;
+
+    // Live penalty state, keyed by torrent hash.
+    Dictionary<string, TorrentPenalty> _penalties = new(StringComparer.OrdinalIgnoreCase);
+    string? _actor;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    bool _isAdmin;
+
+    int TorrentCount => _downloads.Count(d => d.IsTorrent);
+    int SoulseekCount => _downloads.Count(d => !d.IsTorrent);
+
+    List<DownloadItem> _visible => _filter switch
+    {
+        DownloadFilter.Torrents => _downloads.Where(d => d.IsTorrent).ToList(),
+        DownloadFilter.Soulseek => _downloads.Where(d => !d.IsTorrent).ToList(),
+        _ => _downloads
+    };
+
+    IReadOnlyList<StatusGroup<DownloadItem>> Groups => DownloadStatusGrouping.ForDownloads(_visible);
+
+    IReadOnlyList<StTabItem<DownloadFilter>> FilterTabs
+    {
+        get
+        {
+            List<StTabItem<DownloadFilter>> tabs =
+            [
+                new(DownloadFilter.All, "All", Icons.Material.Filled.Download, _downloads.Count.ToString()),
+                new(DownloadFilter.Torrents, "Torrents", Icons.Material.Filled.CloudDownload, TorrentCount.ToString())
+            ];
+            if (Slskd.IsEnabled)
+                tabs.Add(new(DownloadFilter.Soulseek, "Soulseek", Icons.Material.Filled.MusicNote, SoulseekCount.ToString()));
+            return tabs;
+        }
+    }
+
+    void SetFilter(DownloadFilter filter) => _filter = filter;
+
+    IReadOnlyList<StInfoDatum> SpeedRows
+    {
+        get
+        {
+            TorrentDownloaderConfig cfg = Config.CurrentValue;
+            return
+            [
+                new("Download", cfg.Speed.DownloadMbps == 0 ? "∞" : $"{cfg.Speed.DownloadMbps} MB/s"),
+                new("Upload", cfg.Speed.UploadMbps == 0 ? "∞" : $"{cfg.Speed.UploadMbps} MB/s")
+            ];
+        }
+    }
+
+    IReadOnlyList<StInfoDatum> LimitRows
+    {
+        get
+        {
+            TorrentDownloaderConfig cfg = Config.CurrentValue;
+            return
+            [
+                new("Max Downloads", cfg.Limits.MaxActiveDownloads.ToString()),
+                new("Max Seeds", cfg.Limits.MaxActiveSeeds.ToString()),
+                new("Total Active", cfg.Limits.MaxActiveTorrents.ToString())
+            ];
+        }
+    }
+
+    IReadOnlyList<StInfoDatum> SeedingRows
+    {
+        get
+        {
+            TorrentDownloaderConfig cfg = Config.CurrentValue;
+            return
+            [
+                new("Ratio Limit", cfg.Seeding.MaxRatio.ToString()),
+                new("Min Time", $"{cfg.Seeding.MinTimeMinutes} min"),
+                new("Max Time", $"{cfg.Seeding.MaxTimeMinutes} min")
+            ];
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new();
+        if (AuthStateTask is not null)
+        {
+            AuthenticationState auth = await AuthStateTask;
+            _isAdmin = auth.User.IsInRole(ArrkRoles.Admin);
+            _actor = auth.User.Identity?.Name;
+        }
+        ParseSelectParam();
+        Nav.LocationChanged += OnLocationChanged;
+        await RefreshData();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await RefreshData();
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(3));
+        _refreshTimer = result.Timer;
+    }
+
+    async Task RefreshData()
+    {
+        List<DownloadItem> downloads = [];
+
+        try
+        {
+            using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_cts!.Token);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+
+            List<TorrentItem> torrents = await TorrentService.GetTorrents("all", timeoutCts.Token);
+
+            _penalties = PenaltyService.GetPenalties().ToDictionary(s => s.Hash, StringComparer.OrdinalIgnoreCase);
+            _errorMessage = null;
+
+            foreach (TorrentItem torrent in torrents)
+            {
+                DownloadItem item = DownloadItem.FromTorrent(torrent);
+                if (_penalties.TryGetValue(torrent.Hash, out TorrentPenalty? penalty))
+                {
+                    item = item with { PenaltyLabel = PenaltyLabel(penalty) };
+                }
+                downloads.Add(item);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Connection to Transmission timed out.";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load downloads: {ex.Message}";
+        }
+
+        // Soulseek transfers are loaded separately so a slskd outage never blanks the torrent list.
+        if (Slskd.IsEnabled)
+        {
+            try
+            {
+                using CancellationTokenSource soulseekCts = CancellationTokenSource.CreateLinkedTokenSource(_cts!.Token);
+                soulseekCts.CancelAfter(TimeSpan.FromSeconds(10));
+                List<SlskdDownload> soulseek = await Slskd.GetDownloadsAsync(soulseekCts.Token);
+                downloads.AddRange(soulseek.Select(DownloadItem.FromSoulseek));
+            }
+            catch (Exception)
+            {
+                _errorMessage ??= "Could not reach Soulseek (slskd).";
+            }
+        }
+
+        _downloads = [.. downloads
+            .OrderBy(d => d.StateKind == StatusGroupKind.Downloading ? 0 : 1)
+            .ThenByDescending(d => d.Progress)];
+        _loaded = true;
+    }
+
+    async Task PauseDownload(DownloadItem item)
+    {
+        if (!item.IsTorrent) return;
+        await TorrentAction(() => TorrentService.PauseTorrent(item.Id, TimeoutToken()), "pause");
+    }
+
+    async Task ResumeDownload(DownloadItem item)
+    {
+        if (!item.IsTorrent) return;
+        await TorrentAction(() => TorrentService.ResumeTorrent(item.Id, TimeoutToken()), "resume");
+    }
+
+    async Task CancelDownload(DownloadItem item)
+    {
+        if (!_isAdmin) { _errorMessage = "Only administrators can change downloads."; return; }
+        if (item.IsTorrent)
+        {
+            // Cancel a torrent the same way as a Soulseek transfer: remove it (with its files).
+            await TorrentAction(() => TorrentService.DeleteTorrent(item.Id, TorrentFileCleanup.DeleteFiles, TimeoutToken()), "cancel");
+            return;
+        }
+        try
+        {
+            using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_cts!.Token);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+            bool cancelled = await Slskd.CancelDownloadAsync(item.Username, item.Id, remove: false, timeoutCts.Token);
+            if (!cancelled)
+                _errorMessage = "slskd refused the cancellation.";
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to cancel Soulseek download: {ex.Message}";
+        }
+    }
+
+    CancellationToken TimeoutToken()
+    {
+        CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(_cts!.Token);
+        cts.CancelAfter(TimeSpan.FromSeconds(10));
+        return cts.Token;
+    }
+
+    async Task TorrentAction(Func<Task> action, string verb)
+    {
+        if (!_isAdmin) { _errorMessage = "Only administrators can change downloads."; return; }
+        _loading = true;
+        try
+        {
+            await action();
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to {verb} torrent: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task PauseAll()
+    {
+        if (!_isAdmin) { _errorMessage = "Only administrators can change downloads."; return; }
+        _loading = true;
+        try
+        {
+            using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_cts!.Token);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+            await TorrentService.PauseTorrents("all", timeoutCts.Token);
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to pause all: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task ResumeAll()
+    {
+        if (!_isAdmin) { _errorMessage = "Only administrators can change downloads."; return; }
+        _loading = true;
+        try
+        {
+            using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(_cts!.Token);
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+            await TorrentService.ResumeTorrents("all", timeoutCts.Token);
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to resume all: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task RevokePenaltyItem(DownloadItem item)
+    {
+        if (!_isAdmin) { _errorMessage = "Only administrators can revoke penalties."; return; }
+        try
+        {
+            await PenaltyService.Revoke(item.Id, _actor, _cts?.Token ?? default);
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to revoke penalty: {ex.Message}";
+        }
+    }
+
+    static string PenaltyLabel(TorrentPenalty penalty) =>
+        $"{ReasonLabel(penalty.Reason)} {penalty.PenaltyMinutes:F0} min";
+
+    static string ReasonLabel(TorrentHealthReason reason) =>
+        reason == TorrentHealthReason.Stalled ? "Stalled" : "Slow";
+
+    void ParseSelectParam()
+    {
+        Uri uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("select", out Microsoft.Extensions.Primitives.StringValues val))
+        {
+            _selectHash = val.FirstOrDefault();
+            _ = ClearSelectAfterDelay();
+        }
+    }
+
+    async Task ClearSelectAfterDelay()
+    {
+        await Task.Delay(5000);
+        _selectHash = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        ParseSelectParam();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        _refreshTimer?.Dispose();
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    The music module owns its own UI (Razor class library): the library/discover pages, the
+    album/artist/playlist popups, the mini/full player overlay and the component scripts and
+    styles, all contributed to the shell through the Arrk.Ui contracts.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\Arrk.Ai\Arrk.Ai.csproj" />
+    <ProjectReference Include="..\Arrk.Ui\Arrk.Ui.csproj" />
+    <ProjectReference Include="..\Arrk.Prowlarr\Arrk.Prowlarr.csproj" />
+    <ProjectReference Include="..\Arrk.Transmission\Arrk.Transmission.csproj" />
+    <ProjectReference Include="..\Arrk.Navidrome\Arrk.Navidrome.csproj" />
+    <ProjectReference Include="..\Arrk.Slskd\Arrk.Slskd.csproj" />
+    <ProjectReference Include="..\Arrk.Requests\Arrk.Requests.csproj" />
+    <ProjectReference Include="..\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Downloads.Abstractions\Arrk.Downloads.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Music.Abstractions\Arrk.Music.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <!-- The music module contributes HTTP endpoints (art proxy) alongside Navidrome playback. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- The music pure helpers (title cleaning, file/track matching) are internal so they can be unit-tested. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Arrk.Music.Tests" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Arrk.Media.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Downloads.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Music.Abstractions" />
+  </ItemGroup>
+</Project>

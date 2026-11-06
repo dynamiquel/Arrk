@@ -1,0 +1,305 @@
+@using Arrk.Core.Notifications
+@inject INotificationService Notifications
+@inject ActivityService Activity
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* Unified inbox card sheet: live activity on top, unread notifications below. *@
+
+<StCardSheetDialog Icon="@Icons.Material.Filled.Notifications"
+                   Title="Inbox"
+                   Subtitle="Live activity &amp; notifications"
+                   Class="st-notif-card-sheet"
+                   BodyClass="st-notif-panel-body">
+    <HeaderActions>
+        @if (Activity.ActiveCount > 0)
+        {
+            <StChip Variant="info">@Activity.ActiveCount running</StChip>
+        }
+        <StIconButton Icon="@Icons.Material.Filled.Tune" Title="Notification settings"
+                      OnClick="GoToSettings" />
+    </HeaderActions>
+    <ChildContent>
+        <div class="st-notif-card-group">
+            <div class="st-notif-section-title">
+                <MudIcon Icon="@Icons.Material.Filled.Bolt" Size="Size.Small" Color="Color.Primary" />
+                <span>Live Activity</span>
+            </div>
+            @if (ActivityItems.Count == 0)
+            {
+                <div class="st-notif-section-empty">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Small" Style="color:var(--st-text-muted);" />
+                    <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);">No recent activity</MudText>
+                </div>
+            }
+            else
+            {
+                <div class="st-notif-card-list">
+                    @foreach (ActivityItem item in ActivityItems)
+                    {
+                        <div class="st-activity-item">
+                            <div class="st-activity-item-icon st-activity-item-icon--@item.State.ToString().ToLowerInvariant()">
+                                @if (item.IsRunning)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="width:16px;height:16px;" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@StateIcon(item.State)" Size="Size.Small" Style="font-size:1rem;" />
+                                }
+                            </div>
+                            <div class="st-activity-item-body">
+                                <div class="st-activity-item-title">@item.Title</div>
+                                @if (!string.IsNullOrEmpty(item.Detail))
+                                {
+                                    <div class="st-activity-item-detail">@item.Detail</div>
+                                }
+                                @if (item.IsRunning && item.Progress is > 0 and < 1)
+                                {
+                                    <MudProgressLinear Value="@(item.Progress.Value * 100)" Color="Color.Primary" Size="Size.Small" Rounded="true" Style="height:3px;margin-top:4px;" />
+                                }
+                            </div>
+                            <div class="st-activity-item-time">@RelativeTime(item.StartedAt)</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="st-notif-card-group">
+            <div class="st-notif-section-title">
+                <MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Size="Size.Small" Color="Color.Primary" />
+                <span>Notifications</span>
+                @if (_unreadCount > 0)
+                {
+                    <StChip Variant="error">@_unreadCount</StChip>
+                }
+                <MudSpacer />
+                @if (_unreadCount > 0)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="MarkAllReadAsync">Mark all read</MudButton>
+                }
+            </div>
+
+            @if (_loading && _items.Count == 0)
+            {
+                <div class="st-notif-section-empty">
+                    <LoadingView Size="Size.Small" Message="Loading..." />
+                </div>
+            }
+            else if (_items.Count == 0)
+            {
+                <div class="st-notif-section-empty">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircleOutline" Size="Size.Small" Style="color:var(--st-text-muted);" />
+                    <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);">You're all caught up</MudText>
+                </div>
+            }
+            else
+            {
+                <div class="st-notif-card-list">
+                    @foreach (Notification item in _items)
+                    {
+                        <div class="st-notif-item @SeverityClass(item.Severity)">
+                            <div class="st-notif-item-icon">
+                                <MudIcon Icon="@SeverityIcon(item.Severity)" Size="Size.Small" Style="font-size:1rem;" />
+                            </div>
+                            <div class="st-notif-item-body" role="button" tabindex="0"
+                                 @onclick="() => OpenAsync(item)" @onkeydown="e => OnItemKeyDown(e, item)">
+                                <div class="st-notif-item-title">@item.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(item.Body))
+                                {
+                                    <div class="st-notif-item-detail">@item.Body</div>
+                                }
+                                <div class="st-notif-item-meta">
+                                    @if (!string.IsNullOrWhiteSpace(item.SourceName))
+                                    {
+                                        <span class="st-notif-item-source">@item.SourceName</span>
+                                    }
+                                    <span class="st-notif-item-time">@FormatHelper.FormatRelativeTime(item.CreatedAt)</span>
+                                </div>
+                            </div>
+                            <MudTooltip Text="Dismiss">
+                                <StIconButton Icon="@Icons.Material.Filled.Close" Title="Dismiss notification"
+                                              Class="st-notif-item-dismiss" OnClick="() => DismissAsync(item.Id)" />
+                            </MudTooltip>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                   StartIcon="@Icons.Material.Filled.EventNote" OnClick="GoToEvents">
+            View all events
+        </MudButton>
+    </Footer>
+</StCardSheetDialog>
+
+@code {
+    const int PreviewCount = 20;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    List<Notification> _items = [];
+    int _unreadCount;
+    bool _loading;
+    int? _userId;
+    Timer? _refreshTimer;
+    CancellationTokenSource? _cts;
+
+    IReadOnlyList<ActivityItem> ActivityItems => Activity.Items
+        .OrderByDescending(i => i.IsRunning)
+        .ThenByDescending(i => i.StartedAt)
+        .Take(30)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cts = new CancellationTokenSource();
+        Activity.Changed += OnActivityChanged;
+        await RefreshAsync();
+
+        _refreshTimer = new Timer(async _ =>
+        {
+            if (_cts.IsCancellationRequested)
+                return;
+
+            try
+            {
+                await RefreshAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch
+            {
+                // Transient failure or the circuit is gone; the inbox is best-effort.
+            }
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    void OnActivityChanged() => _ = InvokeAsync(StateHasChanged);
+
+    async Task<int?> ResolveUserIdAsync()
+    {
+        if (AuthStateTask is null)
+            return null;
+        ClaimsPrincipal user = (await AuthStateTask).User;
+        return int.TryParse(user.FindFirst(ArrkClaims.UserIdClaim)?.Value, out int id) ? id : null;
+    }
+
+    async Task RefreshAsync()
+    {
+        try
+        {
+            _loading = true;
+            _userId ??= await ResolveUserIdAsync();
+            _items = (await Notifications.QueryAsync(new NotificationQuery
+            {
+                UnreadOnly = true,
+                UserId = _userId,
+                IncludeBroadcast = true,
+                Limit = PreviewCount
+            })).ToList();
+            _unreadCount = await Notifications.UnreadCountAsync(_userId);
+        }
+        catch
+        {
+            // Never break the inbox on a transient DB error.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    async Task DismissAsync(long id)
+    {
+        await Notifications.MarkReadAsync(id);
+        await RefreshAsync();
+        StateHasChanged();
+    }
+
+    async Task MarkAllReadAsync()
+    {
+        await Notifications.MarkAllReadAsync(_userId);
+        await RefreshAsync();
+        StateHasChanged();
+    }
+
+    async Task OpenAsync(Notification item)
+    {
+        await Notifications.MarkReadAsync(item.Id);
+        await RefreshAsync();
+
+        if (!string.IsNullOrWhiteSpace(item.Url))
+        {
+            MudDialog.Close();
+            bool external = Uri.TryCreate(item.Url, UriKind.Absolute, out Uri? uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+            Nav.NavigateTo(item.Url, forceLoad: external);
+            return;
+        }
+
+        StateHasChanged();
+    }
+
+    async Task OnItemKeyDown(KeyboardEventArgs e, Notification item)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar")
+            await OpenAsync(item);
+    }
+
+    void GoToEvents()
+    {
+        MudDialog.Close();
+        Nav.NavigateTo("/events");
+    }
+
+    void GoToSettings()
+    {
+        MudDialog.Close();
+        Nav.NavigateTo("/events");
+    }
+
+    static string StateIcon(ActivityState state) => state switch
+    {
+        ActivityState.Success => Icons.Material.Filled.CheckCircle,
+        ActivityState.Error => Icons.Material.Filled.Error,
+        ActivityState.Info => Icons.Material.Filled.Info,
+        _ => Icons.Material.Filled.Autorenew
+    };
+
+    static string RelativeTime(DateTime utc)
+    {
+        TimeSpan delta = DateTime.UtcNow - utc;
+        if (delta.TotalSeconds < 10) return "now";
+        if (delta.TotalSeconds < 60) return $"{(int)delta.TotalSeconds}s";
+        if (delta.TotalMinutes < 60) return $"{(int)delta.TotalMinutes}m";
+        return $"{(int)delta.TotalHours}h";
+    }
+
+    static string SeverityClass(string severity) => severity.ToLowerInvariant() switch
+    {
+        "success" => "success",
+        "warning" => "warning",
+        "error" => "error",
+        _ => "info"
+    };
+
+    static string SeverityIcon(string severity) => severity.ToLowerInvariant() switch
+    {
+        "success" => Icons.Material.Filled.CheckCircleOutline,
+        "warning" => Icons.Material.Filled.WarningAmber,
+        "error" => Icons.Material.Filled.ErrorOutline,
+        _ => Icons.Material.Filled.Info
+    };
+
+    public void Dispose()
+    {
+        Activity.Changed -= OnActivityChanged;
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+}

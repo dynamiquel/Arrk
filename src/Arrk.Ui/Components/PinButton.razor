@@ -1,0 +1,55 @@
+@* Admin pin toggle. A pinned item never becomes stale and is skipped by automatic cleanup.
+   Shared by the stale-media page, watchlist section cards and detail dialogs so the affordance
+   and wording stay identical everywhere. *@
+@using Arrk.Core.Lifecycle
+@inject MediaPinService Pins
+@inject AuthenticationStateProvider AuthProvider
+
+@if (AsButton)
+{
+    <MudButton OnClick="ToggleAsync"
+               Variant="@(IsPinned ? Variant.Filled : Variant.Outlined)"
+               Color="Color.Primary"
+               Disabled="@Disabled"
+               StartIcon="@(IsPinned ? Icons.Material.Filled.PushPin : Icons.Material.Outlined.PushPin)"
+               title="@(IsPinned ? "Unpin (allow cleanup)" : "Pin (never stale)")"
+               AriaLabel="@(IsPinned ? "Unpin" : "Pin")">
+        <span class="st-btn-label">@(IsPinned ? "Pinned" : "Pin")</span>
+    </MudButton>
+}
+else
+{
+    <StIconButton Icon="@(IsPinned ? Icons.Material.Filled.PushPin : Icons.Material.Outlined.PushPin)"
+                  Title="@(IsPinned ? "Unpin (allow cleanup)" : "Pin (never stale)")"
+                  Variant="@(IsPinned ? ActionVariant.Primary : ActionVariant.Neutral)"
+                  Overlay="Overlay" StopPropagation="StopPropagation"
+                  Class="@Class" OnClick="ToggleAsync" />
+}
+
+@code {
+    [Parameter] public string ProviderKey { get; set; } = "";
+    [Parameter] public string ItemKey { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public bool IsPinned { get; set; }
+    [Parameter] public bool Overlay { get; set; }
+    [Parameter] public bool StopPropagation { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    /// <summary>Render as a full-size action button (media popups) instead of the compact card icon.</summary>
+    [Parameter] public bool AsButton { get; set; }
+
+    [Parameter] public EventCallback<bool> OnToggled { get; set; }
+
+    async Task ToggleAsync()
+    {
+        if (Disabled || string.IsNullOrWhiteSpace(ItemKey))
+            return;
+
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        string? username = state.User.Identity?.Name;
+        bool pinned = await Pins.ToggleAsync(ProviderKey, ItemKey, Title, username);
+        IsPinned = pinned;
+        await OnToggled.InvokeAsync(pinned);
+    }
+}

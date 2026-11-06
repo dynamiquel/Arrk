@@ -1,0 +1,621 @@
+@inject ResourceInventory Inventory
+@inject DockerMetricsCollector MetricsCollector
+@inject ImageManager ImageManager
+@inject IImageUpdateService ImageUpdateService
+@inject LiveActivityRegistry LiveActivity
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@using global::Docker.DotNet.Models
+@using ContainerState = Arrk.Core.Enums.ContainerState
+@implements IDisposable
+
+@if (_loading && !_containersLoaded)
+{
+    <LoadingView />
+}
+else
+{
+    <StTabs T="int" Items="Tabs"
+            Value="_activeSection" ValueChanged="OnSectionChanged" />
+
+    <div class="infra-tab-content">
+        @if (_activeSection == 0)
+        {
+            @if (!_containersLoaded)
+            {
+                <LoadingView Size="Size.Small" Message="Loading containers..." />
+            }
+            else if (_containers?.Count > 0)
+            {
+                <MudDataGrid T="ContainerInfo" Items="_containers" Hover="true" Dense="true" Striped="true" Class="mt-2 st-infra-grid">
+                    <Columns>
+                        <TemplateColumn Title="Name">
+                            <CellTemplate>
+                                <MudLink Href="@($"/docker/container/{context.Item.Id}")" Class="st-info-value"><EntityIcon EntityType="container" /> @context.Item.Name</MudLink>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Image" Title="Image" />
+                        <TemplateColumn Title="State">
+                            <CellTemplate>
+                                <ContainerStatusLabel State="context.Item.State" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Service">
+                            <CellTemplate>
+                                @(CssClassHelper.GetLabel(context.Item.Labels, DockerUiConstants.LabelService) ?? "-")
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Status" Title="Status" />
+                        <TemplateColumn Title="CPU">
+                            <CellTemplate>
+                                @{ ContainerMetrics? metrics = _containerMetrics.GetValueOrDefault(context.Item.Id); }
+                                <span class="st-info-value">@(metrics?.CpuPercent.ToString("F1") ?? "-")%</span>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Memory">
+                            <CellTemplate>
+                                @{ ContainerMetrics? metrics = _containerMetrics.GetValueOrDefault(context.Item.Id); }
+                                @if (metrics != null)
+                                {
+                                    <span class="st-info-value">
+                                        @FormatHelper.FormatBytes(metrics.MemoryUsageBytes)
+                                        <span style="color:var(--st-text-muted);">/ @FormatHelper.FormatBytes(metrics.MemoryLimitBytes)</span>
+                                        (@(metrics.MemoryPercent.ToString("F1"))%)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--st-text-muted);">-</span>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Disk">
+                            <CellTemplate>
+                                @if (context.Item.SizeRw > 0)
+                                {
+                                    <span class="st-info-value">@FormatHelper.FormatBytes(context.Item.SizeRw)</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--st-text-muted);">-</span>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Actions">
+                            <CellTemplate>
+                                <ContainerActionsButtons State="context.Item.State"
+                                    OnStart="@(() => HandleContainerAction(ContainerActionHelper.StartContainer, context.Item.Id, context.Item.Name))"
+                                    OnStop="@(() => HandleContainerAction(ContainerActionHelper.StopContainer, context.Item.Id, context.Item.Name))"
+                                    OnRestart="@(() => HandleContainerAction(ContainerActionHelper.RestartContainer, context.Item.Id, context.Item.Name))" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            }
+            else
+            {
+                <EmptyState Message="No containers found." />
+            }
+        }
+
+        @* Networks *@
+        else if (_activeSection == 1)
+        {
+            @if (!_networksLoaded)
+            {
+                <LoadingView Size="Size.Small" Message="Loading networks..." />
+            }
+            else if (_networks?.Count > 0)
+            {
+                <MudDataGrid T="DockerDotNet.Models.NetworkResponse" Items="_networks" Hover="true" Dense="true" Class="mt-2 st-infra-grid">
+                    <Columns>
+                        <TemplateColumn Title="Name">
+                            <CellTemplate>
+                                <MudLink Href="@($"/docker/network/{context.Item.ID}")"><EntityIcon EntityType="network" /> @context.Item.Name</MudLink>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Driver" Title="Driver" />
+                        <TemplateColumn Title="Containers">
+                            <CellTemplate>
+                                @if (context.Item.Containers?.Count > 0)
+                                {
+                                    @foreach (KeyValuePair<string, EndpointResource> kvp in context.Item.Containers)
+                                    {
+                                        string containerId = kvp.Key;
+                                        string? containerName = _containers?.FirstOrDefault(c =>
+                                            c.Id == containerId || c.Id.StartsWith(containerId))?.Name;
+                                        string displayName = containerName ?? containerId[..Math.Min(DockerUiConstants.ContainerIdDisplayLength, containerId.Length)];
+                                        if (containerName != null)
+                                        {
+                                            <MudLink Href="@($"/docker/container/{containerId}")" Typo="Typo.body2" Class="mr-1">
+                                                @displayName
+                                            </MudLink>
+                                        }
+                                        else
+                                        {
+                                            <StChip Variant="neutral" Class="mr-1">@displayName</StChip>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color:var(--st-text-muted);">-</span>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Managed">
+                            <CellTemplate>
+                                @if (IsManagedNetwork(context.Item))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Default" Size="Size.Small" />
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Actions">
+                            <CellTemplate>
+                                @if (IsManagedNetwork(context.Item))
+                                {
+                                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                        OnClick="@(() => DeleteNetwork(context.Item.ID))" title="Remove network" AriaLabel="Remove network">
+                                        <span class="st-btn-label">Remove</span>
+                                    </MudButton>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            }
+            else
+            {
+                <EmptyState Message="No networks found." />
+            }
+        }
+
+        @* Volumes *@
+        else if (_activeSection == 2)
+        {
+            @if (!_volumesLoaded)
+            {
+                <LoadingView Size="Size.Small" Message="Loading volumes..." />
+            }
+            else if (_volumes?.Count > 0)
+            {
+                <MudGrid Class="mt-2">
+                    @foreach (VolumeMetrics vol in _volumes)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <div class="st-service-card" style="cursor:pointer;flex-direction:column;align-items:stretch;" onclick="@(() => Nav.NavigateTo($"/docker/volume/{Uri.EscapeDataString(vol.Name)}"))">
+                                <div class="st-service-name" style="margin-bottom:var(--st-space-xs);"><EntityIcon EntityType="volume" /> @vol.Name</div>
+                                <div class="st-service-desc" style="margin-bottom:var(--st-space-sm);">@vol.MountPoint</div>
+                                @if (vol.TotalBytes > 0)
+                                {
+                                    <MudProgressLinear Value="@vol.UsedPercent" Color="@CssClassHelper.GetVolumeColor(vol.UsedPercent)" Class="mb-1" />
+                                    <div style="display:flex;justify-content:space-between;font-size:0.8125rem;">
+                                        <span class="st-info-value" style="font-size:0.8125rem;">@FormatHelper.FormatBytes(vol.UsedBytes) / @FormatHelper.FormatBytes(vol.TotalBytes)</span>
+                                        <span class="st-info-value" style="font-size:0.8125rem;color:var(--st-text-muted);">@(vol.UsedPercent.ToString("F1"))%</span>
+                                    </div>
+                                }
+                                @if (vol.Containers.Count > 0)
+                                {
+                                    <div style="margin-top:var(--st-space-sm);font-size:0.8125rem;color:var(--st-text-secondary);">
+                                        @string.Join(", ", vol.Containers)
+                                    </div>
+                                }
+                            </div>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+            else
+            {
+                <EmptyState Message="No volumes found." />
+            }
+        }
+
+        @* Images *@
+        else if (_activeSection == 3)
+        {
+            @if (!_imagesLoaded)
+            {
+                <LoadingView Size="Size.Small" Message="Loading images..." />
+            }
+            else if (_images?.Count > 0)
+            {
+                <MudDataGrid T="DockerDotNet.Models.ImagesListResponse" Items="_images" Hover="true" Dense="true" Class="mt-2 st-infra-grid">
+                    <Columns>
+                        <TemplateColumn Title="Repository">
+                            <CellTemplate>
+                                <EntityIcon EntityType="image" /> @string.Join(", ", context.Item.RepoTags ?? [])
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Size">
+                            <CellTemplate>
+                                <span class="st-info-value">@FormatHelper.FormatBytes((long)context.Item.Size)</span>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Age">
+                            <CellTemplate>
+                                @{
+                                    TimeSpan age = ImageManager.GetImageAge(context.Item.Created);
+                                    bool isOutdated = ImageManager.IsImageOutdated(age);
+                                    string color = isOutdated ? "color:var(--st-red);" : age.TotalDays > 7 ? "color:var(--st-yellow);" : "color:var(--st-green);";
+                                }
+                                <span style="@color font-size:0.9375rem;">@ImageManager.GetAgeDescription(age)</span>
+                                @{
+                                    string? imgRepoTag = context.Item.RepoTags?.FirstOrDefault(t => !t.Contains("<none>"));
+                                }
+                                @if (!string.IsNullOrEmpty(imgRepoTag) && _updateAvailable.GetValueOrDefault(imgRepoTag, false))
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.SystemUpdate" Size="Size.Small" Color="Color.Warning" Style="margin-left:4px;vertical-align:middle;" Title="Update available" />
+                                }
+                                else if (isOutdated)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Color="Color.Default" Style="margin-left:4px;vertical-align:middle;opacity:0.5;" Title="Old image" />
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Created">
+                            <CellTemplate>
+                                @context.Item.Created.ToLocalTime().ToString("g")
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Actions">
+                            <CellTemplate>
+                                @{
+                                    string? repoTag = context.Item.RepoTags?.FirstOrDefault(t => !t.Contains("<none>"));
+                                }
+                                @if (!string.IsNullOrEmpty(repoTag))
+                                {
+                                    <MudButton StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Info"
+                                        OnClick="@(() => ShowRepullDialog(repoTag))" Disabled="@_pullingImages.Contains(repoTag)"
+                                        title="Repull image" AriaLabel="Repull image">
+                                        <span class="st-btn-label">@(_pullingImages.Contains(repoTag) ? "Pulling..." : "Repull")</span>
+                                    </MudButton>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+            }
+            else
+            {
+                <EmptyState Message="No images found." />
+            }
+        }
+
+        @* Network Interfaces *@
+        else if (_activeSection == 4)
+        {
+            @if (!_interfacesLoaded)
+            {
+                <LoadingView Size="Size.Small" Message="Loading interfaces..." />
+            }
+            else if (_networkInterfaces?.Count > 0)
+            {
+                <MudDataGrid T="NetworkInterfaceMetrics" Items="_networkInterfaces" Hover="true" Dense="true" Class="mt-2">
+                    <Columns>
+                        <PropertyColumn Property="x => x.InterfaceName" Title="Interface" />
+                        <TemplateColumn Title="RX">
+                            <CellTemplate>
+                                <span class="st-info-value">@FormatHelper.FormatBytes(context.Item.RxBytes)</span>
+                                <br />
+                                <span class="st-info-value" style="font-size:0.75rem;color:var(--st-text-muted);">@FormatHelper.FormatRate(context.Item.RxRateBytesPerSec)</span>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="TX">
+                            <CellTemplate>
+                                <span class="st-info-value">@FormatHelper.FormatBytes(context.Item.TxBytes)</span>
+                                <br />
+                                <span class="st-info-value" style="font-size:0.75rem;color:var(--st-text-muted);">@FormatHelper.FormatRate(context.Item.TxRateBytesPerSec)</span>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.RxPackets" Title="RX Pkts" />
+                        <PropertyColumn Property="x => x.TxPackets" Title="TX Pkts" />
+                    </Columns>
+                </MudDataGrid>
+            }
+            else
+            {
+                <EmptyState Message="No network interfaces found." />
+            }
+        }
+    </div>
+}
+
+@* Repull Confirmation Dialog *@
+<MudDialog @bind-Visible="_repullDialogVisible" Options="_repullDialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" />Repull Image
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Class="mb-2">Force repull <b>@_repullImageName</b>? This will:</MudText>
+        <MudList T="string" Dense="true" Class="mb-2">
+            @foreach (string service in _repullAffectedServices)
+            {
+                <MudListItem T="string" Icon="@Icons.Material.Filled.Stop">
+                    <MudText Typo="Typo.body2">Stop and recreate <b>@service</b></MudText>
+                </MudListItem>
+            }
+        </MudList>
+        <MudText Typo="Typo.body2" Style="color:var(--st-text-muted);">
+            Services will be temporarily unavailable while the image is pulled from the registry.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _repullDialogVisible = false)" title="Cancel" AriaLabel="Cancel">
+            <span class="st-btn-label">Cancel</span>
+        </MudButton>
+        <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="ConfirmForceRepull" Disabled="@_pullingImages.Contains(_repullImageName)"
+                   title="Force repull" AriaLabel="Force repull">
+            <span class="st-btn-label">@(_pullingImages.Contains(_repullImageName) ? "Pulling..." : "Force Repull")</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    bool _loading = true;
+    bool _containersLoaded;
+    bool _networksLoaded;
+    bool _volumesLoaded;
+    bool _imagesLoaded;
+    bool _interfacesLoaded;
+    int _activeSection = 0;
+
+    IReadOnlyList<StTabItem<int>> Tabs =>
+    [
+        new(0, "Containers", Icons.Material.Filled.Layers, (_containers?.Count ?? 0).ToString()),
+        new(1, "Networks", Icons.Material.Filled.Lan, (_networks?.Count ?? 0).ToString()),
+        new(2, "Volumes", Icons.Material.Filled.Folder, (_volumes?.Count ?? 0).ToString()),
+        new(3, "Images", Icons.Material.Filled.Image, (_images?.Count ?? 0).ToString()),
+        new(4, "Host Network", Icons.Material.Filled.SignalCellularAlt)
+    ];
+
+    void OnSectionChanged(int value) => _activeSection = value;
+    List<ContainerInfo>? _containers;
+    List<DockerDotNet.Models.NetworkResponse>? _networks;
+    List<VolumeMetrics>? _volumes;
+    List<DockerDotNet.Models.ImagesListResponse>? _images;
+    List<NetworkInterfaceMetrics>? _networkInterfaces;
+    Dictionary<string, ContainerMetrics> _containerMetrics = new();
+    Dictionary<string, bool> _updateAvailable = new();
+    Timer? _refreshTimer;
+    CancellationTokenSource? _cts;
+    readonly SemaphoreSlim _metricsLock = new(1, 1);
+    HashSet<string> _pullingImages = new(StringComparer.OrdinalIgnoreCase);
+
+    bool _repullDialogVisible;
+    string _repullImageName = "";
+    List<string> _repullAffectedServices = [];
+    DialogOptions _repullDialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAll();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await LoadMetricsSafeAsync();
+            },
+            TimeSpan.FromSeconds(DockerUiConstants.InfrastructureInitialDelaySeconds),
+            TimeSpan.FromSeconds(DockerUiConstants.InfrastructureRefreshSeconds));
+        _refreshTimer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task LoadAll()
+    {
+        _loading = true;
+        Task<List<ContainerInfo>?> containersTask = SafeLoadAsync(() => Inventory.GetOwnedContainers());
+        Task<List<DockerDotNet.Models.NetworkResponse>?> networksTask = SafeLoadAsync(() => Inventory.GetOwnedNetworks());
+        Task<List<VolumeMetrics>?> volumesTask = SafeLoadAsync(() => Inventory.GetOwnedVolumes());
+        Task<List<NetworkInterfaceMetrics>?> interfacesTask = SafeLoadAsync(() => MetricsCollector.GetNetworkMetrics());
+        Task<List<DockerDotNet.Models.ImagesListResponse>?> imagesTask = SafeLoadAsync(() => Inventory.GetOwnedImages());
+
+        _containers = await containersTask;
+        _containersLoaded = true;
+        await InvokeAsync(StateHasChanged);
+
+        _networks = await networksTask;
+        _networksLoaded = true;
+        await InvokeAsync(StateHasChanged);
+
+        _volumes = await volumesTask;
+        _volumesLoaded = true;
+        await InvokeAsync(StateHasChanged);
+
+        _images = await imagesTask;
+        _imagesLoaded = true;
+        await InvokeAsync(StateHasChanged);
+
+        _networkInterfaces = await interfacesTask;
+        _interfacesLoaded = true;
+
+        _loading = false;
+        await InvokeAsync(StateHasChanged);
+        await LoadMetricsSafeAsync();
+        _ = CheckForUpdates();
+    }
+
+    async Task LoadMetricsSafeAsync()
+    {
+        if (_containers == null)
+        {
+            return;
+        }
+
+        if (!await _metricsLock.WaitAsync(0))
+        {
+            return;
+        }
+        try
+        {
+            List<ContainerInfo> running = _containers.Where(c => c.State == ContainerState.Running).ToList();
+            IEnumerable<Task> tasks = running.Select(async c =>
+            {
+                ContainerMetrics? stats = await MetricsCollector.GetContainerStats(c.Id);
+                if (stats != null)
+                    _containerMetrics[c.Id] = stats;
+            });
+            await Task.WhenAll(tasks);
+            _networkInterfaces = await MetricsCollector.GetNetworkMetrics();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { }
+        finally
+        {
+            _metricsLock.Release();
+        }
+    }
+
+    async Task CheckForUpdates()
+    {
+        if (_images == null)
+        {
+            return;
+        }
+
+        foreach (DockerDotNet.Models.ImagesListResponse image in _images)
+        {
+            string? repoTag = image.RepoTags?.FirstOrDefault(t => !t.Contains("<none>"));
+            if (string.IsNullOrEmpty(repoTag))
+            {
+                continue;
+            }
+
+            try
+            {
+                ImageUpdateInfo info = await ImageUpdateService.GetImageUpdateInfoAsync(repoTag);
+                _updateAvailable[repoTag] = info.UpdateAvailable;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch { }
+        }
+    }
+
+    async Task HandleContainerAction(Func<string, string, LiveActivityRegistry, Func<Task>?, Task> action, string containerId, string containerName)
+    {
+        await action(containerId, containerName, LiveActivity, LoadAll);
+    }
+
+    static async Task<T?> SafeLoadAsync<T>(Func<Task<T>> action)
+    {
+        try
+        {
+            return await action();
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
+    async Task DeleteNetwork(string networkId)
+    {
+        using DockerDotNet.DockerClient client = DockerClientFactory.Create();
+        NetworkManager networkManager = new(client);
+        await networkManager.DeleteNetwork(networkId);
+        await LoadAll();
+    }
+
+    async Task ShowRepullDialog(string image)
+    {
+        if (_pullingImages.Contains(image))
+        {
+            return;
+        }
+
+        try
+        {
+            ImageUpdateInfo info = await ImageUpdateService.GetImageUpdateInfoAsync(image);
+
+            if (info.HasExternalContainers)
+            {
+                string names = string.Join(", ", info.ExternalContainers);
+                Snackbar.Add($"Cannot repull: image is in use by external container(s): {names}", Severity.Error);
+                return;
+            }
+
+            if (info.DependentServices.Count == 0)
+            {
+                Snackbar.Add("No managed services found using this image.", Severity.Warning);
+                return;
+            }
+
+            _repullImageName = image;
+            _repullAffectedServices = info.DependentServices;
+            _repullDialogVisible = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to analyze image dependencies: {ex.Message}", Severity.Error);
+        }
+    }
+
+    async Task ConfirmForceRepull()
+    {
+        _repullDialogVisible = false;
+        string image = _repullImageName;
+
+        if (_pullingImages.Contains(image))
+        {
+            return;
+        }
+
+        _pullingImages.Add(image);
+        ImageManager.ImagesBeingRepulled.TryAdd(image, 0);
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            ForceRepullResult result = await ImageUpdateService.ForceRepullAsync(image, new Progress<ImagePullProgress>(progress =>
+            {
+                _ = InvokeAsync(() =>
+                {
+                    Snackbar.Add(progress.Status, progress.CurrentStep == "pulling" ? Severity.Normal : Severity.Info);
+                });
+            }));
+
+            if (result.Success)
+            {
+                Snackbar.Add($"Successfully repulled {image}", Severity.Success);
+                _updateAvailable.Remove(image);
+                await LoadAll();
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage ?? $"Failed to repull {image}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to repull {image}: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _pullingImages.Remove(image);
+            ImageManager.ImagesBeingRepulled.TryRemove(image, out _);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+        _metricsLock.Dispose();
+    }
+
+    static bool IsManagedNetwork(DockerDotNet.Models.NetworkResponse n)
+    {
+        return CssClassHelper.IsManagedNetwork(n.Labels, n.Name);
+    }
+}

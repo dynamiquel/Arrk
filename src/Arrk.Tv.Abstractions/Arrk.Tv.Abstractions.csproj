@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    TV domain contracts: movies, series, seasons, episodes, people and the capability interfaces
+    a TV backend or metadata provider exposes. No ref(arr) client, HTTP call or Razor component
+    belongs here.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

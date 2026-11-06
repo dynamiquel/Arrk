@@ -1,0 +1,529 @@
+@using System.Text
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+@inject AssistantService Assistant
+@inject AuthenticationStateProvider AuthState
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+@* The assistant overlay. It keeps a short in-memory thread so follow-ups work ("download the
+   first one"), but it is still a single card sheet: no page, no persisted history, no navigation.
+   Closing the popup discards the thread. *@
+
+<StCardSheetDialog Icon="@Icons.Material.Filled.AutoAwesome"
+                   Title="Ask Arrk"
+                   Subtitle="Answers and actions from your library"
+                   Class="st-assistant-sheet"
+                   BodyClass="st-assistant-sheet-body">
+    <ChildContent>
+        @if (!Assistant.Enabled)
+        {
+            <div class="st-assistant-off">
+                <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Align="Align.Center">
+                    @Assistant.DisabledReason
+                </MudText>
+                <MudButton Href="/config" Variant="Variant.Outlined" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Settings">
+                    Open Configuration
+                </MudButton>
+            </div>
+        }
+        else
+        {
+            <div class="st-assistant-bar">
+                <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="st-assistant-bar-icon" />
+                <input @ref="_inputElement" class="st-assistant-input"
+                       @bind="_input" @bind:event="oninput"
+                       @onkeydown="OnKeyDown" @onkeydown:stopPropagation
+                       placeholder="@(_conversation.Turns.Count > 0 ? "Ask a follow-up…" : "Ask about your library…")"
+                       aria-label="Ask the assistant" />
+                @if (_sending)
+                {
+                    <StIconButton Icon="@Icons.Material.Filled.Stop" Title="Stop"
+                                  Variant="ActionVariant.Neutral" OnClick="Stop" />
+                }
+                else
+                {
+                    @if (_conversation.Turns.Count > 0)
+                    {
+                        <StIconButton Icon="@Icons.Material.Filled.AddComment" Title="New chat"
+                                      Variant="ActionVariant.Neutral" OnClick="NewChat" />
+                    }
+                    <StIconButton Icon="@Icons.Material.Filled.ArrowUpward" Title="Ask"
+                                  Variant="ActionVariant.Primary"
+                                  Disabled="@(string.IsNullOrWhiteSpace(_input))" OnClick="() => AskAsync()" />
+                }
+            </div>
+
+            @* A normal outlined select, like the app's other dropdowns; the persona is a mode,
+               not a header action, so it sits with the composer instead of squeezing the title. *@
+            <div class="st-assistant-persona-row">
+                <MudSelect T="string" Value="@_personaKey" ValueChanged="OnPersonaChangedAsync"
+                           Label="Persona" Variant="Variant.Outlined" Dense="true"
+                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Face"
+                           Disabled="@_sending" Class="st-assistant-persona-select">
+                    @foreach (AssistantPersona persona in _personas)
+                    {
+                        <MudSelectItem T="string" Value="@persona.Key">@persona.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+
+            @if (_conversation.Turns.Count == 0 && _question.Length == 0)
+            {
+                <div class="st-assistant-prompts">
+                    @foreach (string suggestion in Suggestions)
+                    {
+                        <button type="button" class="st-assistant-prompt"
+                                @onclick="() => UseSuggestion(suggestion)">
+                            <MudIcon Icon="@Icons.Material.Filled.NorthEast" Size="Size.Small" />
+                            <span>@suggestion</span>
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div id="st-assistant-thread" class="st-assistant-thread">
+                    @foreach (AssistantTurn turn in _conversation.Turns)
+                    {
+                        if (turn.IsUser)
+                        {
+                            <div class="st-assistant-question">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                <span>@turn.Text</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="st-assistant-text st-assistant-text--thread">@turn.Text</div>
+                        }
+                    }
+
+                    @if (_question.Length > 0)
+                    {
+                        <div class="st-assistant-question">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                            <span>@_question</span>
+                        </div>
+
+                        <div class="st-assistant-answer">
+                            @if (_tools.Count > 0)
+                            {
+                                <div class="st-assistant-tools">
+                                    @foreach (LiveTool tool in _tools)
+                                    {
+                                        <StChip Variant="@(tool.Done ? (tool.Success ? "neutral" : "error") : "info")"
+                                                title="@tool.Summary">
+                                            @tool.Label@(tool.Done ? "" : "…")
+                                        </StChip>
+                                    }
+                                </div>
+                            }
+
+                            @if (_answer.Length > 0)
+                            {
+                                <div class="st-assistant-text">@_answer</div>
+                            }
+                            else if (_sending)
+                            {
+                                <div class="st-assistant-thinking">
+                                    <span class="st-assistant-dot"></span>
+                                    <span class="st-assistant-dot"></span>
+                                    <span class="st-assistant-dot"></span>
+                                </div>
+                            }
+
+                            @if (_error.Length > 0)
+                            {
+                                <div class="st-assistant-error">
+                                    <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Small" />
+                                    <span>@_error</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (_actions.Count > 0)
+                    {
+                        <div class="st-assistant-actions">
+                            @foreach (AssistantActionLink action in _actions)
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="@(action.Kind == AssistantActionLinkKind.MusicPlay ? Color.Primary : Color.Default)"
+                                           Size="Size.Small"
+                                           StartIcon="@ActionIcon(action.Kind)"
+                                           OnClick="() => RunActionAsync(action)">
+                                    @action.Label
+                                </MudButton>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (_limit is { Allowed: false })
+            {
+                <MudText Typo="Typo.caption" Class="st-assistant-note is-warning">@_limit.Message</MudText>
+            }
+        }
+    </ChildContent>
+</StCardSheetDialog>
+
+@code {
+    static readonly string[] Suggestions =
+    [
+        "What anime do I have?",
+        "Recommend a top tier anime this season",
+        "What do I have with Tom Cruise?",
+        "Play The Last of Us"
+    ];
+
+    readonly StringBuilder _answer = new();
+    readonly List<LiveTool> _tools = [];
+    readonly List<AssistantActionLink> _actions = [];
+
+    ElementReference _inputElement;
+    AssistantConversation _conversation = AssistantConversation.Empty;
+    AssistantUser _user = new(0, "", false);
+    IReadOnlyList<AssistantPersona> _personas = [];
+    string _personaKey = AiPersonas.Plain;
+    AssistantLimitStatus? _limit;
+    CancellationTokenSource? _cts;
+    string _input = "";
+    string _question = "";
+    string _error = "";
+    bool _sending;
+    bool _scrollPending;
+    DateTime _lastRender = DateTime.MinValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthState.GetAuthenticationStateAsync();
+        ClaimsPrincipal principal = state.User;
+        int.TryParse(principal.FindFirst(ArrkClaims.UserIdClaim)?.Value, out int userId);
+        string username = principal.Identity?.Name
+            ?? principal.FindFirst(ArrkClaims.DisplayNameClaim)?.Value
+            ?? "";
+        _user = new AssistantUser(userId, username, principal.IsInRole(ArrkRoles.Admin));
+
+        if (!Assistant.Enabled)
+            return;
+
+        _personas = Assistant.GetPersonas();
+        try
+        {
+            AssistantPersona persona = await Assistant.GetPersonaAsync(_user);
+            _personaKey = persona.Key;
+        }
+        catch
+        {
+            _personaKey = AiPersonas.Plain;
+        }
+
+        try
+        {
+            _limit = await Assistant.GetLimitAsync(_user);
+        }
+        catch
+        {
+            _limit = null;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Assistant.Enabled)
+        {
+            try
+            {
+                await _inputElement.FocusAsync();
+            }
+            catch
+            {
+                // Focus is a nicety; the input is still usable with the mouse.
+            }
+        }
+
+        if (_scrollPending)
+        {
+            _scrollPending = false;
+            try
+            {
+                await JS.InvokeVoidAsync("arrkAssistantScroll");
+            }
+            catch
+            {
+                // Scrolling is an enhancement; the thread is still scrollable by hand.
+            }
+        }
+    }
+
+    async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+            await AskAsync();
+    }
+
+    async Task UseSuggestion(string suggestion)
+    {
+        _input = suggestion;
+        await AskAsync();
+    }
+
+    async Task OnPersonaChangedAsync(string key)
+    {
+        if (_sending || string.IsNullOrWhiteSpace(key) || key == _personaKey)
+            return;
+
+        string previous = _personaKey;
+        AssistantPersona? saved = await Assistant.SetPersonaAsync(_user, key);
+        if (saved is null)
+        {
+            _personaKey = previous;
+            StateHasChanged();
+            return;
+        }
+
+        _personaKey = saved.Key;
+        StateHasChanged();
+    }
+
+    void NewChat()
+    {
+        if (_sending)
+            return;
+
+        _conversation = AssistantConversation.Empty;
+        _answer.Clear();
+        _tools.Clear();
+        _actions.Clear();
+        _question = "";
+        _error = "";
+        _input = "";
+        _scrollPending = true;
+        StateHasChanged();
+    }
+
+    async Task AskAsync()
+    {
+        if (_sending || !Assistant.Enabled)
+            return;
+
+        string question = _input.Trim();
+        if (question.Length == 0)
+            return;
+
+        _input = "";
+        _question = question;
+        _answer.Clear();
+        _tools.Clear();
+        _actions.Clear();
+        _error = "";
+        _sending = true;
+        _scrollPending = true;
+        _cts = new CancellationTokenSource();
+        StateHasChanged();
+
+        AssistantConversation? updated = null;
+
+        try
+        {
+            await foreach (AssistantUpdate update in Assistant
+                               .StreamAsync(_user, question, _conversation, _cts.Token)
+                               .WithCancellation(_cts.Token))
+            {
+                switch (update)
+                {
+                    case AssistantTextDelta delta:
+                        _answer.Append(delta.Text);
+                        break;
+                    case AssistantToolStarted started:
+                        _tools.Add(new LiveTool(started.Name, started.Label));
+                        break;
+                    case AssistantToolFinished finished:
+                        LiveTool? tool = _tools.LastOrDefault(t => !t.Done && t.Name == finished.Name);
+                        if (tool is not null)
+                        {
+                            tool.Done = true;
+                            tool.Success = finished.Success;
+                            tool.Summary = finished.Summary;
+                        }
+                        break;
+                    case AssistantActionAvailable available:
+                        if (_actions.All(a => a != available.Link))
+                            _actions.Add(available.Link);
+                        break;
+                    case AssistantCompleted completed:
+                        updated = completed.Conversation;
+                        break;
+                    case AssistantFailed failed:
+                        _error = failed.Message;
+                        break;
+                }
+
+                _scrollPending = true;
+                Render();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The partial answer stays visible; the user asked to stop.
+        }
+        catch (Exception ex)
+        {
+            _error = AssistantService.Describe(ex);
+        }
+        finally
+        {
+            _sending = false;
+            _cts?.Dispose();
+            _cts = null;
+
+            if (updated is not null)
+            {
+                // The completed exchange is now part of the transcript. Action links stay below it
+                // so a confirmation button is still clickable after the answer finishes.
+                _conversation = updated;
+                _question = "";
+                _answer.Clear();
+                _tools.Clear();
+            }
+
+            try
+            {
+                _limit = await Assistant.GetLimitAsync(_user);
+            }
+            catch
+            {
+                _limit = null;
+            }
+
+            _scrollPending = true;
+            StateHasChanged();
+        }
+    }
+
+    void Render()
+    {
+        DateTime now = DateTime.UtcNow;
+        if ((now - _lastRender).TotalMilliseconds < 80)
+            return;
+
+        _lastRender = now;
+        StateHasChanged();
+    }
+
+    void Stop() => _cts?.Cancel();
+
+    static string ActionIcon(AssistantActionLinkKind kind) => kind switch
+    {
+        AssistantActionLinkKind.MusicPlay => Icons.Material.Filled.PlayArrow,
+        AssistantActionLinkKind.Confirm => Icons.Material.Filled.Check,
+        _ => Icons.Material.Filled.OpenInNew
+    };
+
+    /// <summary>
+    /// Runs a browser follow-up returned by an action tool. The server cannot click for the user, so
+    /// the overlay is the last mile: open the target page, or hand a music queue to the site player.
+    /// </summary>
+    async Task RunActionAsync(AssistantActionLink action)
+    {
+        if (action.Kind == AssistantActionLinkKind.Confirm)
+        {
+            await ConfirmActionAsync(action);
+            return;
+        }
+
+        if (action.Kind == AssistantActionLinkKind.MusicPlay && !string.IsNullOrWhiteSpace(action.Payload))
+        {
+            try
+            {
+                List<Dictionary<string, object?>>? queue =
+                    JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(action.Payload);
+                if (queue is { Count: > 0 })
+                {
+                    await JS.InvokeVoidAsync("arrkMusic.play", queue, 0);
+                    _actions.Remove(action);
+                    _error = "";
+                    StateHasChanged();
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                _error = $"Could not start playback ({ex.GetType().Name}).";
+                StateHasChanged();
+                return;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.Url))
+        {
+            Nav.NavigateTo(action.Url, forceLoad: true);
+            return;
+        }
+
+        _error = "That action has no target in this browser.";
+        StateHasChanged();
+    }
+
+    async Task ConfirmActionAsync(AssistantActionLink action)
+    {
+        AssistantPendingAction? pending;
+        try
+        {
+            pending = JsonSerializer.Deserialize<AssistantPendingAction>(action.Payload ?? "");
+        }
+        catch
+        {
+            pending = null;
+        }
+
+        if (pending is null)
+        {
+            _error = "That confirmation could not be read. Ask again.";
+            StateHasChanged();
+            return;
+        }
+
+        _actions.Clear();
+        _error = "";
+        StateHasChanged();
+
+        AssistantActionOutcome outcome = await Assistant.RunActionAsync(
+            _user, pending.Action, pending.Id, pending.Option);
+
+        // Replace the last assistant line with the action result so the thread stays truthful.
+        List<AssistantTurn> turns = [.. _conversation.Turns];
+        int lastAssistant = turns.FindLastIndex(t => !t.IsUser);
+        if (lastAssistant >= 0)
+            turns[lastAssistant] = turns[lastAssistant] with { Text = outcome.Message };
+        else
+            _answer.Append(outcome.Message);
+
+        _conversation = _conversation with { Turns = turns };
+        if (!outcome.Success)
+            _error = outcome.Message;
+
+        _scrollPending = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    sealed class LiveTool(string name, string label)
+    {
+        public string Name { get; } = name;
+        public string Label { get; } = label;
+        public bool Done { get; set; }
+        public bool Success { get; set; } = true;
+        public string? Summary { get; set; }
+    }
+}

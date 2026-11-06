@@ -1,0 +1,62 @@
+@inject IDialogService DialogService
+@inject UserService Users
+
+@* App-bar account chip: shows the user's avatar/initials and opens the account card sheet. *@
+
+<AuthorizeView Context="auth">
+    <Authorized>
+        <div class="st-user-chip" role="button" tabindex="0" aria-label="Account menu" title="@Username"
+             @onclick="OpenMenu">
+            @if (HasAvatar && UserId is not null)
+            {
+                <img class="st-user-avatar" src="@($"/account/avatar/{UserId}")" alt="@Username" />
+            }
+            else
+            {
+                <span class="st-user-avatar st-user-avatar--initials">@Initials</span>
+            }
+            <span class="st-user-name">@Username</span>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    string Username { get; set; } = "Account";
+    bool HasAvatar { get; set; }
+    int? UserId { get; set; }
+
+    string Initials
+    {
+        get
+        {
+            string name = string.IsNullOrWhiteSpace(Username) ? "?" : Username;
+            return name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is null)
+            return;
+
+        AuthenticationState state = await AuthState;
+        ClaimsPrincipal principal = state.User;
+
+        Username = principal.Identity?.Name
+            ?? principal.FindFirst(ArrkClaims.DisplayNameClaim)?.Value
+            ?? "Account";
+
+        if (int.TryParse(principal.FindFirst(ArrkClaims.UserIdClaim)?.Value, out int id))
+        {
+            UserId = id;
+            ArrkUser? user = await Users.GetByIdAsync(id);
+            HasAvatar = user?.Avatar is { Length: > 0 };
+            if (user is not null)
+                Username = user.Username;
+        }
+    }
+
+    Task OpenMenu() => DialogService.ShowAsync<AccountMenuDialog>(null, StCardSheetOptions.CreateAnchored());
+}

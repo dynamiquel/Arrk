@@ -1,0 +1,528 @@
+@page "/tv"
+@attribute [Authorize]
+@inject SonarrService SonarrService
+@inject MediaCatalogService Catalog
+@inject TmdbService Tmdb
+@inject ActivityService Activity
+@inject WatchStateEnricher WatchState
+@inject StaleMediaEnricher Stale
+@inject IDialogService DialogService
+@inject UiRegistry Ui
+@implements IDisposable
+
+<PageTitle>Arrk - Shows</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Tv" Title="Shows">
+    <Actions>
+        @if (_isAdmin)
+        {
+            <MudButton OnClick="OpenUpload" Variant="Variant.Outlined" Color="Color.Default"
+                       StartIcon="@Icons.Material.Filled.CloudUpload" title="Upload episodes from this computer"
+                       AriaLabel="Upload episodes from this computer">
+                <span class="st-btn-label">Upload Episodes</span>
+            </MudButton>
+        }
+        <MudButton Href="/discover/shows" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
+                   StartIcon="@Icons.Material.Filled.Explore" title="Discover shows" AriaLabel="Discover shows">
+            <span class="st-btn-label">Discover Shows</span>
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+@if (!Ui.IsAvailable("services:tv"))
+{
+    <ServiceDisabledNotice Title="Shows"
+                           Detail="TV is turned off. Set services.tv.enabled to true (Configuration → TV) to use the show library." />
+}
+else
+{
+
+<ContinueWatchingShelf Limit="12" Domain="@TvMediaDomains.Tv" />
+<WatchlistSections Domain="@TvMediaDomains.Tv" LibraryItems="_libraryItems" OnItemClick="OpenDetail" />
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" CloseIcon="@Icons.Material.Filled.Close"
+              OnClose="() => _errorMessage = null">@_errorMessage</MudAlert>
+}
+
+<MudGrid Class="mb-4">
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="shows.shows" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="shows.seasons" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="shows.episodes" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="shows.missing" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="shows.downloading" Placement="TilePlacement.Page" />
+    </MudItem>
+    <MudItem xs="6" sm="4" md="2">
+        <TileView Id="shows.ondisk" Placement="TilePlacement.Page" />
+    </MudItem>
+</MudGrid>
+
+<div class="st-library-toolbar">
+    <SearchBox @bind-Value="_searchTerm" Placeholder="Search your shows..." DebounceInterval="350"
+               OnSearch="OnSearchDebounced" Class="st-discover-search st-library-search" />
+</div>
+
+@if (!_loaded)
+{
+    <LoadingView />
+}
+else
+{
+    @if (_remoteSearching)
+    {
+        <div class="st-inline-status">
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            <span>Searching TMDB for more results…</span>
+        </div>
+    }
+
+    bool searching = !string.IsNullOrWhiteSpace(_searchTerm);
+
+    @if (searching)
+    {
+        @if (_libraryMatches.Count > 0)
+        {
+            <StCollapsibleSection Icon="@Icons.Material.Filled.LibraryBooks" Title="Library"
+                                  Count="@_libraryMatches.Count" Accent="pink">
+                <MediaCardGrid Size="MediaCardSize.Medium">
+                    @foreach (MediaItem item in _libraryMatches)
+                    {
+                        <MediaPosterCard ShowInLibraryBadge="false" Item="item"
+                                         CardSize="MediaCardSize.Medium"
+                                         IsAdmin="_isAdmin"
+                                         OnClick="OpenDetail"
+                                         OnMonitorToggle="ToggleMonitored"
+                                         OnDelete="DeleteSeries" />
+                    }
+                </MediaCardGrid>
+            </StCollapsibleSection>
+        }
+
+        @if (_remoteResults.Count > 0)
+        {
+            <StCollapsibleSection Icon="@Icons.Material.Filled.Explore" Title="Discover"
+                                  Count="@_remoteResults.Count" Accent="purple">
+                <MediaCardGrid Size="MediaCardSize.Medium">
+                    @foreach (MediaItem item in _remoteResults)
+                    {
+                        <MediaPosterCard ShowInLibraryBadge="false" Item="item" CardSize="MediaCardSize.Medium"
+                                         OnClick="OpenDetail" OnAdd="OpenDetail" />
+                    }
+                </MediaCardGrid>
+            </StCollapsibleSection>
+        }
+        else if (!_remoteSearching && _libraryMatches.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.SearchOff" Message="@($"No results for \"{_searchTerm}\"")" />
+        }
+    }
+    else
+    {
+        IReadOnlyList<StatusGroup<MediaItem>> groups = LibraryGroups;
+
+        @if (groups.Count > 0)
+        {
+            @foreach (StatusGroup<MediaItem> group in groups)
+            {
+                <StCollapsibleSection @key="group.Kind" Icon="@group.Icon" Title="@group.Title"
+                                      Count="@group.Count" Accent="@group.Accent">
+                    <MediaCardGrid Size="MediaCardSize.Medium">
+                        @foreach (MediaItem item in group.Items)
+                        {
+                            <MediaPosterCard ShowInLibraryBadge="false" Item="item"
+                                             CardSize="MediaCardSize.Medium"
+                                             IsAdmin="_isAdmin"
+                                             OnClick="OpenDetail"
+                                             OnMonitorToggle="ToggleMonitored"
+                                             OnDelete="DeleteSeries" />
+                        }
+                    </MediaCardGrid>
+                </StCollapsibleSection>
+            }
+        }
+        else
+        {
+            <EmptyState Icon="@Icons.Material.Filled.Tv" Message="No shows in your library" />
+        }
+    }
+}
+}
+
+@code {
+    List<TvSeries> _library = [];
+    List<MediaItem> _libraryItems = [];
+    List<MediaItem> _libraryMatches = [];
+    List<MediaItem> _remoteResults = [];
+    List<QualityProfile> _rawProfiles = [];
+    List<SonarrQueueItemDto> _queueItems = [];
+    Dictionary<int, List<TvEpisode>> _seriesEpisodes = new();
+    bool _loaded;
+    bool _remoteSearching;
+    string? _errorMessage;
+    string _searchTerm = "";
+    CancellationTokenSource? _cts;
+    Timer? _refreshTimer;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    bool _isAdmin;
+    string _username = "";
+
+    IReadOnlyList<StatusGroup<MediaItem>> LibraryGroups => MediaStatusGrouping.ForSeries(_libraryMatches);
+
+    async Task<bool> IsAdminAsync()
+    {
+        if (AuthStateTask is null) return false;
+        AuthenticationState state = await AuthStateTask;
+        _username = state.User.Identity?.Name ?? "";
+        return state.User.IsInRole(ArrkRoles.Admin);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // A disabled module's page neither loads data nor runs any action (no refresh timer).
+        if (!Ui.IsAvailable("services:tv"))
+            return;
+
+        _cts = new();
+        _isAdmin = await IsAdminAsync();
+        try
+        {
+            _rawProfiles = await SonarrService.GetQualityProfiles();
+        }
+        catch { /* non-critical */ }
+        await RefreshData();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await RefreshData();
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(2),
+            TimeSpan.FromSeconds(15));
+        _refreshTimer = result.Timer;
+    }
+
+    async Task RefreshData()
+    {
+        try
+        {
+            _library = await SonarrService.GetAllSeries();
+            try { _queueItems = await SonarrService.GetQueue(); } catch { /* non-critical */ }
+
+            // Only fetch episodes for incomplete, monitored shows, keeps the page responsive.
+            List<TvSeries> incomplete = _library
+                .Where(s => s.Monitored && s.TotalEpisodes > s.DownloadedEpisodes)
+                .ToList();
+
+            _seriesEpisodes.Clear();
+            List<Task> episodeTasks = incomplete.Select(async s =>
+            {
+                try
+                {
+                    List<TvEpisode> eps = await SonarrService.GetEpisodes(s.Id);
+                    lock (_seriesEpisodes)
+                    {
+                        _seriesEpisodes[s.Id] = eps;
+                    }
+                }
+                catch { /* non-critical */ }
+            }).ToList();
+            await Task.WhenAll(episodeTasks);
+
+            _errorMessage = null;
+            RebuildItemList();
+            await EnrichWatchStateAsync();
+            await EnrichStaleAsync();
+            ApplySearch();
+            _loaded = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load TV shows: {ex.Message}";
+            _loaded = true;
+        }
+    }
+
+    void RebuildItemList()
+    {
+        Dictionary<int, List<SonarrQueueItemDto>> queueBySeriesId = _queueItems
+            .GroupBy(q => q.SeriesId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        _libraryItems = _library.Select(s =>
+        {
+            MediaItem item = MediaItem.FromSeries(s);
+
+            if (_seriesEpisodes.TryGetValue(s.Id, out List<TvEpisode>? episodes))
+            {
+                Dictionary<int, List<TvEpisode>> epsBySeason = episodes
+                    .Where(e => e.SeasonNumber > 0)
+                    .GroupBy(e => e.SeasonNumber)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                Dictionary<int, SonarrQueueItemDto> queueByEpisodeId = queueBySeriesId.TryGetValue(s.Id, out List<SonarrQueueItemDto>? sq)
+                    ? sq.GroupBy(q => q.EpisodeId).ToDictionary(g => g.Key, g => g.First())
+                    : [];
+
+                List<SeasonStatusInfo> seasonStatuses = s.Seasons
+                    .Where(season => season.SeasonNumber > 0)
+                    .OrderBy(season => season.SeasonNumber)
+                    .Select(season =>
+                    {
+                        int sn = season.SeasonNumber;
+                        if (epsBySeason.TryGetValue(sn, out List<TvEpisode>? seasonEps))
+                        {
+                            int downloaded = seasonEps.Count(e => e.HasFile);
+                            int downloading = seasonEps.Count(e => !e.HasFile && queueByEpisodeId.ContainsKey(e.Id));
+                            return new SeasonStatusInfo
+                            {
+                                SeasonNumber = sn,
+                                IsMonitored = season.Monitored,
+                                DownloadedCount = downloaded,
+                                DownloadingCount = downloading,
+                                TotalCount = seasonEps.Count,
+                                IsDownloading = downloading > 0
+                            };
+                        }
+
+                        return new SeasonStatusInfo
+                        {
+                            SeasonNumber = sn,
+                            IsMonitored = season.Monitored,
+                            DownloadedCount = season.DownloadedEpisodeCount,
+                            TotalCount = season.EpisodeCount
+                        };
+                    })
+                    .ToList();
+
+                item = item with { SeasonStatuses = seasonStatuses };
+            }
+
+            if (item.LibraryStatus is "Missing" or "Partial" or "Downloaded Monitored"
+                && queueBySeriesId.TryGetValue(s.Id, out List<SonarrQueueItemDto>? queueItems))
+            {
+                SonarrQueueItemDto q = queueItems.First();
+                item = item with
+                {
+                    IsDownloading = true,
+                    DownloadSize = q.Size,
+                    DownloadSizeLeft = (long)q.Sizeleft,
+                    DownloadStatus = q.Status,
+                    DownloadTitle = q.Title
+                };
+            }
+            return item;
+        }).ToList();
+        ApplySearch();
+    }
+
+    async Task EnrichWatchStateAsync()
+    {
+        if (!WatchState.IsAvailable || _libraryItems.Count == 0)
+            return;
+
+        try
+        {
+            _libraryItems = await WatchState.EnrichAsync(_username, _libraryItems, _cts?.Token ?? default);
+        }
+        catch
+        {
+            /* watch state is non-critical */
+        }
+    }
+
+    async Task EnrichStaleAsync()
+    {
+        if (!Stale.IsAvailable || _libraryItems.Count == 0)
+            return;
+
+        try
+        {
+            IReadOnlyDictionary<string, Arrk.Core.Lifecycle.StaleMediaItem> statuses =
+                await Stale.LoadAsync(_cts?.Token ?? default);
+            _libraryItems = Stale.Enrich(_libraryItems, statuses);
+        }
+        catch
+        {
+            /* lifecycle status is non-critical */
+        }
+    }
+
+    void ApplySearch()
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            _libraryMatches = _libraryItems.ToList();
+            return;
+        }
+
+        string term = _searchTerm.Trim();
+        IEnumerable<MediaItem> matches = _libraryItems.Where(i =>
+            i.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            i.Overview.Contains(term, StringComparison.OrdinalIgnoreCase));
+
+        _libraryMatches = MediaStatusGrouping.OrderBySearchRelevance(matches, term).ToList();
+    }
+
+    async Task OnSearchDebounced(string term)
+    {
+        _searchTerm = term;
+        ApplySearch();
+
+        if (string.IsNullOrWhiteSpace(term) || term.Trim().Length < 2)
+        {
+            _remoteResults = [];
+            _remoteSearching = false;
+            return;
+        }
+
+        await SearchRemote(term.Trim());
+    }
+
+    async Task SearchRemote(string query)
+    {
+        _remoteSearching = true;
+        StateHasChanged();
+        ActivityHandle handle = Activity.Begin("Searching shows", query, Icons.Material.Filled.Search);
+        try
+        {
+            List<MediaItem> results = await Catalog.SearchShowsAsync(query, 1, _cts?.Token ?? default);
+            _remoteResults = results.Where(r => !r.IsInLibrary).Take(40).ToList();
+            handle.Complete($"{_remoteResults.Count} results");
+        }
+        catch (OperationCanceledException)
+        {
+            handle.Info("Cancelled");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Search failed: {ex.Message}";
+            handle.Fail(ex.Message);
+        }
+        _remoteSearching = false;
+        StateHasChanged();
+    }
+
+    async Task ToggleMonitored(MediaItem item)
+    {
+        if (!_isAdmin && item.IsMonitored)
+        {
+            _errorMessage = "Only administrators can unmonitor content.";
+            return;
+        }
+
+        try
+        {
+            await SonarrService.ToggleMonitored(item.Id, !item.IsMonitored);
+            Catalog.InvalidateLibraryCache();
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to toggle monitoring: {ex.Message}";
+        }
+    }
+
+    async Task DeleteSeries(MediaItem item)
+    {
+        if (!_isAdmin)
+        {
+            _errorMessage = "Only administrators can delete content.";
+            return;
+        }
+
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete Series",
+            $"Are you sure you want to delete \"{item.Title}\"? This will also delete all downloaded files.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirm != true)
+        {
+            return;
+        }
+
+        ActivityHandle handle = Activity.Begin($"Deleting {item.Title}", null, Icons.Material.Filled.Delete);
+        try
+        {
+            await SonarrService.DeleteSeries(item.Id, deleteFiles: true);
+            Catalog.InvalidateLibraryCache();
+            handle.Complete("Deleted");
+            await RefreshData();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to delete: {ex.Message}";
+            handle.Fail(ex.Message);
+        }
+    }
+
+    async Task OpenUpload()
+    {
+        DialogParameters<TvUploadDialog> parameters = new()
+        {
+            { x => x.IsAdmin, true },
+            { x => x.AutoDetect, true },
+            { x => x.MediaType, "tv" },
+        };
+
+        DialogOptions options = new()
+        {
+            FullWidth = true,
+            MaxWidth = MaxWidth.Medium,
+            CloseOnEscapeKey = true
+        };
+
+        IDialogReference dialog = await DialogService.ShowAsync<TvUploadDialog>("Upload Episodes", parameters, options);
+        DialogResult? result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Catalog.InvalidateLibraryCache();
+            await RefreshData();
+        }
+    }
+
+    async Task OpenDetail(MediaItem item)
+    {
+        if (item.IsInLibrary)
+        {
+            TvSeries? series = _library.FirstOrDefault(s => s.Id == item.Id);
+            if (series == null) return;
+            DialogParameters<SeriesDetailDialog> parameters = new() { { x => x.Series, series }, { x => x.IsAdmin, _isAdmin } };
+            DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+            IDialogReference dialog = await DialogService.ShowAsync<SeriesDetailDialog>(series.Title, parameters, options);
+            await dialog.Result;
+            Catalog.InvalidateLibraryCache();
+            await RefreshData();
+        }
+        else
+        {
+            DialogParameters<RemoteMediaDialog> parameters = new() { { x => x.Item, item } };
+            DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+            IDialogReference dialog = await DialogService.ShowAsync<RemoteMediaDialog>(item.Title, parameters, options);
+            DialogResult result = await dialog.Result;
+            if (result is { Canceled: false })
+            {
+                _remoteResults.RemoveAll(r => r.TmdbId == item.TmdbId);
+                Catalog.InvalidateLibraryCache();
+                await RefreshData();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+}

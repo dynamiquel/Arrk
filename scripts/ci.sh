@@ -21,7 +21,7 @@ RUN_DOCKER=0
 
 usage() {
     cat <<'EOF'
-ci.sh — restore, build and test Stackarr.
+ci.sh — restore, build and test Arrk.
 
 Usage:
   ./scripts/ci.sh [options]
@@ -34,8 +34,8 @@ Options:
 
 Environment:
   DOCKER_SOCKET          Docker socket path (default: /var/run/docker.sock).
-  STACKARR_TEST_RUN_ID   Pin the Docker run id; otherwise one is generated.
-  STACKARR_SKIP_LIVE_TESTS
+  ARRK_TEST_RUN_ID   Pin the Docker run id; otherwise one is generated.
+  ARRK_SKIP_LIVE_TESTS
                          Defaults to 1 here; live tests never run in CI.
 EOF
 }
@@ -52,12 +52,12 @@ done
 
 export DOTNET_NOLOGO=1
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
-export STACKARR_SKIP_LIVE_TESTS="${STACKARR_SKIP_LIVE_TESTS:-1}"
+export ARRK_SKIP_LIVE_TESTS="${ARRK_SKIP_LIVE_TESTS:-1}"
 
 if [ "$RUN_DOCKER" -eq 1 ]; then
     export DOCKER_SOCKET="${DOCKER_SOCKET:-/var/run/docker.sock}"
-    export STACKARR_TEST_RUN_ID="${STACKARR_TEST_RUN_ID:-ci-$(date +%s)-$$}"
-    echo "==> Docker tests enabled (socket: $DOCKER_SOCKET, run: $STACKARR_TEST_RUN_ID)"
+    export ARRK_TEST_RUN_ID="${ARRK_TEST_RUN_ID:-ci-$(date +%s)-$$}"
+    echo "==> Docker tests enabled (socket: $DOCKER_SOCKET, run: $ARRK_TEST_RUN_ID)"
 else
     # A path that cannot exist makes every Docker probe fail fast, so those suites skip.
     export DOCKER_SOCKET="${DOCKER_SOCKET_UNAVAILABLE:-/var/run/docker.sock.unavailable}"
@@ -68,14 +68,14 @@ echo "==> Restoring tools"
 dotnet tool restore
 
 echo "==> Restoring solution"
-dotnet restore Stackarr.slnx
+dotnet restore Arrk.slnx
 
 echo "==> Building ($CONFIGURATION)"
-dotnet build Stackarr.slnx --no-restore -c "$CONFIGURATION"
+dotnet build Arrk.slnx --no-restore -c "$CONFIGURATION"
 
 if [ "$RUN_TESTS" -eq 1 ]; then
     echo "==> Testing ($CONFIGURATION)"
-    TEST_ARGS=(--solution Stackarr.slnx --no-build -c "$CONFIGURATION")
+    TEST_ARGS=(--solution Arrk.slnx --no-build -c "$CONFIGURATION")
     if [ "$RUN_DOCKER" -eq 1 ]; then
         # Docker tests create networks in several projects. Running modules in parallel can
         # exhaust Docker's small default address pool, so serialize them for this run.

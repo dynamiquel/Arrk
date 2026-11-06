@@ -1,0 +1,149 @@
+@using Arrk.Auth.Abstractions
+@attribute [UiRegion(UiRegions.PlayerOverlays, EnabledConfigPath = TvNavigation.EnabledConfigPath)]
+@inject MediaDetailLauncher Launcher
+@inject JellyfinClient Jellyfin
+@inject MediaCatalogService Catalog
+@inject SonarrService Sonarr
+@inject RadarrService Radarr
+@inject IDialogService Dialogs
+@inject AuthenticationStateProvider AuthState
+@inject ILogger<PlayerMediaDetails> Logger
+@implements IDisposable
+
+@*
+    Behaviour-only overlay inside the full-screen player. The player publishes the current item
+    through MediaDetailLauncher; this component resolves it to the TV module's library model and
+    opens the same MovieDetailDialog / SeriesDetailDialog used everywhere else.
+*@
+
+@code {
+    protected override void OnInitialized() => Launcher.Requested += OnRequested;
+
+    public void Dispose() => Launcher.Requested -= OnRequested;
+
+    Task OnRequested(MediaDetailRequest request) =>
+        InvokeAsync(async () =>
+        {
+            try
+            {
+                await OpenAsync(request.ItemId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Could not open media details for {ItemId}", request.ItemId);
+            }
+        });
+
+    async Task OpenAsync(string itemId)
+    {
+        if (string.IsNullOrWhiteSpace(itemId))
+            return;
+
+        JellyfinItem? item = await Jellyfin.GetItemAsync(itemId);
+        if (item is null)
+            return;
+
+        AuthenticationState auth = await AuthState.GetAuthenticationStateAsync();
+        bool isAdmin = auth.User.IsInRole(ArrkRoles.Admin);
+
+        if (string.Equals(item.Type, "Episode", StringComparison.OrdinalIgnoreCase))
+            await OpenSeriesAsync(item, isAdmin);
+        else if (string.Equals(item.Type, "Movie", StringComparison.OrdinalIgnoreCase))
+            await OpenMovieAsync(item, isAdmin);
+    }
+
+    async Task OpenSeriesAsync(JellyfinItem episode, bool isAdmin)
+    {
+        JellyfinItem? seriesItem = string.IsNullOrEmpty(episode.SeriesId)
+            ? null
+            : await Jellyfin.GetItemAsync(episode.SeriesId);
+
+        int tmdb = ProviderId(seriesItem ?? episode, "Tmdb");
+        int tvdb = ProviderId(seriesItem ?? episode, "Tvdb");
+
+        TvSeries? series = null;
+        if (tmdb > 0)
+        {
+            try { series = await Catalog.GetLibrarySeriesAsync(tmdb); }
+            catch (Exception ex) { Logger.LogDebug(ex, "Could not read the series catalog for {Title}", seriesItem?.Name); }
+        }
+        if (series is null && tvdb > 0)
+        {
+            try
+            {
+                List<TvSeries> all = await Sonarr.GetAllSeries();
+                series = all.FirstOrDefault(s => s.TvdbId == tvdb || (tmdb > 0 && s.TmdbId == tmdb));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Could not resolve the Sonarr series for S{Season}E{Episode}", episode.ParentIndexNumber, episode.IndexNumber);
+            }
+        }
+
+        series ??= new TvSeries
+        {
+            Title = seriesItem?.Name ?? episode.SeriesName ?? episode.Name,
+            Year = seriesItem?.ProductionYear ?? episode.ProductionYear ?? 0,
+            Overview = seriesItem?.Overview ?? episode.Overview ?? "",
+            TvdbId = tvdb,
+            TmdbId = tmdb
+        };
+
+        DialogParameters<SeriesDetailDialog> parameters = new()
+        {
+            { x => x.Series, series },
+            { x => x.IsAdmin, isAdmin }
+        };
+        IDialogReference dialog = await Dialogs.ShowAsync<SeriesDetailDialog>(
+            series.Title,
+            parameters,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true });
+        await dialog.Result;
+    }
+
+    async Task OpenMovieAsync(JellyfinItem item, bool isAdmin)
+    {
+        int tmdb = ProviderId(item, "Tmdb");
+
+        TvMovie? movie = null;
+        if (tmdb > 0)
+        {
+            try { movie = await Catalog.GetLibraryMovieAsync(tmdb); }
+            catch (Exception ex) { Logger.LogDebug(ex, "Could not read the movie catalog for {Title}", item.Name); }
+        }
+        if (movie is null && tmdb > 0)
+        {
+            try
+            {
+                List<TvMovie> all = await Radarr.GetAllMovies();
+                movie = all.FirstOrDefault(m => m.TmdbId == tmdb);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Could not resolve the Radarr movie for {Title}", item.Name);
+            }
+        }
+
+        movie ??= new TvMovie
+        {
+            Title = item.Name,
+            Year = item.ProductionYear ?? 0,
+            Overview = item.Overview ?? "",
+            TmdbId = tmdb > 0 ? tmdb : 0
+        };
+
+        DialogParameters<MovieDetailDialog> parameters = new()
+        {
+            { x => x.Movie, movie },
+            { x => x.IsAdmin, isAdmin }
+        };
+        IDialogReference dialog = await Dialogs.ShowAsync<MovieDetailDialog>(
+            movie.Title,
+            parameters,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true });
+        await dialog.Result;
+    }
+
+    static int ProviderId(JellyfinItem item, string key) =>
+        item.ProviderIds.TryGetValue(key, out string? value) && int.TryParse(value, out int id) ? id : 0;
+}

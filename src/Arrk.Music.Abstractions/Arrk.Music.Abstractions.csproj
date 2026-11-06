@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Music domain contracts: artists, albums, tracks, lyrics state and the capability interfaces a
+    music library, catalog, acquisition source or player exposes. The implementation lives in
+    Arrk.Music; this assembly stays free of HTTP clients, EF entities and UI.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

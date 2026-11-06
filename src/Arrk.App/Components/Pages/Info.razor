@@ -1,0 +1,110 @@
+@page "/info"
+@attribute [Authorize]
+@using Arrk.Core.Modules
+@inject ModuleLoader ModuleLoader
+@inject IDialogService DialogService
+
+<PageTitle>Arrk - About</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.Info" Title="About" />
+
+<div class="st-card mb-4" style="padding:0;overflow:hidden;">
+    <SectionContainer Icon="@Icons.Material.Filled.Code" Title="Arrk">
+        <MudText Typo="Typo.body1" Class="st-info-lead">
+            One config and one web UI for a self-hosted media stack.
+        </MudText>
+        <div class="st-info-meta">
+            <StChip Variant="neutral">@ArrkVersion.Current</StChip>
+            <StChip Variant="neutral">MIT License</StChip>
+            <MudLink Href="https://github.com/dynamiquel/arrk" Target="_blank" Typo="Typo.body2">
+                github.com/dynamiquel/arrk
+            </MudLink>
+        </div>
+    </SectionContainer>
+</div>
+
+<div class="st-card mb-4" style="padding:0;overflow:hidden;">
+    <SectionContainer Icon="@Icons.Material.Filled.Extension" Title="Modules">
+        <HeaderRight>
+            <StChip Variant="info">@_modules.Count</StChip>
+        </HeaderRight>
+        <ChildContent>
+            <div class="st-card-grid">
+                @foreach (ModuleInfo module in _modules)
+                {
+                    <div class="st-module-tile" role="button" tabindex="0"
+                         title="@($"About {module.ModuleName}")"
+                         @onclick="() => ShowModuleAsync(module)"
+                         @onkeydown="e => OnTileKeyDownAsync(e, module)">
+                        <div class="st-module-tile-main">
+                            <span class="st-module-tile-name">@module.ModuleName</span>
+                            <span class="st-module-tile-meta">@module.Author</span>
+                        </div>
+                        <StChip Variant="neutral">@module.ModuleVersion</StChip>
+                    </div>
+                }
+            </div>
+        </ChildContent>
+    </SectionContainer>
+</div>
+
+<div class="st-card mb-4" style="padding:0;overflow:hidden;">
+    <SectionContainer Icon="@Icons.Material.Filled.People" Title="Contributors">
+        <div class="st-info-person">
+            <MudAvatar Color="Color.Primary" Size="Size.Small">D</MudAvatar>
+            <div>
+                <MudLink Href="https://github.com/dynamiquel" Target="_blank" Typo="Typo.body2" Class="st-info-row-title">
+                    dynamiquel
+                </MudLink>
+                <div class="st-info-row-sub">Author &amp; Maintainer</div>
+            </div>
+        </div>
+    </SectionContainer>
+</div>
+
+@code {
+    static readonly List<ModuleDependency> NuGetDependencies =
+    [
+        new("MudBlazor", "MIT", "MudBlazor Contributors", "https://github.com/MudBlazor/MudBlazor", "Blazor component library based on Material Design"),
+        new("Docker.DotNet", "MIT", ".NET Foundation", "https://github.com/dotnet/Docker.DotNet", ".NET client library for the Docker Remote API"),
+        new("FluentValidation", "Apache-2.0", "Jeremy Skinner", "https://github.com/FluentValidation/FluentValidation", "Library for building strongly-typed validation rules"),
+        new("Hangfire", "LGPL-3.0", "Sergey Odinokov", "https://github.com/HangfireIO/Hangfire", "Background job processing for .NET"),
+        new("Serilog", "Apache-2.0", "Serilog Contributors", "https://github.com/serilog/serilog-aspnetcore", "Structured logging for .NET"),
+        new("YamlDotNet", "MIT", "Antoine Aubry", "https://github.com/aaubry/YamlDotNet", "YAML parser and serializer for .NET"),
+        new("NetEscapades.Configuration.Yaml", "MIT", "Andrew Lock", "https://github.com/andrewlock/NetEscapades.Configuration", "YAML configuration provider for ASP.NET Core"),
+        new("Pondhawk.Monaco", "MIT", "Pond Hawk Technologies", "https://github.com/pondhawktech/pondhawk-monaco", "Blazor wrapper for the Monaco code editor"),
+        new("TUnit", "MIT", "Tom Longhurst", "https://github.com/thomhurst/TUnit", "Modern, fast .NET testing framework"),
+    ];
+
+    List<ModuleInfo> _modules = [];
+
+    protected override void OnInitialized()
+    {
+        _modules =
+        [
+            new ModuleInfo(
+                "Arrk",
+                ArrkVersion.Current.ToString(),
+                "Arrk",
+                "The Arrk host: configuration, orchestration and the web UI.",
+                NuGetDependencies),
+            .. ModuleLoader.GetModules()
+                .Where(module => !string.Equals(module.ModuleName, "Arrk", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(module => module.ModuleName, StringComparer.OrdinalIgnoreCase)
+        ];
+    }
+
+    Task ShowModuleAsync(ModuleInfo module) =>
+        DialogService.ShowAsync<ModuleInfoDialog>(
+            null,
+            new DialogParameters<ModuleInfoDialog> { { dialog => dialog.Module, module } },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+
+    async Task OnTileKeyDownAsync(KeyboardEventArgs args, ModuleInfo module)
+    {
+        if (args.Key is "Enter" or " " or "Spacebar")
+        {
+            await ShowModuleAsync(module);
+        }
+    }
+}
