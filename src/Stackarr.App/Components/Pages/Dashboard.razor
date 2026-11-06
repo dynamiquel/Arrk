@@ -2,14 +2,15 @@
 @attribute [Authorize]
 @inject DashboardLayoutService Layouts
 @inject IDialogService DialogService
+@inject IJSRuntime JS
 
 <PageTitle>Stackarr - Dashboard</PageTitle>
 
-<PageHeader Icon="@Icons.Material.Filled.Dashboard" Title="Dashboard">
+<PageHeader Icon="@Icons.Material.Filled.Dashboard" Title="Dashboard" Subtitle="@_greeting">
     <Actions>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="OpenTileEditorAsync"
                    StartIcon="@Icons.Material.Filled.DashboardCustomize" title="Edit dashboard tiles">
-            <span class="st-btn-label">Tile Editor</span>
+            <span class="st-btn-label">Edit Dashboard</span>
         </MudButton>
     </Actions>
 </PageHeader>
@@ -22,11 +23,11 @@ else if (_layout.Sections.Count == 0)
 {
     <EmptyState Icon="@Icons.Material.Filled.DashboardCustomize"
                 Message="This dashboard has no tile sections yet."
-                Detail="Open the Tile Editor to add a section and choose tiles." />
+                Detail="Edit the dashboard to add a section and choose tiles." />
     <div class="mt-4">
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient"
                    OnClick="OpenTileEditorAsync" StartIcon="@Icons.Material.Filled.Add">
-            Open Tile Editor
+            Edit Dashboard
         </MudButton>
     </div>
 }
@@ -48,6 +49,8 @@ else
     bool _loaded;
     bool _isAdmin;
     int _userId;
+    string _username = "";
+    string? _greeting;
 
     [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
 
@@ -58,11 +61,34 @@ else
 
         AuthenticationState auth = await AuthStateTask;
         _isAdmin = auth.User.IsInRole(StackarrRoles.Admin);
+        _username = auth.User.Identity?.Name
+            ?? auth.User.FindFirst(StackarrClaims.DisplayNameClaim)?.Value
+            ?? "";
         if (!int.TryParse(auth.User.FindFirst(StackarrClaims.UserIdClaim)?.Value, out _userId))
             return;
 
         _layout = await Layouts.GetAsync(_userId, _isAdmin);
         _loaded = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        int hour;
+        try
+        {
+            hour = await JS.InvokeAsync<int>("stackarrLocalTime.hour");
+        }
+        catch
+        {
+            // A JS hiccup must not hide the greeting; the server clock is the closest fallback.
+            hour = DateTime.Now.Hour;
+        }
+
+        _greeting = DashboardGreeting.For(hour, _username);
+        StateHasChanged();
     }
 
     async Task OpenTileEditorAsync()
@@ -77,7 +103,7 @@ else
         };
 
         IDialogReference dialog = await DialogService.ShowAsync<TileEditorDialog>(
-            "Tile Editor", parameters, StCardSheetOptions.Create(MaxWidth.ExtraLarge));
+            "Edit Dashboard", parameters, StCardSheetOptions.Create(MaxWidth.ExtraLarge));
 
         DialogResult? result = await dialog.Result;
         if (result is { Canceled: false })

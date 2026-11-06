@@ -126,6 +126,10 @@
 .st-music-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--st-space-md, 16px); }
 .st-music-grid .st-music-card { width: auto; }
 
+/* Music shelves (Recently Played, playlists) share the dashboard's horizontal scroller. */
+.st-music-scroll-row { display: flex; gap: var(--st-space-md, 16px); overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; }
+.st-music-scroll-row .st-music-card { width: 168px; }
+
 /* Music: clickable song title in numbered lists. MudBlazor's base CSS makes every <button> an
    inline-flex container with justify-content:center, which centred the title in the track row
    (the .st-music-track-title span is unaffected). Force it back to a left-aligned, ellipsised row. */

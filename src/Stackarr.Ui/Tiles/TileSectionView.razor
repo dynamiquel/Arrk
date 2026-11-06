@@ -12,7 +12,6 @@
     <div class="st-tile-section-head">
         <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Small" Color="Color.Primary" />
         <span class="st-tile-section-title">@Section.Title</span>
-        <span class="st-tile-section-count">@RenderedCount</span>
     </div>
     <div class="st-tile-grid">
         @foreach (DashboardTile entry in Section.Tiles)
@@ -44,16 +43,11 @@
 
     [Parameter] public bool IsAdmin { get; set; }
 
-    int RenderedCount => Section.Tiles.Count(t =>
-    {
-        TileDefinition? definition = Tiles.Find(t.Id);
-        return definition is not null && (!definition.AdminOnly || IsAdmin);
-    });
-
     static string SizeClass(TileSize size) => size switch
     {
         TileSize.Medium => "medium",
         TileSize.Large => "large",
+        TileSize.VeryLarge => "verylarge",
         _ => "small",
     };
 

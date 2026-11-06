@@ -6,6 +6,7 @@ public enum TileSize
     Small,
     Medium,
     Large,
+    VeryLarge,
 }
 
 /// <summary>Where a tile is rendered. The dashboard is customisable; pages are not.</summary>
@@ -25,15 +26,12 @@ public enum TilePlacement
 /// <param name="Title">The tile's own label, e.g. <c>Download</c>.</param>
 /// <param name="Icon">MudBlazor icon constant.</param>
 /// <param name="Component">The Razor component that renders the body.</param>
-/// <param name="Order">Catalog order within a category.</param>
 /// <param name="Description">Short explanation shown in the Tile Editor.</param>
 /// <param name="Href">Optional page the tile navigates to when clicked.</param>
 /// <param name="AdminOnly">Hidden entirely from non-admin users.</param>
 /// <param name="LinkAdminOnly">The tile stays visible but only admins get the link.</param>
 /// <param name="EnabledConfigPath">Optional config section path whose <c>enabled</c> flag gates the tile.</param>
 /// <param name="DefaultSize">Initial size when the tile is added to a dashboard.</param>
-/// <param name="DefaultSection">Section the tile is placed in by the default layout.</param>
-/// <param name="DefaultOrder">Order within the default section (only used when <paramref name="DefaultSection"/> is set).</param>
 /// <param name="Parameters">Optional parameters passed to the body component in addition to <see cref="TileContext"/>.</param>
 public sealed record TileDefinition(
     string Id,
@@ -41,15 +39,12 @@ public sealed record TileDefinition(
     string Title,
     string Icon,
     Type Component,
-    int Order = 100,
     string? Description = null,
     string? Href = null,
     bool AdminOnly = false,
     bool LinkAdminOnly = false,
     string? EnabledConfigPath = null,
     TileSize DefaultSize = TileSize.Medium,
-    string? DefaultSection = null,
-    int DefaultOrder = 100,
     IReadOnlyDictionary<string, object?>? Parameters = null)
 {
     /// <summary>
@@ -70,7 +65,10 @@ public sealed record TileContext(
     bool IsAdmin,
     int UserId);
 
-/// <summary>Contributes tiles to the shared collection. Modules register it in DI.</summary>
+/// <summary>
+/// Contributes tiles to the shared collection. Modules register it in DI. The list order is the
+/// catalogue order within a category.
+/// </summary>
 public interface ITileProvider
 {
     IReadOnlyList<TileDefinition> Tiles { get; }

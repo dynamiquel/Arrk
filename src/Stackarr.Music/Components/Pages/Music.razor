@@ -64,28 +64,11 @@ else
 
 @if (string.IsNullOrEmpty(_search) && (_playQueue?.Entry.Count > 0 || _history.Count > 0 || _playlists.Count > 0))
 {
-    <div class="st-music-shelf mb-5">
-        <MudText Typo="Typo.h6" Class="st-music-shelf-title mt-2">Jump back in</MudText>
-
-        <div class="st-music-grid">
-            @if (_playQueue is { Entry.Count: > 0 })
-            {
-                <MusicCard ShowInLibraryBadge="false" Item="ContinueItem(_playQueue)" OnClick="ResumeQueue" OnPlay="ResumeQueue"
-                           Class="st-music-card--resume" Badge="Resume" />
-            }
-            @foreach (SubsonicPlaylist playlist in _playlists.Take(10))
-            {
-                <MusicCard ShowInLibraryBadge="false" Item="PlaylistItem(playlist)"
-                           OnClick="@((MusicItem _) => ManagePlaylistAsync(playlist))"
-                           OnPlay="@((MusicItem _) => PlayPlaylistAsync(playlist.Id))" />
-            }
-            @foreach (MusicPlayHistory entry in _history.Take(6))
-            {
-                <MusicCard ShowInLibraryBadge="false" Item="HistoryItem(entry)"
-                           OnClick="@((MusicItem _) => PlayHistoryAsync(entry))"
-                           OnPlay="@((MusicItem _) => PlayHistoryAsync(entry))" />
-            }
-        </div>
+    <div class="mb-5">
+        <MusicShelfRow Title="Recently Played" ShowTitle="true" Limit="6"
+                       UseProvidedData="true"
+                       Playlists="VisiblePlaylists.ToList()" History="_history" PlayQueue="_playQueue"
+                       UserId="_userId" IsAdmin="_isAdmin" OnChanged="LoadAsync" />
     </div>
 }
 
@@ -277,7 +260,6 @@ else
 
     MusicTab _tab = MusicTab.Playlists;
     bool _loading = true;
-    bool _loaded;
     string? _error;
     string _search = "";
     bool _showUnidentified;
@@ -291,7 +273,6 @@ else
 
     List<MusicItem> _songs = [];
     List<MusicPlayHistory> _history = [];
-    readonly Dictionary<string, string> _artByAlbum = new(StringComparer.OrdinalIgnoreCase);
     static string AlbumKey(string value) => new(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
     List<MusicItem> _artists = [];
     List<MusicItem> _albums = [];
@@ -395,17 +376,12 @@ else
             (List<MusicItem> artists, List<MusicItem> albums) = await Catalog.GetLibraryViewAsync();
             IReadOnlyDictionary<string, StaleMediaItem> staleStatuses = await Stale.LoadAsync();
             _albums = Stale.Enrich(albums, staleStatuses);
-            _artByAlbum.Clear();
-            foreach (MusicItem album in _albums)
-                if (!string.IsNullOrEmpty(album.ArtUrl))
-                    _artByAlbum[$"{AlbumKey(album.ArtistName)}|{AlbumKey(album.Title)}"] = album.ArtUrl;
             // Songs come from our own library (single source of truth), so each song's identification
             // and metadata match the album popup. Playback resolves the Navidrome id at click time.
             // Keep placed *and* missing songs so the Songs/Downloaded/Missing tiles agree with the tab
             // and with the album counts (missing songs render with a Missing badge).
             _songs = Stale.Enrich(await Catalog.GetLibrarySongsAsync(), staleStatuses);
             _artists = artists;
-            _loaded = true;
             _recent = Stale.Enrich(await Catalog.GetRecentlyAddedAsync(), staleStatuses);
             _history = await MusicLibrary.GetRecentlyPlayedAsync(_userId);
             _playlists = await MusicLibrary.GetPlaylistsForUserAsync(_userId, _isAdmin);
@@ -466,33 +442,6 @@ else
             return;
         }
         await PlayAlbumAsync(navId, shuffle, album);
-    }
-
-    async Task PlayPlaylistAsync(string playlistId, bool shuffle = false)
-    {
-        SubsonicPlaylist? playlist = await Navidrome.GetPlaylistAsync(playlistId);
-        if (playlist is null || playlist.Tracks.Count == 0)
-        {
-            Snackbar.Add("Playlist is empty.", Severity.Info);
-            return;
-        }
-        await PlaySongsAsync(playlist.Tracks, shuffle);
-    }
-
-    async Task PlaySubscriptionAsync(MusicSubscription sub, bool shuffle = false)
-    {
-        string? id = sub.NavidromePlaylistId;
-        if (string.IsNullOrEmpty(id))
-        {
-            List<SubsonicPlaylist> playlists = await MusicLibrary.GetPlaylistsForUserAsync(_userId, _isAdmin);
-            id = playlists.FirstOrDefault(p => string.Equals(p.Name, sub.Name, StringComparison.OrdinalIgnoreCase))?.Id;
-        }
-        if (string.IsNullOrEmpty(id))
-        {
-            Snackbar.Add("This playlist hasn't synced to Navidrome yet.", Severity.Info);
-            return;
-        }
-        await PlayPlaylistAsync(id, shuffle);
     }
 
     async Task PlaySongsAsync(List<SubsonicSong> songs, bool shuffle = false, MusicItem? album = null)
@@ -645,33 +594,6 @@ else
         }
     }
 
-    MusicItem HistoryItem(MusicPlayHistory entry) => new()
-    {
-        EntityType = MusicEntityType.Track,
-        Title = entry.Title,
-        ArtistName = entry.Artist,
-        AlbumName = entry.Album,
-        // Always the album art of the album we actually hold (never a re-searched cover, and never
-        // Navidrome's generic disc icon).
-        ArtUrl = AlbumArtFor(entry.Artist, entry.Album)
-    };
-
-    string AlbumArtFor(string artist, string album) =>
-        _artByAlbum.TryGetValue($"{AlbumKey(artist)}|{AlbumKey(album)}", out string? url) && !string.IsNullOrEmpty(url)
-            ? url
-            : MusicCatalogService.AlbumArtUrl(artist, album);
-
-    async Task PlayHistoryAsync(MusicPlayHistory entry)
-    {
-        var queue = new[]
-        {
-            new { id = entry.SongId, title = entry.Title, artist = entry.Artist, albumArtist = entry.Artist, album = entry.Album,
-                  cover = entry.CoverArtUrl, stream = NavidromeService.PlayerStreamUrl(entry.SongId) }
-        };
-        try { await JS.InvokeVoidAsync("stackarrMusic.play", queue, 0); }
-        catch (Exception ex) { Logger.LogDebug(ex, "Could not play a history entry"); }
-    }
-
     string IconFor(SubsonicPlaylist playlist) =>
         _playlistIcons.TryGetValue(playlist.Id, out string? icon) && !string.IsNullOrEmpty(icon) ? icon : "♪";
 
@@ -679,40 +601,6 @@ else
         string.IsNullOrEmpty(sub.ArtUrl)
             ? ""
             : $"background-image:linear-gradient(135deg, rgba(15,10,24,.25), rgba(15,10,24,.25)), url('{sub.ArtUrl}');background-size:cover;background-position:center;";
-
-    MusicItem PlaylistItem(SubsonicPlaylist playlist) => new()
-    {
-        EntityType = MusicEntityType.Album,
-        Title = playlist.Name,
-        ArtistName = $"{playlist.SongCount} song{(playlist.SongCount == 1 ? "" : "s")}",
-        ArtUrl = !string.IsNullOrEmpty(playlist.CoverArt) ? NavidromeService.CoverArtUrl(playlist.CoverArt) : ""
-    };
-
-    MusicItem ContinueItem(SubsonicPlayQueue q)
-    {
-        SubsonicSong cur = q.Entry.FirstOrDefault(s => s.Id == q.Current) ?? q.Entry[0];
-        return new MusicItem
-        {
-            EntityType = MusicEntityType.Track,
-            Title = cur.Title,
-            ArtistName = cur.Artist,
-            AlbumName = cur.Album,
-            ArtUrl = AlbumArtFor(cur.Artist, cur.Album)
-        };
-    }
-
-    async Task ResumeQueue()
-    {
-        if (_playQueue is null || _playQueue.Entry.Count == 0) return;
-        int index = Math.Max(0, _playQueue.Entry.FindIndex(s => s.Id == _playQueue.Current));
-        var queue = _playQueue.Entry.Select(s => new
-        {
-            id = s.Id, title = s.Title, artist = s.Artist, album = s.Album,
-            cover = NavidromeService.CoverArtUrl(s.CoverArt), stream = NavidromeService.PlayerStreamUrl(s.Id)
-        }).ToList();
-        try { await JS.InvokeVoidAsync("stackarrMusic.play", queue, index); }
-        catch { /* player is an enhancement */ }
-    }
 
     async Task AddToPlaylistAsync(MusicItem song)
     {

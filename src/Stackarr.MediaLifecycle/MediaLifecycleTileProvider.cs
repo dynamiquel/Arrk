@@ -9,23 +9,25 @@ public sealed class MediaLifecycleTileProvider : ITileProvider
 {
     public IReadOnlyList<TileDefinition> Tiles { get; } =
     [
-        Create("lifecycle.stale", "Stale now", Icons.Material.Filled.WarningAmber, "stale", 10, null),
-        Create("lifecycle.expiring", "About to be stale", Icons.Material.Filled.HourglassBottom, "expiring", 20, null),
-        Create("lifecycle.reclaimable", "Reclaimable", Icons.Material.Filled.Storage, "reclaimable", 30, null),
-        Create("lifecycle.autocleanup", "Auto cleanup", Icons.Material.Filled.AutoMode, "autocleanup", 40, null)
-    ];
-
-    static TileDefinition Create(string id, string title, string icon, string metric, int order, string? defaultSection) =>
         new(
-            id,
-            "Lifecycle",
-            title,
-            icon,
-            typeof(LifecycleStatTile),
-            Order: order,
-            Description: $"{title} from the media lifecycle report.",
-            Href: "/stale",
-            AdminOnly: true,
-            DefaultSection: defaultSection,
-            Parameters: new Dictionary<string, object?> { ["Metric"] = metric });
+            "lifecycle.stale", "Lifecycle", "Stale now", Icons.Material.Filled.WarningAmber,
+            typeof(LifecycleStatTile), Description: "Stale now from the media lifecycle report.",
+            Href: "/stale", AdminOnly: true,
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "stale" }),
+        new(
+            "lifecycle.expiring", "Lifecycle", "About to be stale", Icons.Material.Filled.HourglassBottom,
+            typeof(LifecycleStatTile), Description: "About to be stale from the media lifecycle report.",
+            Href: "/stale", AdminOnly: true,
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "expiring" }),
+        new(
+            "lifecycle.reclaimable", "Lifecycle", "Reclaimable", Icons.Material.Filled.Storage,
+            typeof(LifecycleStatTile), Description: "Reclaimable from the media lifecycle report.",
+            Href: "/stale", AdminOnly: true,
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "reclaimable" }),
+        new(
+            "lifecycle.autocleanup", "Lifecycle", "Auto cleanup", Icons.Material.Filled.AutoMode,
+            typeof(LifecycleStatTile), Description: "Auto cleanup from the media lifecycle report.",
+            Href: "/stale", AdminOnly: true,
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "autocleanup" })
+    ];
 }

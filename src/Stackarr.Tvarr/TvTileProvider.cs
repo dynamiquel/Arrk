@@ -12,54 +12,77 @@ public sealed class TvTileProvider : ITileProvider
 {
     public IReadOnlyList<TileDefinition> Tiles { get; } =
     [
-        Create("movies.library", "Movies", "In Library", Icons.Material.Filled.Movie, "library", 10,
-            "/movies", "Movies currently in the Radarr library.", null),
-        Create("movies.downloaded", "Movies", "Downloaded", Icons.Material.Filled.CheckCircle, "downloaded", 20,
-            "/movies", "Movies with a file on disk.", null),
-        Create("movies.missing", "Movies", "Missing", Icons.Material.Filled.ErrorOutline, "missing", 30,
-            "/movies", "Movies without a file.", null),
-        Create("movies.downloading", "Movies", "Downloading", Icons.Material.Filled.CloudDownload, "downloading", 40,
-            "/movies", "Movies active in the Radarr queue.", null),
-        Create("movies.ondisk", "Movies", "On Disk", Icons.Material.Filled.Storage, "ondisk", 50,
-            "/movies", "Disk space used by the movie library.", null),
-        Create("movies.monitored", "Movies", "Monitored", Icons.Material.Filled.Visibility, "monitored", 60,
-            "/movies", "Movies being watched for releases.", null),
-
-        Create("shows.shows", "TV", "Shows", Icons.Material.Filled.Tv, "shows", 10,
-            "/tv", "Series currently in the Sonarr library.", null, typeof(ShowStatTile)),
-        Create("shows.seasons", "TV", "Seasons", Icons.Material.Filled.Collections, "seasons", 20,
-            "/tv", "Seasons tracked across all shows.", null, typeof(ShowStatTile)),
-        Create("shows.episodes", "TV", "Episodes", Icons.Material.Filled.CheckCircle, "episodes", 30,
-            "/tv", "Downloaded episodes against all aired episodes.", null, typeof(ShowStatTile)),
-        Create("shows.missing", "TV", "Missing", Icons.Material.Filled.ErrorOutline, "missing", 40,
-            "/tv", "Episodes still to grab.", null, typeof(ShowStatTile)),
-        Create("shows.downloading", "TV", "Downloading", Icons.Material.Filled.CloudDownload, "downloading", 50,
-            "/tv", "Episodes active in the Sonarr queue.", null, typeof(ShowStatTile)),
-        Create("shows.ondisk", "TV", "On Disk", Icons.Material.Filled.Storage, "ondisk", 60,
-            "/tv", "Disk space used by the show library.", null, typeof(ShowStatTile))
-    ];
-
-    static TileDefinition Create(
-        string id,
-        string category,
-        string title,
-        string icon,
-        string metric,
-        int order,
-        string href,
-        string description,
-        string? defaultSection,
-        Type? component = null) =>
         new(
-            id,
-            category,
-            title,
-            icon,
-            component ?? typeof(MovieStatTile),
-            Order: order,
-            Description: description,
-            Href: href,
+            "movies.library", "Movies", "In Library", Icons.Material.Filled.Movie, typeof(MovieStatTile),
+            Description: "Movies currently in the Radarr library.", Href: "/movies",
             EnabledConfigPath: "services:tv",
-            DefaultSection: defaultSection,
-            Parameters: new Dictionary<string, object?> { ["Metric"] = metric });
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "library" }),
+        new(
+            "movies.downloaded", "Movies", "Downloaded", Icons.Material.Filled.CheckCircle, typeof(MovieStatTile),
+            Description: "Movies with a file on disk.", Href: "/movies",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "downloaded" }),
+        new(
+            "movies.missing", "Movies", "Missing", Icons.Material.Filled.ErrorOutline, typeof(MovieStatTile),
+            Description: "Movies without a file.", Href: "/movies",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "missing" }),
+        new(
+            "movies.downloading", "Movies", "Downloading", Icons.Material.Filled.CloudDownload, typeof(MovieStatTile),
+            Description: "Movies active in the Radarr queue.", Href: "/movies",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "downloading" }),
+        new(
+            "movies.ondisk", "Movies", "On Disk", Icons.Material.Filled.Storage, typeof(MovieStatTile),
+            Description: "Disk space used by the movie library.", Href: "/movies",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "ondisk" }),
+        new(
+            "movies.monitored", "Movies", "Monitored", Icons.Material.Filled.Visibility, typeof(MovieStatTile),
+            Description: "Movies being watched for releases.", Href: "/movies",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "monitored" }),
+
+        new(
+            "shows.shows", "TV", "Shows", Icons.Material.Filled.Tv, typeof(ShowStatTile),
+            Description: "Series currently in the Sonarr library.", Href: "/tv",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "shows" }),
+        new(
+            "shows.seasons", "TV", "Seasons", Icons.Material.Filled.Collections, typeof(ShowStatTile),
+            Description: "Seasons tracked across all shows.", Href: "/tv",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "seasons" }),
+        new(
+            "shows.episodes", "TV", "Episodes", Icons.Material.Filled.CheckCircle, typeof(ShowStatTile),
+            Description: "Downloaded episodes against all aired episodes.", Href: "/tv",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "episodes" }),
+        new(
+            "shows.missing", "TV", "Missing", Icons.Material.Filled.ErrorOutline, typeof(ShowStatTile),
+            Description: "Episodes still to grab.", Href: "/tv",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "missing" }),
+        new(
+            "shows.downloading", "TV", "Downloading", Icons.Material.Filled.CloudDownload, typeof(ShowStatTile),
+            Description: "Episodes active in the Sonarr queue.", Href: "/tv",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "downloading" }),
+        new(
+            "shows.ondisk", "TV", "On Disk", Icons.Material.Filled.Storage, typeof(ShowStatTile),
+            Description: "Disk space used by the show library.", Href: "/tv",
+            EnabledConfigPath: "services:tv",
+            Parameters: new Dictionary<string, object?> { ["Metric"] = "ondisk" }),
+
+        // Interactive shelves from the Movies/Shows pages. They are not part of the default
+        // dashboard but can be added from the editor; the dashboard version is unified.
+        new(
+            "media.continue-watching", "Media", "Continue Watching", Icons.Material.Filled.PlayCircle,
+            typeof(ContinueWatchingTile), Description: "Resume movies and episodes in progress, across the whole library.",
+            EnabledConfigPath: "services:tv", DefaultSize: TileSize.VeryLarge),
+        new(
+            "media.watchlists", "Media", "Watchlists", Icons.Material.Filled.Bookmark,
+            typeof(WatchlistTile), Description: "Your watchlists with movie and TV titles together.",
+            EnabledConfigPath: "services:tv", DefaultSize: TileSize.VeryLarge)
+    ];
 }

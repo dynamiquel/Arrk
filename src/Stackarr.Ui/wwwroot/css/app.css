@@ -104,14 +104,6 @@
     font-weight: 600;
     color: var(--st-text-primary);
 }
-.st-tile-section-count {
-    font-size: 0.75rem;
-    color: var(--st-text-muted);
-    border: 1px solid var(--st-border);
-    border-radius: var(--st-radius-full);
-    padding: 0 8px;
-    line-height: 1.5;
-}
 .st-tile-grid {
     display: grid;
     grid-template-columns: repeat(24, minmax(0, 1fr));
@@ -120,7 +112,8 @@
 .st-tile-cell { grid-column: span 3; min-width: 0; }
 .st-tile-cell--small { grid-column: span 3; }
 .st-tile-cell--medium { grid-column: span 6; }
-.st-tile-cell--large { grid-column: span 24; }
+.st-tile-cell--large { grid-column: span 12; }
+.st-tile-cell--verylarge { grid-column: span 24; }
 
 .st-tile {
     min-height: 140px;
@@ -148,19 +141,48 @@
     opacity: 0.75;
 }
 
+/* Speedtest tiles: the body covers the whole card so any click opens the history dialog. */
+.st-speedtest-tile {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    padding: var(--st-space-lg);
+    cursor: pointer;
+    outline: none;
+}
+.st-speedtest-tile:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--st-blue);
+    border-radius: var(--st-radius-md);
+}
+.st-speedtest-tile-body { margin-top: auto; }
+.st-speedtest-values { display: flex; gap: 1rem; margin: 0.25rem 0; }
+.st-speedtest-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.st-speedtest-value--down { color: var(--st-green); }
+.st-speedtest-value--up { color: var(--st-blue); }
+.st-speedtest-value--ping { color: var(--st-purple); }
+
 @media (max-width: 1200px) {
     .st-tile-cell--small { grid-column: span 4; }
     .st-tile-cell--medium { grid-column: span 8; }
+    .st-tile-cell--large { grid-column: span 16; }
 }
 @media (max-width: 960px) {
     .st-tile-cell--small { grid-column: span 6; }
     .st-tile-cell--medium { grid-column: span 12; }
+    .st-tile-cell--large { grid-column: span 24; }
 }
 @media (max-width: 600px) {
     .st-tile-cell,
     .st-tile-cell--small,
     .st-tile-cell--medium,
-    .st-tile-cell--large { grid-column: span 24; }
+    .st-tile-cell--large,
+    .st-tile-cell--verylarge { grid-column: span 24; }
 }
 
 /* Tile Editor */
@@ -322,6 +344,18 @@
     font-size: 1.75rem;
     font-weight: 700;
     color: var(--st-text-primary);
+}
+.st-page-header-titles {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.st-page-subtitle {
+    margin-top: 2px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--st-text-secondary);
 }
 /* Gradient "badge" behind the page icon ties the current page to the brand accent. */
 .st-page-header-icon {
@@ -4088,6 +4122,19 @@ a.st-info-row-title:hover { color: var(--st-pink); }
 .st-watchlist-card-slot {
     flex: 0 0 10.625rem;
     width: 10.625rem;
+}
+
+/* Pending-requests dashboard shelf */
+.st-request-scroll-row {
+    display: flex;
+    gap: var(--st-space-md);
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    scrollbar-width: thin;
+}
+.st-request-card-slot {
+    flex: 0 0 13rem;
+    width: 13rem;
 }
 
 @media (max-width: 600px) {

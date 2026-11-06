@@ -8,7 +8,7 @@ namespace Stackarr.Navidrome;
 /// <summary>
 /// Per-user music personalisation: which playlists a Stackarr account owns and what each user has
 /// listened to. Navidrome itself is driven by a single shared API account, so this layer is what
-/// makes playlists and "jump back in" history differ between users in the Stackarr UI.
+/// makes playlists and "Recently Played" history differ between users in the Stackarr UI.
 /// </summary>
 public class MusicLibraryService(
     IDbContextFactory<StackarrDbContext> dbContextFactory,

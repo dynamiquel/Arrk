@@ -6,21 +6,27 @@
 @if (_items.Count > 0)
 {
     <div class="st-continue">
-        <div class="st-continue-head">
-            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Primary" />
-            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Continue Watching</MudText>
-        </div>
-        <div class="st-continue-row">
+        @if (ShowHeader)
+        {
+            <div class="st-continue-head">
+                <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Primary" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Continue Watching</MudText>
+            </div>
+        }
+        <ScrollRow TrackClass="st-continue-row">
             @foreach (ContinueWatchingItem item in _items)
             {
                 @ItemTemplate(item)
             }
-        </div>
+        </ScrollRow>
     </div>
 }
 
 @code {
     [Parameter] public int Limit { get; set; } = 20;
+
+    /// <summary>Hide the shelf's own heading when it sits inside a dashboard tile frame.</summary>
+    [Parameter] public bool ShowHeader { get; set; } = true;
 
     /// <summary>Restrict the shelf to a single media domain (movies on the Movies page, TV on Shows).</summary>
     [Parameter] public MediaDomain? Domain { get; set; }

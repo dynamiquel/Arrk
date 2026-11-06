@@ -7,7 +7,7 @@ public sealed class MediaLifecycleNavigation : INavigationProvider
 {
     public IReadOnlyList<NavigationEntry> Entries { get; } =
     [
-        new(UiSections.System, "Stale media", "/stale", Icons.Material.Filled.CleaningServices,
+        new(UiSections.System, "Stale Media", "/stale", Icons.Material.Filled.CleaningServices,
             Order: 55, AdminOnly: true)
     ];
 }

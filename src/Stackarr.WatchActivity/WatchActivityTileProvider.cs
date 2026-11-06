@@ -15,7 +15,6 @@ public sealed class WatchActivityTileProvider : ITileProvider
             "Plays",
             Icons.Material.Filled.PlayCircle,
             typeof(WatchStatTile),
-            Order: 10,
             Description: "Playback events recorded for this account.",
             Href: "/history",
             Parameters: new Dictionary<string, object?> { ["Metric"] = "plays" }),
@@ -25,7 +24,6 @@ public sealed class WatchActivityTileProvider : ITileProvider
             "Latest",
             Icons.Material.Filled.Schedule,
             typeof(WatchStatTile),
-            Order: 20,
             Description: "When this account last watched or listened.",
             Href: "/history",
             Parameters: new Dictionary<string, object?> { ["Metric"] = "latest" })

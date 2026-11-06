@@ -1,10 +1,13 @@
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Stackarr.App;
 using Stackarr.App.Services.Ui;
 using Stackarr.Configuration;
+using Stackarr.Core;
 using Stackarr.Core.Configuration;
+using Stackarr.Core.Services;
 using Stackarr.Ui;
 namespace Stackarr.App.Tests;
 
@@ -42,6 +45,15 @@ public class UiWiringTests
 
     static TileRegistry BuildTiles(IConfiguration configuration) =>
         BuildProvider(configuration).GetRequiredService<TileRegistry>();
+
+    sealed class UnusedDbContextFactory : IDbContextFactory<StackarrDbContext>
+    {
+        public StackarrDbContext CreateDbContext() =>
+            throw new InvalidOperationException("The default layout test does not use preferences.");
+
+        public Task<StackarrDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The default layout test does not use preferences.");
+    }
 
     [Test]
     public async Task Modules_ContributeTheAiAndAuthConfigSections()
@@ -185,6 +197,31 @@ public class UiWiringTests
         await Assert.That(ids).Contains("history.plays");
         await Assert.That(ids).Contains("lifecycle.stale");
         await Assert.That(ids).Contains("ai.calls");
+        await Assert.That(ids).Contains("media.continue-watching");
+        await Assert.That(ids).Contains("media.watchlists");
+        await Assert.That(ids).Contains("music.recently-played");
+        await Assert.That(ids).Contains("music.playlists");
+        await Assert.That(ids).Contains("requests.pending");
+    }
+
+    [Test]
+    public async Task DefaultDashboard_IsTheHostAndLibraryLayout()
+    {
+        TileRegistry tiles = BuildTiles(Config());
+        DashboardLayoutService layouts = new(
+            new UserUiPreferenceService(new UnusedDbContextFactory()), tiles, Config());
+
+        DashboardLayout layout = layouts.CreateDefault(isAdmin: true);
+
+        await Assert.That(layout.Sections.Select(s => s.Title)).IsEquivalentTo(["Host", "Library"]);
+        await Assert.That(layout.Sections[0].Tiles.Select(t => t.Id)).IsEquivalentTo(
+            ["services.status", "system.updated", "services.unhealthy", "system.host", "system.storage", "system.speedtest"]);
+        await Assert.That(layout.Sections[0].Tiles.Select(t => t.Size ?? TileSize.Medium)).IsEquivalentTo(
+            [TileSize.VeryLarge, TileSize.Small, TileSize.Small, TileSize.Small, TileSize.Small, TileSize.Small]);
+        await Assert.That(layout.Sections[1].Tiles.Select(t => t.Id)).IsEquivalentTo(
+            ["requests.pending", "media.continue-watching", "media.watchlists", "music.recently-played", "music.playlists"]);
+        await Assert.That(layout.Sections[1].Tiles.Select(t => t.Size ?? TileSize.Medium)).IsEquivalentTo(
+            [TileSize.VeryLarge, TileSize.VeryLarge, TileSize.VeryLarge, TileSize.Large, TileSize.Large]);
     }
 
     [Test]

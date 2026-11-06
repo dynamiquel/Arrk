@@ -6,7 +6,7 @@
    Save closes the sheet so the dashboard can reload the new layout. *@
 
 <StCardSheetDialog Icon="@Icons.Material.Filled.DashboardCustomize"
-                   Title="Tile Editor"
+                   Title="Edit Dashboard"
                    Class="st-tile-editor-dialog st-card-sheet-dialog--wide"
                    BodyClass="st-tile-editor-dialog-body"
                    FullHeight="true">
@@ -89,6 +89,7 @@
                                         <MudSelectItem T="TileSize" Value="TileSize.Small">Small</MudSelectItem>
                                         <MudSelectItem T="TileSize" Value="TileSize.Medium">Medium</MudSelectItem>
                                         <MudSelectItem T="TileSize" Value="TileSize.Large">Large</MudSelectItem>
+                                        <MudSelectItem T="TileSize" Value="TileSize.VeryLarge">Very Large</MudSelectItem>
                                     </MudSelect>
                                     <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
                                                    OnClick="() => MoveTile(section, tile, -1)" title="Move tile up" />

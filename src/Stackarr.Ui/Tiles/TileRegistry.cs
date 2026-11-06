@@ -19,11 +19,15 @@ public sealed class TileRegistry : IDisposable
     public TileRegistry(IEnumerable<ITileProvider> providers, IConfiguration configuration)
     {
         _configuration = configuration;
+        // A provider's list order is the catalogue order: there is no separate Order property to
+        // keep in sync. Category groups the editor; within a category the provider and list
+        // position decide.
         _tiles = providers
             .SelectMany(p => p.Tiles)
-            .OrderBy(t => t.Category, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(t => t.Order)
-            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+            .Select((tile, index) => (Tile: tile, Index: index))
+            .OrderBy(x => x.Tile.Category, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Tile)
             .ToList();
 
         string[] duplicates = _tiles

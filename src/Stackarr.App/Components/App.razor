@@ -22,6 +22,9 @@
                 document.cookie = 'st-text-size=' + value + '; path=/; max-age=31536000; samesite=lax';
             }
         };
+        window.stackarrLocalTime = {
+            hour: function () { return new Date().getHours(); }
+        };
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

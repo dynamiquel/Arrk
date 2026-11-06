@@ -10,8 +10,11 @@
 
 <div class="st-watchlists">
     <div class="st-continue-head">
-        <MudIcon Icon="@Icons.Material.Filled.Bookmark" Size="Size.Small" Color="Color.Primary" />
-        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Watchlists</MudText>
+        @if (ShowTitle)
+        {
+            <MudIcon Icon="@Icons.Material.Filled.Bookmark" Size="Size.Small" Color="Color.Primary" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Watchlists</MudText>
+        }
         <MudSpacer />
         @if (SelectedList is { IsExternal: false })
         {
@@ -80,7 +83,12 @@
 </div>
 
 @code {
-    [Parameter] public MediaDomain Domain { get; set; } = TvMediaDomains.Movie;
+    /// <summary>Restrict to movies or TV, or leave null on a dashboard tile to show both together.</summary>
+    [Parameter] public MediaDomain? Domain { get; set; } = TvMediaDomains.Movie;
+
+    /// <summary>Hide the shelf's own heading when it sits inside a dashboard tile frame.</summary>
+    [Parameter] public bool ShowTitle { get; set; } = true;
+
     [Parameter] public IReadOnlyList<MediaItem> LibraryItems { get; set; } = [];
     [Parameter] public EventCallback<MediaItem> OnItemClick { get; set; }
 
@@ -134,7 +142,12 @@
             {
                 if (!await external.IsAvailableAsync(_userId))
                     continue;
-                IReadOnlyList<ExternalWatchlistItem> items = await external.GetItemsAsync(_userId, Domain);
+                IReadOnlyList<ExternalWatchlistItem> items = Domain is { } domain
+                    ? await external.GetItemsAsync(_userId, domain)
+                    : (await external.GetItemsAsync(_userId, TvMediaDomains.Movie))
+                        .Concat(await external.GetItemsAsync(_userId, TvMediaDomains.Tv))
+                        .OrderBy(x => x.Title, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
                 lists.Add(new ListState(
                     $"ext:{external.Key}",
                     external.Name,
@@ -153,7 +166,9 @@
         foreach (WatchlistSummary summary in summaries)
         {
             WatchlistDetail? detail = await Watchlists.GetAsync(_userId, summary.Id);
-            List<WatchlistItem> items = detail?.Items.Where(x => x.Domain == Domain).ToList() ?? [];
+            List<WatchlistItem> items = detail?.Items
+                .Where(x => Domain is null || x.Domain == Domain)
+                .ToList() ?? [];
             lists.Add(new ListState(
                 $"user:{summary.Id}",
                 summary.Name,
