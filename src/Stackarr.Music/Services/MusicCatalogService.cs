@@ -2,6 +2,7 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using Stackarr.Core.Models;
 using Stackarr.Music.Models;
+using Stackarr.Navidrome;
 
 namespace Stackarr.Music.Services;
 
@@ -63,6 +64,22 @@ public class MusicCatalogService
 
     public static string AlbumArtUrl(string artist, string title) =>
         string.IsNullOrWhiteSpace(title) ? "" : $"/api/music/art/album?artist={Uri.EscapeDataString(artist)}&title={Uri.EscapeDataString(title)}";
+
+    /// <summary>Cover art for a track. Play history stores the player's already-resolved cover URL,
+    /// while library tracks carry a bare Navidrome cover-art id; accept both and fall back to the
+    /// cached album art when there is no cover at all.</summary>
+    public static string TrackArtUrl(string artist, string album, string coverArt)
+    {
+        if (!string.IsNullOrWhiteSpace(coverArt))
+            return IsResolvedUrl(coverArt) ? coverArt : NavidromeService.CoverArtUrl(coverArt);
+
+        return AlbumArtUrl(artist, album);
+    }
+
+    static bool IsResolvedUrl(string value) =>
+        value.StartsWith('/')
+        || value.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        || value.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Album art: prefer the cover captured from Deezer when the album was added.</summary>
     static string ArtFor(Album album) =>
