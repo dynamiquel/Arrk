@@ -67,7 +67,8 @@ else
     <div class="mb-5">
         <MusicShelfRow Title="Recently Played" ShowTitle="true" Limit="6"
                        UseProvidedData="true"
-                       Playlists="VisiblePlaylists.ToList()" History="_history" PlayQueue="_playQueue"
+                       Playlists="VisiblePlaylists.ToList()" Subscriptions="_subscriptions"
+                       History="_history" PlayQueue="_playQueue"
                        UserId="_userId" IsAdmin="_isAdmin" OnChanged="LoadAsync" />
     </div>
 }

@@ -2,7 +2,7 @@
    show the resume queue, owned playlists and recent history, capped at a small number of cards so
    "Recently Played" stays a quick shortcut rather than a second library. *@
 @inject MusicLibraryService MusicLibrary
-@inject MusicSubscriptionService Subscriptions
+@inject MusicSubscriptionService MusicSubscriptions
 @inject NavidromeService Navidrome
 @inject MusicDialogLauncher Launcher
 @inject IJSRuntime JS
@@ -14,7 +14,10 @@
     <div class="st-music-shelf">
         @if (ShowTitle)
         {
-            <MudText Typo="Typo.h6" Class="st-music-shelf-title">@Title</MudText>
+            <div class="st-continue-head">
+                <MudIcon Icon="@Icons.Material.Filled.Replay" Size="Size.Small" Color="Color.Primary" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">@Title</MudText>
+            </div>
         }
         <ScrollRow TrackClass="st-music-scroll-row">
             @foreach (ShelfEntry entry in _entries)
@@ -25,6 +28,13 @@
                         <MusicCard ShowInLibraryBadge="false" Item="entry.Item"
                                    OnClick="ResumeQueueAsync" OnPlay="ResumeQueueAsync"
                                    Class="st-music-card--resume" Badge="Resume" />
+                    }
+                    else if (entry.Kind == ShelfKind.Subscription)
+                    {
+                        <MusicCard ShowInLibraryBadge="false" Item="entry.Item"
+                                   OnClick="@((MusicItem _) => OpenSubscriptionAsync(entry.Subscription!))"
+                                   OnPlay="@((MusicItem _) => PlaySubscriptionAsync(entry.Subscription!))"
+                                   Badge="Subscribed" />
                     }
                     else if (entry.Kind == ShelfKind.Playlist)
                     {
@@ -45,13 +55,14 @@
 }
 
 @code {
-    enum ShelfKind { Resume, Playlist, History }
+    enum ShelfKind { Resume, Subscription, Playlist, History }
 
     sealed record ShelfEntry(
         string Key,
         MusicItem Item,
         ShelfKind Kind,
         SubsonicPlaylist? Playlist,
+        MusicSubscription? Subscription,
         MusicPlayHistory? History);
 
     sealed record QueueItem(
@@ -76,6 +87,7 @@
     /// them itself from the signed-in account.</summary>
     [Parameter] public bool UseProvidedData { get; set; }
     [Parameter] public IReadOnlyList<SubsonicPlaylist>? Playlists { get; set; }
+    [Parameter] public IReadOnlyList<MusicSubscription>? Subscriptions { get; set; }
     [Parameter] public IReadOnlyList<MusicPlayHistory>? History { get; set; }
     [Parameter] public SubsonicPlayQueue? PlayQueue { get; set; }
     [Parameter] public int UserId { get; set; }
@@ -84,6 +96,7 @@
 
     readonly List<ShelfEntry> _entries = [];
     List<SubsonicPlaylist> _playlists = [];
+    List<MusicSubscription> _subscriptions = [];
     List<MusicPlayHistory> _history = [];
     SubsonicPlayQueue? _playQueue;
     int _userId;
@@ -136,6 +149,7 @@
     void ApplyProvidedData()
     {
         _playlists = Playlists?.ToList() ?? [];
+        _subscriptions = Subscriptions?.ToList() ?? [];
         _history = History?.ToList() ?? [];
         _playQueue = PlayQueue;
     }
@@ -146,9 +160,9 @@
 
         if (IncludePlaylists)
         {
-            List<MusicSubscription> subscriptions = await Subscriptions.GetForUserAsync(_userId);
+            _subscriptions = await MusicSubscriptions.GetForUserAsync(_userId);
             _playlists = _playlists
-                .Where(p => !subscriptions.Any(s =>
+                .Where(p => !_subscriptions.Any(s =>
                     !string.IsNullOrEmpty(s.NavidromePlaylistId) && s.NavidromePlaylistId == p.Id))
                 .ToList();
         }
@@ -170,15 +184,23 @@
         if (IncludeResume && _playQueue is { Entry.Count: > 0 })
         {
             entries.Add(new ShelfEntry(
-                "resume", ResumeItem(_playQueue), ShelfKind.Resume, null, null));
+                "resume", ResumeItem(_playQueue), ShelfKind.Resume, null, null, null));
         }
 
         if (IncludePlaylists)
         {
+            foreach (MusicSubscription subscription in _subscriptions)
+            {
+                entries.Add(new ShelfEntry(
+                    $"subscription:{subscription.Id}", SubscriptionItem(subscription),
+                    ShelfKind.Subscription, null, subscription, null));
+            }
+
             foreach (SubsonicPlaylist playlist in _playlists)
             {
                 entries.Add(new ShelfEntry(
-                    $"playlist:{playlist.Id}", PlaylistItem(playlist), ShelfKind.Playlist, playlist, null));
+                    $"playlist:{playlist.Id}", PlaylistItem(playlist),
+                    ShelfKind.Playlist, playlist, null, null));
             }
         }
 
@@ -187,7 +209,8 @@
             foreach (MusicPlayHistory history in _history)
             {
                 entries.Add(new ShelfEntry(
-                    $"history:{history.SongId}", HistoryItem(history), ShelfKind.History, null, history));
+                    $"history:{history.SongId}", HistoryItem(history),
+                    ShelfKind.History, null, null, history));
             }
         }
 
@@ -215,6 +238,15 @@
         ArtistName = $"{playlist.SongCount} song{(playlist.SongCount == 1 ? "" : "s")}",
         TrackCount = playlist.SongCount,
         ArtUrl = !string.IsNullOrEmpty(playlist.CoverArt) ? NavidromeService.CoverArtUrl(playlist.CoverArt) : ""
+    };
+
+    static MusicItem SubscriptionItem(MusicSubscription subscription) => new()
+    {
+        EntityType = MusicEntityType.Playlist,
+        Title = subscription.Name,
+        ArtistName = $"{subscription.MatchCount}/{subscription.TrackCount} songs",
+        TrackCount = subscription.TrackCount,
+        ArtUrl = subscription.ArtUrl
     };
 
     MusicItem HistoryItem(MusicPlayHistory history) => new()
@@ -270,9 +302,26 @@
         await PlayAsync(queue, 0);
     }
 
-    async Task PlayPlaylistAsync(SubsonicPlaylist playlist)
+    Task PlayPlaylistAsync(SubsonicPlaylist playlist) => PlayPlaylistByIdAsync(playlist.Id);
+
+    async Task PlaySubscriptionAsync(MusicSubscription subscription)
     {
-        SubsonicPlaylist? detail = await Navidrome.GetPlaylistAsync(playlist.Id);
+        string? playlistId = subscription.NavidromePlaylistId;
+        if (string.IsNullOrEmpty(playlistId))
+        {
+            List<SubsonicPlaylist> playlists =
+                await MusicLibrary.GetPlaylistsForUserAsync(_userId, _isAdmin);
+            playlistId = playlists.FirstOrDefault(p =>
+                string.Equals(p.Name, subscription.Name, StringComparison.OrdinalIgnoreCase))?.Id;
+        }
+
+        if (!string.IsNullOrEmpty(playlistId))
+            await PlayPlaylistByIdAsync(playlistId);
+    }
+
+    async Task PlayPlaylistByIdAsync(string playlistId)
+    {
+        SubsonicPlaylist? detail = await Navidrome.GetPlaylistAsync(playlistId);
         if (detail is null || detail.Tracks.Count == 0)
             return;
 
@@ -306,16 +355,26 @@
     {
         IDialogReference dialog = await Launcher.OpenLibraryPlaylistAsync(playlist);
         await dialog.Result;
+        await NotifyChangedAsync();
+    }
 
+    async Task OpenSubscriptionAsync(MusicSubscription subscription)
+    {
+        IDialogReference dialog = await Launcher.OpenSubscriptionAsync(subscription);
+        await dialog.Result;
+        await NotifyChangedAsync();
+    }
+
+    async Task NotifyChangedAsync()
+    {
         if (UseProvidedData)
         {
             if (OnChanged.HasDelegate)
                 await OnChanged.InvokeAsync();
+            return;
         }
-        else
-        {
-            await ReloadAsync();
-            Rebuild();
-        }
+
+        await ReloadAsync();
+        Rebuild();
     }
 }

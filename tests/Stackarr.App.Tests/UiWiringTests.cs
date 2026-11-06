@@ -197,8 +197,8 @@ public class UiWiringTests
         await Assert.That(ids).Contains("history.plays");
         await Assert.That(ids).Contains("lifecycle.stale");
         await Assert.That(ids).Contains("ai.calls");
-        await Assert.That(ids).Contains("media.continue-watching");
-        await Assert.That(ids).Contains("media.watchlists");
+        await Assert.That(ids).Contains("tv.continue-watching");
+        await Assert.That(ids).Contains("tv.watchlists");
         await Assert.That(ids).Contains("music.recently-played");
         await Assert.That(ids).Contains("music.playlists");
         await Assert.That(ids).Contains("requests.pending");
@@ -219,7 +219,7 @@ public class UiWiringTests
         await Assert.That(layout.Sections[0].Tiles.Select(t => t.Size ?? TileSize.Medium)).IsEquivalentTo(
             [TileSize.VeryLarge, TileSize.Small, TileSize.Small, TileSize.Small, TileSize.Small, TileSize.Small]);
         await Assert.That(layout.Sections[1].Tiles.Select(t => t.Id)).IsEquivalentTo(
-            ["requests.pending", "media.continue-watching", "media.watchlists", "music.recently-played", "music.playlists"]);
+            ["requests.pending", "tv.continue-watching", "tv.watchlists", "music.recently-played", "music.playlists"]);
         await Assert.That(layout.Sections[1].Tiles.Select(t => t.Size ?? TileSize.Medium)).IsEquivalentTo(
             [TileSize.VeryLarge, TileSize.VeryLarge, TileSize.VeryLarge, TileSize.Large, TileSize.Large]);
     }

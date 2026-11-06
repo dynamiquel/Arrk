@@ -67,8 +67,8 @@ public static class UiDefaults
             Tiles =
             [
                 new() { Id = "requests.pending", Size = DashboardTileSize.VeryLarge },
-                new() { Id = "media.continue-watching", Size = DashboardTileSize.VeryLarge },
-                new() { Id = "media.watchlists", Size = DashboardTileSize.VeryLarge },
+                new() { Id = "tv.continue-watching", Size = DashboardTileSize.VeryLarge },
+                new() { Id = "tv.watchlists", Size = DashboardTileSize.VeryLarge },
                 new() { Id = "music.recently-played", Size = DashboardTileSize.Large },
                 new() { Id = "music.playlists", Size = DashboardTileSize.Large }
             ]
