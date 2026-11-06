@@ -4,14 +4,14 @@ How the native music module works. Status is in [`../plan.md`](../plan.md).
 
 ## Model
 
-Deezer is the identity and metadata provider. Stackarr's SQLite database is the library.
-Navidrome plays what Stackarr placed on disk. Prowlarr, Transmission and slskd fetch it.
+Deezer is the identity and metadata provider. Arrk's SQLite database is the library.
+Navidrome plays what Arrk placed on disk. Prowlarr, Transmission and slskd fetch it.
 
 | Concept | Meaning |
 |---|---|
 | Identity | Canonical Deezer id for artist, album or track |
 | Discovery | Deezer charts, genres, editorial playlists and search (`MusicCatalogService`) |
-| Library | What Stackarr tracks and holds (`MusicLibrary`) |
+| Library | What Arrk tracks and holds (`MusicLibrary`) |
 | Availability | How much of an album is on disk |
 | Intent | "Add this" for an album, artist or track (`LibraryIntent`), replacing Lidarr monitoring |
 | Grab | One acquisition attempt with the Deezer id it was requested for (`GrabRecord`) |
@@ -63,7 +63,7 @@ Watch history and cleanup are in [`lifecycle.md`](lifecycle.md).
     grab fails as `music-mismatch` and is re-queued. Number-only rips are placed positionally.
 16. **Lyrics are derived and a miss is final.** LRCLIB has no ISRC/MBID/Deezer id, so matching is
     fuzzy by design. A track with no lyrics is `NotFound` and is not retried on a timer; a
-    failure on Stackarr's side is `Failed` and retried by the daily reset.
+    failure on Arrk's side is `Failed` and retried by the daily reset.
 17. **A provider is a service, not an oracle.** The LRCLIB client retries transient statuses and
     honours `Retry-After`; only `404` means not found. A sweep stops early when the provider is
     clearly down.
@@ -102,7 +102,7 @@ A grab only stages files: torrents under `/downloads/complete/music`, Soulseek u
 - Files land in `music/<AlbumArtist>/<Album>/<NN - Title>.<ext>`, with `<D>-<NN - Title>` for
   multi-disc albums. Torrent files are hard-linked so seeding continues; Soulseek files are moved.
 - Each file is tagged with artist, album artist, album, title, track, disc, date and
-  `STACKARR_DEEZER_*` ids, so it can be re-identified without the database. The Deezer cover is
+  `ARRK_DEEZER_*` ids, so it can be re-identified without the database. The Deezer cover is
   written as `cover.jpg`.
 - Files that do not map to a track are skipped.
 - A completed torrent that clearly belongs to another album is not placed; it is kept so the
@@ -122,14 +122,14 @@ acquisition queue.
 
 A background sweep (`MusicLyricsJob`, every 30 minutes) takes tracks that have a file and no
 lyrics, asks LRCLIB, verifies the match and writes a sidecar (`.lrc` for line timings, `.txt` for
-plain). Stackarr then asks Navidrome to rescan.
+plain). Arrk then asks Navidrome to rescan.
 
 Queries widen from an exact signature to structured search, then title alone, then free text. A
 candidate is accepted only when artist and title agree and known durations are close. Placeholder,
 cover and karaoke credits are filtered out. The weaker acceptance tier also requires the album.
 
 State lives on `MusicTrack`: `None` (eligible), `Found`, `Instrumental`, `NotFound` (final) and
-`Failed` (Stackarr-side failure, retried daily). An unreachable provider leaves the track `None`
+`Failed` (Arrk-side failure, retried daily). An unreachable provider leaves the track `None`
 and bumps `LyricsCheckedAt` so it rotates behind the queue.
 
 Playback never matches anything: Navidrome serves the sidecar by file association, and
@@ -163,5 +163,5 @@ use a short TTL invalidated on writes; a Soulseek search stops as soon as slskd 
 - New acquisition writes go through `MusicLibrary`; jobs and UI never write the database directly.
 - Lyrics work goes through `LyricsService` as a background sweep or manual request, never inline
   from a page load or the importer.
-- Karaoke rendering stays in `stackarr-lyrics.js`.
+- Karaoke rendering stays in `arrk-lyrics.js`.
 - No MusicBrainz, no Lidarr, no second player element and no second lyrics renderer.

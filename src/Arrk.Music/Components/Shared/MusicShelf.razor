@@ -1,0 +1,37 @@
+@* A titled, horizontally-scrolling shelf of square music cards. Item clicks use the shared
+   launcher, so a shelf opens the same popup as the rest of the app. *@
+@inject MusicDialogLauncher Launcher
+
+@if (Items.Count > 0)
+{
+    <div class="st-music-shelf">
+        <MudText Typo="Typo.h6" Class="st-music-shelf-title">@Title</MudText>
+        <div class="st-music-grid">
+            @foreach (MusicItem item in Items)
+            {
+                <MusicCard Item="item" OnClick="OpenItem" OnPlay="OnPlay" />
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public IReadOnlyList<MusicItem> Items { get; set; } = [];
+    [Parameter] public EventCallback<MusicItem> OnItemClick { get; set; }
+    [Parameter] public EventCallback<MusicItem> OnPlay { get; set; }
+
+    async Task OpenItem(MusicItem item)
+    {
+        if (OnItemClick.HasDelegate)
+        {
+            await OnItemClick.InvokeAsync(item);
+            return;
+        }
+
+        bool isAdmin = AuthStateTask is not null && (await AuthStateTask).User.IsInRole(ArrkRoles.Admin);
+        IDialogReference dialog = await Launcher.OpenAsync(item, isAdmin);
+        await dialog.Result;
+    }
+}

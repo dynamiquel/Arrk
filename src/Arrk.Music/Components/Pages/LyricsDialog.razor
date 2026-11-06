@@ -1,0 +1,146 @@
+@* Traditional lyrics view: a song's lyrics as a plain, centred, scrollable list, the live karaoke
+   view lives in the player. Opened from a song's "…" menu, and the place to ask for lyrics again
+   when none have been found yet. *@
+@using Arrk.Navidrome
+@using Arrk.Navidrome.Playback
+@inject NavidromeService Navidrome
+@inject MusicCatalogService Catalog
+@inject ISnackbar Snackbar
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-media-info-dialog">
+            <StDialogTitle Icon="@Icons.Material.Filled.Lyrics" Title="Lyrics" Subtitle="@Subtitle" />
+
+            @if (_loading)
+            {
+                <LoadingView />
+            }
+            else if (_lines.Count == 0)
+            {
+                <div class="st-media-info-section">
+                    <EmptyState Icon="@Icons.Material.Filled.Lyrics"
+                                Message="@EmptyMessage"
+                                Detail="@(IsAdmin ? "Use Find lyrics to look again now, or wait for the background sweep." : null)" />
+                </div>
+            }
+            else
+            {
+                <div class="st-media-info-section">
+                    <div class="st-detail-section-label">
+                        <MudIcon Icon="@Icons.Material.Filled.Lyrics" Size="Size.Small" />
+                        @(_synced ? "Synced lyrics" : "Lyrics")
+                    </div>
+                    <div class="st-lyrics-body">
+                        @foreach (string line in _lines)
+                        {
+                            <div class="st-lyrics-line">@line</div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        @if (IsAdmin && !_loading)
+        {
+            <MudButton OnClick="FindLyricsAsync" Variant="Variant.Outlined" Color="Color.Primary"
+                       Disabled="@_busy" StartIcon="@Icons.Material.Filled.Search">
+                <span class="st-btn-label">@(_lines.Count == 0 ? "Find lyrics" : "Search again")</span>
+            </MudButton>
+        }
+        <MudButton OnClick="() => MudDialog.Close()" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient">
+            <span class="st-btn-label">Close</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Artist { get; set; } = "";
+    /// <summary>Navidrome song id when the caller already knows it (a playlist row does).</summary>
+    [Parameter] public string? SongId { get; set; }
+    /// <summary>Library album id, used to resolve the song when <see cref="SongId"/> is unknown.</summary>
+    [Parameter] public int AlbumId { get; set; }
+    /// <summary>Library track id, used by "Find lyrics" when it is known.</summary>
+    [Parameter] public int TrackId { get; set; }
+    /// <summary>Deezer track id, used by "Find lyrics" for a playlist row (which has no library id).</summary>
+    [Parameter] public long DeezerTrackId { get; set; }
+    [Parameter] public bool IsAdmin { get; set; }
+
+    bool _loading = true;
+    bool _busy;
+    bool _synced;
+    string? _songId;
+    List<string> _lines = [];
+
+    string Subtitle => string.IsNullOrWhiteSpace(Artist) ? Title : $"{Title} · {Artist}";
+
+    string EmptyMessage => string.IsNullOrEmpty(_songId)
+        ? "This song isn't in Navidrome yet, so there are no lyrics to show."
+        : "No lyrics have been found for this song yet.";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    async Task LoadAsync()
+    {
+        _loading = true;
+        _lines = [];
+        _synced = false;
+        try
+        {
+            _songId = SongId;
+            if (string.IsNullOrEmpty(_songId) && AlbumId > 0)
+            {
+                MusicItem? album = await Catalog.GetLibraryAlbumAsync(AlbumId);
+                _songId = await Navidrome.FindSongIdAsync(Title, album?.ArtistName ?? Artist);
+            }
+
+            if (!string.IsNullOrEmpty(_songId))
+            {
+                List<SubsonicStructuredLyrics> tracks = await Navidrome.GetLyricsAsync(_songId);
+                LyricsResponse? payload = MusicLyricsMapper.ToResponse(_songId, tracks);
+                if (payload is not null)
+                {
+                    _lines = [.. payload.Main.Lines.Select(line => line.Text)];
+                    _synced = payload.Main.Synced;
+                }
+            }
+        }
+        catch { /* a missing lyrics file is not an error */ }
+        _loading = false;
+    }
+
+    async Task FindLyricsAsync()
+    {
+        _busy = true;
+        try
+        {
+            LyricsRequestResult result = TrackId > 0
+                ? await Catalog.RequestLyricsAsync(TrackId)
+                : await Catalog.RequestLyricsForSongAsync(Title, DeezerTrackId);
+
+            Snackbar.Add(result.Message, result.Outcome == LyricsOutcome.Found ? Severity.Success : Severity.Info);
+
+            if (result.Outcome == LyricsOutcome.Found)
+            {
+                // Navidrome reads the sidecar from disk, so it needs a scan before the lyrics appear.
+                await Navidrome.StartScanAsync();
+                await Task.Delay(1500);
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Couldn't fetch lyrics: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

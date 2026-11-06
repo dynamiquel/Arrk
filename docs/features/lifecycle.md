@@ -1,11 +1,11 @@
 # Watch activity, watchlists and media lifecycle
 
-How Stackarr records what users watch and listen to, and how that drives watchlists, pinning and
+How Arrk records what users watch and listen to, and how that drives watchlists, pinning and
 stale-media cleanup.
 
 ## Purpose
 
-Stackarr keeps one durable, per-user playback history across every player. It answers who watched
+Arrk keeps one durable, per-user playback history across every player. It answers who watched
 or listened to what, when, and on which service or device, and it is the clock behind stale-media
 cleanup. Admins can pin anything to exclude it permanently.
 
@@ -46,8 +46,8 @@ playback supplies the album artist so a Various Artists album matches its album 
 | Jellyfin session poller | tv | Every active Jellyfin client with its device and client names |
 | Jellyfin history backfill | tv | Already-played items on startup (device unknown) |
 
-Navidrome keeps scrobbles per API account, but Stackarr uses one shared account, so plays made in
-external Navidrome clients are not attributable to a Stackarr user. Plays through Stackarr's
+Navidrome keeps scrobbles per API account, but Arrk uses one shared account, so plays made in
+external Navidrome clients are not attributable to an Arrk user. Plays through Arrk's
 player are tracked.
 
 ## Staleness rules
@@ -107,7 +107,7 @@ Warnings are edge-triggered and survive restarts through `LifecycleItemState`.
 
 ## Plugin contract
 
-Plugins reference `Stackarr.Core` only:
+Plugins reference `Arrk.Core` only:
 
 - record playback with `WatchActivityService`;
 - read history with `GetHistoryAsync` / `GetConsumptionAsync`;
@@ -116,7 +116,7 @@ Plugins reference `Stackarr.Core` only:
 - implement and register `IManagedMediaProvider` to make a library visible to staleness;
 - read `StaleMediaService` for statuses.
 
-No plugin needs `Stackarr.MediaLifecycle` or `Stackarr.WatchActivity`.
+No plugin needs `Arrk.MediaLifecycle` or `Arrk.WatchActivity`.
 
 ## Invariants
 

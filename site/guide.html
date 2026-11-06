@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Setup guide — Stackarr</title>
-  <meta name="description" content="A practical, step-by-step guide to configuring Stackarr: storage, metadata, quality profiles, indexers, downloads, VPN, players, subtitles, remote access, users and notifications.">
+  <title>Setup guide — Arrk</title>
+  <meta name="description" content="A practical, step-by-step guide to configuring Arrk: storage, metadata, quality profiles, indexers, downloads, VPN, players, subtitles, remote access, users and notifications.">
   <meta name="theme-color" content="#0f0a18">
   <script>document.documentElement.classList.add("js");</script>
-  <link rel="canonical" href="https://dynamiquel.github.io/Stackarr/guide.html">
+  <link rel="canonical" href="https://dynamiquel.github.io/Arrk/guide.html">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,9 +20,9 @@
 
   <header class="site-header">
     <div class="wrap header-inner">
-      <a class="brand" href="index.html" aria-label="Stackarr home">
+      <a class="brand" href="index.html" aria-label="Arrk home">
         <img src="assets/logo.svg" alt="" width="34" height="34">
-        <span>Stackarr</span>
+        <span>Arrk</span>
       </a>
       <nav class="site-nav" id="site-nav" aria-label="Main navigation">
         <a href="index.html">Overview</a>
@@ -33,7 +33,7 @@
         <a href="faq.html">FAQ</a>
       </nav>
       <div class="header-actions">
-        <a class="icon-link" href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="Stackarr on GitHub">
+        <a class="icon-link" href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener" aria-label="Arrk on GitHub">
           <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
         </a>
         <a class="btn btn-primary" href="setup.html">Install first</a>
@@ -51,7 +51,7 @@
         <span class="pill pill--indigo"><svg aria-hidden="true"><use href="assets/icons.svg#i-star"></use></svg> The practical guide</span>
         <h1 style="margin-top: 18px">Set up your stack,<br><span class="grad-text">properly.</span></h1>
         <p class="lead">
-          Installing Stackarr is the easy part. This guide walks through the choices that make a
+          Installing Arrk is the easy part. This guide walks through the choices that make a
           media stack pleasant to live with: where the files go, how quality is decided, what
           routes through the VPN, who gets in, and what happens when storage fills up.
         </p>
@@ -65,8 +65,8 @@
           <div>
             <h4>Do this before you change anything</h4>
             <p>
-              Back up <code>/config</code> (or at least <code>stackarr.yaml</code>) and note your
-              current ports. Stackarr is early software and configuration can change between
+              Back up <code>/config</code> (or at least <code>arrk.yaml</code>) and note your
+              current ports. Arrk is early software and configuration can change between
               releases. The Config page keeps version history, but a real backup is still your
               friend.
             </p>
@@ -103,9 +103,9 @@
             <div>
               <h4>Two ways to edit configuration</h4>
               <p>
-                Open <strong>Configuration</strong> in Stackarr for a validated visual editor with
+                Open <strong>Configuration</strong> in Arrk for a validated visual editor with
                 schema autocomplete and version history, or edit
-                <code>/config/stackarr.yaml</code> directly. Changes hot-reload without a restart.
+                <code>/config/arrk.yaml</code> directly. Changes hot-reload without a restart.
                 The generated JSON schema is the authoritative list of options; this guide covers
                 the ones worth understanding.
               </p>
@@ -115,12 +115,12 @@
           <section class="guide-section" id="identity">
             <h2><span class="num">01</span> Identity &amp; admin</h2>
             <p>
-              Stackarr is the account authority for the stack. Start by replacing the bootstrap
+              Arrk is the account authority for the stack. Start by replacing the bootstrap
               administrator and deciding how new accounts are created.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>auth:
@@ -139,28 +139,28 @@
               <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Add Discord or MyAnimeList sign-in later from <code>/account</code>.</li>
             </ul>
             <div class="guide-note">
-              <b>Good to know:</b> Jellyfin and Navidrome keep their own credentials, but Stackarr
+              <b>Good to know:</b> Jellyfin and Navidrome keep their own credentials, but Arrk
               can provision accounts and passwords for them. That is separate from whether
-              Stackarr itself allows password login.
+              Arrk itself allows password login.
             </div>
           </section>
 
           <section class="guide-section" id="storage">
             <h2><span class="num">02</span> Storage &amp; folders</h2>
             <p>
-              Stackarr uses three storage roots: configuration, downloads and media. Relative paths
+              Arrk uses three storage roots: configuration, downloads and media. Relative paths
               are anchored to the data root; absolute paths are passed directly to Docker. Get this
               right once and the rest of the setup is calmer.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>storage:
-  config: /srv/stackarr/config
-  downloads: /srv/stackarr/downloads
-  media: /srv/stackarr/media
+  config: /srv/arrk/config
+  downloads: /srv/arrk/downloads
+  media: /srv/arrk/media
   tv: $media/tv
   music: $media/music</code></pre>
             </div>
@@ -169,7 +169,7 @@
                 <thead><tr><th>Path</th><th>Use it for</th><th>Advice</th></tr></thead>
                 <tbody>
                   <tr><td><code>tv</code></td><td><code>tv/movies</code> and <code>tv/shows</code> underneath.</td><td>Keep movies and shows on one filesystem for hard-links and fast imports.</td></tr>
-                  <tr><td><code>music</code></td><td>The native music library.</td><td>Stackarr writes <code>Artist/Album/NN - Title</code> with tags and cover art.</td></tr>
+                  <tr><td><code>music</code></td><td>The native music library.</td><td>Arrk writes <code>Artist/Album/NN - Title</code> with tags and cover art.</td></tr>
                   <tr><td><code>downloads</code></td><td>Incomplete, complete, Soulseek and staged uploads.</td><td>Same filesystem as media is strongly preferred; imports can then link instead of copy.</td></tr>
                 </tbody>
               </table>
@@ -192,7 +192,7 @@
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>metadata:
@@ -209,13 +209,13 @@
           <section class="guide-section" id="quality">
             <h2><span class="num">04</span> Quality profiles</h2>
             <p>
-              Quality is defined once in Stackarr and applied to the library managers. The default
+              Quality is defined once in Arrk and applied to the library managers. The default
               profiles are Best Available, FHD and UHD. Bitrate floors stop a “4K” release from
               being smaller than a good 1080p one.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>qualityProfiles:
@@ -237,7 +237,7 @@
     2160p: 12</code></pre>
             </div>
             <div class="guide-note">
-              <b>One source of truth:</b> the configured profiles are authoritative. Stackarr
+              <b>One source of truth:</b> the configured profiles are authoritative. Arrk
               creates and syncs them into the library managers rather than asking you to maintain
               copies in each app.
             </div>
@@ -252,12 +252,12 @@
             <h2><span class="num">05</span> Indexers</h2>
             <p>
               Prowlarr is the indexer hub and syncs its apps into the library managers. You can add
-              indexers in Stackarr's config or in Prowlarr's own UI (proxy it temporarily if you
+              indexers in Arrk's config or in Prowlarr's own UI (proxy it temporarily if you
               prefer). Keep credentials in the config, not in screenshots.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>indexers:
@@ -291,11 +291,11 @@
             <h2><span class="num">06</span> Downloads &amp; VPN</h2>
             <p>
               Transmission handles torrents; slskd handles Soulseek for music. Both are provisioned
-              by Stackarr and appear on one Downloads page. The VPN is opt-in per service.
+              by Arrk and appear on one Downloads page. The VPN is opt-in per service.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>vpn:
@@ -351,13 +351,13 @@ services:
           <section class="guide-section" id="players">
             <h2><span class="num">07</span> Players</h2>
             <p>
-              Jellyfin plays video and can be fully managed by Stackarr; Navidrome plays the music
-              library. Both are proxied by default, and Stackarr can sign users in with OIDC where
+              Jellyfin plays video and can be fully managed by Arrk; Navidrome plays the music
+              library. Both are proxied by default, and Arrk can sign users in with OIDC where
               the client supports it.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>services:
@@ -365,7 +365,7 @@ services:
     enabled: true
     proxy: true
     nvidia: false             # true for NVENC / HDR tone mapping
-    serverName: Stackarr
+    serverName: Arrk
     metadataLanguage: en
     metadataCountry: US
     manageUsers: true
@@ -380,8 +380,8 @@ services:
             </div>
             <ul class="checklist">
               <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Jellyfin libraries are created and kept linked automatically.</li>
-              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> The in-site player keeps the Stackarr look; disable it to use Jellyfin's own web client.</li>
-              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> With NVIDIA enabled, pass the GPU to the Jellyfin container and let Stackarr configure transcoding.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> The in-site player keeps the Arrk look; disable it to use Jellyfin's own web client.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> With NVIDIA enabled, pass the GPU to the Jellyfin container and let Arrk configure transcoding.</li>
               <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Keep Navidrome's <code>webPlayer</code> on unless you only want external Subsonic clients.</li>
             </ul>
           </section>
@@ -395,7 +395,7 @@ services:
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>services:
@@ -426,14 +426,14 @@ services:
           <section class="guide-section" id="remote">
             <h2><span class="num">09</span> Remote access</h2>
             <p>
-              Traefik runs the reverse proxy. Path-based routes are on by default, the Stackarr UI
+              Traefik runs the reverse proxy. Path-based routes are on by default, the Arrk UI
               is at <code>/</code>, and players are proxied at <code>/jellyfin</code> and
               <code>/navidrome</code>. A Cloudflare tunnel can expose Traefik without opening host
               ports.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>routes:
@@ -449,7 +449,7 @@ services:
             <ul class="checklist">
               <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Set <code>publicUrl</code> to the exact external URL; it is used for deep links and OIDC.</li>
               <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> For a tunnel-only host, set both ports to <code>0</code>.</li>
-              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Enable <code>auth.requireHttps</code> when TLS terminates in front of Stackarr.</li>
+              <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> Enable <code>auth.requireHttps</code> when TLS terminates in front of Arrk.</li>
               <li><svg aria-hidden="true"><use href="assets/icons.svg#i-check"></use></svg> TLS certificate automation is not there yet; use your proxy or tunnel for HTTPS.</li>
             </ul>
             <div class="guide-note">
@@ -463,13 +463,13 @@ services:
           <section class="guide-section" id="people">
             <h2><span class="num">10</span> Users &amp; requests</h2>
             <p>
-              Decide who can sign in and what they can do. Stackarr supports admin/user roles,
+              Decide who can sign in and what they can do. Arrk supports admin/user roles,
               invite-only approval, OIDC for players, and a Seerr-style request flow for people who
               should not add media directly.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>auth:
@@ -507,13 +507,13 @@ requests:
           <section class="guide-section" id="notifications">
             <h2><span class="num">11</span> Notifications</h2>
             <p>
-              Stackarr records every notable event, shows it in the in-app inbox and can deliver a
+              Arrk records every notable event, shows it in the in-app inbox and can deliver a
               subset to Discord or a generic webhook. Routing is per topic, so TV noise and system
               failures can go to different places.
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>notifications:
@@ -522,7 +522,7 @@ requests:
   discord:
     enabled: true
     webhookUrl: "https://discord.com/api/webhooks/..."
-    username: Stackarr
+    username: Arrk
     routing:
       media.#: "https://discord.com/api/webhooks/.../media"
       system.#: "https://discord.com/api/webhooks/.../system"
@@ -552,7 +552,7 @@ requests:
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>monitoring:
@@ -588,7 +588,7 @@ requests:
             </p>
             <div class="code-block">
               <div class="code-head">
-                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> stackarr.yaml</span>
+                <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
                 <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
               </div>
               <pre><code>ai:
@@ -633,7 +633,7 @@ requests:
                   <svg aria-hidden="true"><use href="assets/icons.svg#i-refresh"></use></svg>
                 </div>
                 <h3>Updates</h3>
-                <p>Pull a new image, keep the same mounts and <code>StackName</code>, and re-create the container. Back up <code>/config</code> first. Stackarr can check image updates, but you decide when to apply them.</p>
+                <p>Pull a new image, keep the same mounts and <code>StackName</code>, and re-create the container. Back up <code>/config</code> first. Arrk can check image updates, but you decide when to apply them.</p>
               </div>
               <div class="bento-card" style="grid-column: auto; padding: 22px">
                 <div class="icon-bubble icon-bubble--indigo" style="width: 38px; height: 38px; margin-bottom: 12px">
@@ -647,14 +647,14 @@ requests:
                   <svg aria-hidden="true"><use href="assets/icons.svg#i-history"></use></svg>
                 </div>
                 <h3>Config history</h3>
-                <p>The Config page keeps versions of <code>stackarr.yaml</code>. When something feels off, compare against the previous version before hand-editing. Keep a copy outside the container too.</p>
+                <p>The Config page keeps versions of <code>arrk.yaml</code>. When something feels off, compare against the previous version before hand-editing. Keep a copy outside the container too.</p>
               </div>
               <div class="bento-card" style="grid-column: auto; padding: 22px">
                 <div class="icon-bubble icon-bubble--pink" style="width: 38px; height: 38px; margin-bottom: 12px">
                   <svg aria-hidden="true"><use href="assets/icons.svg#i-search"></use></svg>
                 </div>
                 <h3>When something breaks</h3>
-                <p>Start with <code>docker logs -f stackarr</code>, then <code>/events</code> for the event trail and <code>/logs</code> for the app log. The service's own UI is still there when you need the deeper view.</p>
+                <p>Start with <code>docker logs -f arrk</code>, then <code>/events</code> for the event trail and <code>/logs</code> for the app log. The service's own UI is still there when you need the deeper view.</p>
               </div>
             </div>
             <div class="callout callout--green" style="margin-top: 20px">
@@ -686,7 +686,7 @@ requests:
         <div class="footer-brand">
           <a class="brand" href="index.html">
             <img src="assets/logo.svg" alt="" width="34" height="34">
-            <span>Stackarr</span>
+            <span>Arrk</span>
           </a>
           <p>One web UI and one config for a self-hosted media stack. Movies, shows, music and the services behind them.</p>
         </div>
@@ -709,17 +709,17 @@ requests:
         <div class="footer-col">
           <h4>Project</h4>
           <ul>
-            <li><a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener">GitHub</a></li>
-            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
-            <li><a href="https://github.com/dynamiquel/Stackarr/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk/blob/main/docs/plan.md" target="_blank" rel="noopener">Architecture</a></li>
+            <li><a href="https://github.com/dynamiquel/Arrk/blob/main/LICENSE" target="_blank" rel="noopener">MIT license</a></li>
           </ul>
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> Stackarr. Built for the self-hosted corner of the internet.</span>
+        <span>© <span data-year>2026</span> Arrk. Built for the self-hosted corner of the internet.</span>
         <span class="footer-note"><svg aria-hidden="true"><use href="assets/icons.svg#i-info"></use></svg> Early alpha — expect changes.</span>
         <div class="footer-social">
-          <a href="https://github.com/dynamiquel/Stackarr" target="_blank" rel="noopener" aria-label="GitHub">
+          <a href="https://github.com/dynamiquel/Arrk" target="_blank" rel="noopener" aria-label="GitHub">
             <svg aria-hidden="true"><use href="assets/icons.svg#i-github"></use></svg>
           </a>
         </div>

@@ -1,30 +1,30 @@
 # Authentication
 
-Stackarr is the account authority for the stack and an OpenID Connect provider. Players either
-trust Stackarr's OIDC (Jellyfin's OIDC RBAC plugin) or are provisioned with a username and
+Arrk is the account authority for the stack and an OpenID Connect provider. Players either
+trust Arrk's OIDC (Jellyfin's OIDC RBAC plugin) or are provisioned with a username and
 optional password for clients without OIDC, such as Infuse and Subsonic apps.
 
-Discord and MyAnimeList federate into Stackarr, so users keep one account everywhere. Discord
+Discord and MyAnimeList federate into Arrk, so users keep one account everywhere. Discord
 uses OIDC; MyAnimeList uses OAuth2 through its own module.
 
 ```
 Discord / MyAnimeList
           |  OIDC or OAuth2
           v
-    Stackarr  - ASP.NET Core Identity (SQLite)
+    Arrk  - ASP.NET Core Identity (SQLite)
           |     OpenIddict: discovery, authorize, token, userinfo, roles claim
           +--> Jellyfin: OIDC RBAC plugin, Quick Connect, account/password provisioning
           +--> Navidrome: user and password provisioning
 ```
 
-The feature lives in `Stackarr.Auth`. Cross-module contracts (`StackarrUser`, roles, claims,
+The feature lives in `Arrk.Auth`. Cross-module contracts (`ArrkUser`, roles, claims,
 `IExternalLoginProvider`, `IAccountProvisioner`, `IUserDirectory`, `IExternalIdentityStore`,
-`IExternalIdentityResolver`) live in `Stackarr.Auth.Abstractions`; other modules never reference
-`Stackarr.Auth`.
+`IExternalIdentityResolver`) live in `Arrk.Auth.Abstractions`; other modules never reference
+`Arrk.Auth`.
 
 ## Accounts and roles
 
-- `StackarrUser : IdentityUser<int>` plus avatar, active flag, created and last-login. Roles are
+- `ArrkUser : IdentityUser<int>` plus avatar, active flag, created and last-login. Roles are
   `Admin` and `User`.
 - The first administrator comes from `auth.adminUsername` / `auth.adminPassword` (default
   `admin` / `admin`). There is no setup wizard.
@@ -32,9 +32,9 @@ The feature lives in `Stackarr.Auth`. Cross-module contracts (`StackarrUser`, ro
   username from an email address.
 - Users manage their own profile at `/account` (username, avatar, password, connections). Admins
   manage accounts at `/users` and review pending sign-ups there and on the dashboard.
-- Stackarr's database is the system of record. Jellyfin and Navidrome keep their own credential
+- Arrk's database is the system of record. Jellyfin and Navidrome keep their own credential
   stores and are updated through their APIs. Passwords are forwarded only when set, because
-  Stackarr stores hashes.
+  Arrk stores hashes.
 
 ## Invite-only sign-up
 
@@ -48,12 +48,12 @@ authenticated, approved account.
 | `AdminOnly` | No self-service sign-up. `/register` redirects and unknown external identities are refused. |
 
 A pending account is a placeholder, not a request row. Approval is only a role change, and
-promotion triggers normal player sync. The default policy and `StackarrPolicies.Authenticated`
+promotion triggers normal player sync. The default policy and `ArrkPolicies.Authenticated`
 require `User` or `Admin`, so even a hypothetical cookie grants a pending account nothing.
 `/register` exists only when `auth.allowLocalSignUp` is true, password login is enabled and the
 mode is not `AdminOnly`.
 
-## Stackarr as an OIDC provider
+## Arrk as an OIDC provider
 
 Implemented with OpenIddict.
 
@@ -94,7 +94,7 @@ Implemented with OpenIddict.
 
 ## Player credentials
 
-- `auth.players.provisionAccounts` mirrors Stackarr accounts into players.
+- `auth.players.provisionAccounts` mirrors Arrk accounts into players.
 - `auth.players.provisionPasswords` forwards passwords for clients without OIDC. This is
   independent of `allowPasswordLogin`.
 - `IAccountProvisioner` is the extension point. Failures are logged and retried on the next sync
@@ -109,8 +109,8 @@ secret rotates.
 
 Jellyfin notes: plugins need a dotted folder name under `/config/data/plugins`; the plugin applies
 written configuration only after a restart; `ServerBaseUrl` must match the registered redirect
-URI. Stackarr injects plain sign-in and Quick Connect links into Jellyfin's login disclaimer
-because Jellyfin 12 strips scripts. A Stackarr admin's Jellyfin admin cannot be disabled, because
+URI. Arrk injects plain sign-in and Quick Connect links into Jellyfin's login disclaimer
+because Jellyfin 12 strips scripts. An Arrk admin's Jellyfin admin cannot be disabled, because
 Jellyfin refuses to disable administrators.
 
 ## Sessions, proxy and security
@@ -147,7 +147,7 @@ auth:
     enabled: true
     issuer: ""                    # default: routes.publicUrl, then routes.baseUrl
     jellyfinClientId: jellyfin
-    jellyfinProviderId: stackarr
+    jellyfinProviderId: stackarr    # stable identity for existing OIDC registrations
     jellyfinRedirectUris: []
   external:
     discord:
@@ -167,6 +167,6 @@ Jellyfin-specific SSO settings live under `services.jellyfin`: `manageUsers`, `o
 ## Limitations
 
 - Discord requires its redirect URI to be registered in the developer portal.
-- Jellyfin administrators cannot be disabled through Stackarr.
+- Jellyfin administrators cannot be disabled through Arrk.
 - Navidrome authentication is provisioned, not federated.
 - MAL has no manga support and its refresh token expires if unused for about a month.

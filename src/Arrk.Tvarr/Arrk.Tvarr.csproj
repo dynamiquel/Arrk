@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    The TV module owns its own UI (Razor class library): the Movies/Shows pages, the detail/add/
+    search dialogs, the poster cards and the media metadata (TMDB) services, contributed to the
+    shell through the Arrk.Ui contracts.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\Arrk.Ai\Arrk.Ai.csproj" />
+    <ProjectReference Include="..\Arrk.Ui\Arrk.Ui.csproj" />
+    <ProjectReference Include="..\Arrk.Prowlarr\Arrk.Prowlarr.csproj" />
+    <ProjectReference Include="..\Arrk.Transmission\Arrk.Transmission.csproj" />
+    <ProjectReference Include="..\Arrk.Requests\Arrk.Requests.csproj" />
+    <ProjectReference Include="..\Arrk.Jellyfin\Arrk.Jellyfin.csproj" />
+    <ProjectReference Include="..\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Downloads.Abstractions\Arrk.Downloads.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Tv.Abstractions\Arrk.Tv.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <Using Include="Arrk.Media.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Downloads.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Tv.Abstractions" />
+  </ItemGroup>
+</Project>

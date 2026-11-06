@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableTestingSupport>true</EnableTestingSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.56.35" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Arrk.Configuration\Arrk.Configuration.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Transmission\Arrk.Transmission.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Arrk.Media.Abstractions" />
+  </ItemGroup>
+</Project>

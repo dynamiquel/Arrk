@@ -10,9 +10,16 @@
 **/.github/
 **/docs/
 **/site/
+!site/
+site/*
+!site/assets/
+site/assets/*
+!site/assets/logo.svg
+!site/assets/favicon.svg
 **/*.user
 **/*.sln.DotSettings.user
 **/AGENTS.LOCAL.MD
 **/data/
 **/config/
+**/arrk-data/
 **/stackarr-data/

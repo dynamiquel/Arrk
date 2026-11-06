@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    Shared subtitle surface: status/search/request endpoints, notifications and the UI used by
+    every subtitle backend. Backend implementations live in their own modules and contribute an
+    ISubtitleProvider; this assembly never references one.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Subtitles.Abstractions\Arrk.Subtitles.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Ui\Arrk.Ui.csproj" />
+    <ProjectReference Include="..\Arrk.Auth.Abstractions\Arrk.Auth.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Tv.Abstractions\Arrk.Tv.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.25" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Subtitles.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Arrk.Subtitles.Tests" />
+  </ItemGroup>
+
+</Project>

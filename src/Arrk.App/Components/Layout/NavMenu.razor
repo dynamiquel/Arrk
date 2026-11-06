@@ -1,0 +1,131 @@
+@implements IDisposable
+@inject UiRegistry Registry
+
+@if (Variant == "grid")
+{
+    <div class="st-nav-grid-menu">
+        @foreach (NavCategory category in Categories)
+        {
+            if (category.AdminOnly)
+            {
+                <AuthorizeView Policy="@ArrkPolicies.AdminOnly" Context="adminGrid">
+                    @RenderGridCategory(category)
+                </AuthorizeView>
+            }
+            else
+            {
+                @RenderGridCategory(category)
+            }
+        }
+    </div>
+}
+else
+{
+    <MudNavMenu>
+        @foreach (NavCategory category in Categories)
+        {
+            if (category.AdminOnly)
+            {
+                <AuthorizeView Policy="@ArrkPolicies.AdminOnly" Context="admin">
+                    @RenderRailCategory(category)
+                </AuthorizeView>
+            }
+            else
+            {
+                @RenderRailCategory(category)
+            }
+        }
+    </MudNavMenu>
+}
+
+@code {
+    [Parameter] public string Variant { get; set; } = "rail";
+
+    sealed record NavEntry(string Label, string Href, string Icon, NavLinkMatch Match, bool AdminOnly, string? LogoUrl);
+    sealed record NavCategory(string Title, bool AdminOnly, IReadOnlyList<NavEntry> Items);
+
+    protected override void OnInitialized() => Registry.Changed += OnRegistryChanged;
+
+    void OnRegistryChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Registry.Changed -= OnRegistryChanged;
+
+    // Navigation is composed entirely from the registry. Registry.Navigation already hides any
+    // entry whose module surface is disabled, so a module switched off disappears from the menu.
+    IReadOnlyList<NavCategory> Categories =>
+        Registry.Navigation
+            .GroupBy(e => e.Section)
+            .OrderBy(g => SectionOrder(g.Key))
+            .ThenBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => new NavCategory(
+                g.Key,
+                g.All(e => e.AdminOnly),
+                [.. g.OrderBy(e => e.Order).Select(e => new NavEntry(
+                    e.Label,
+                    e.Href,
+                    e.Icon,
+                    e.ExactMatch ? NavLinkMatch.All : NavLinkMatch.Prefix,
+                    e.AdminOnly,
+                    e.LogoUrl))]))
+            .ToList();
+
+    RenderFragment RenderRailLink(NavEntry item) => item.LogoUrl is null
+        ? @<MudNavLink Href="@item.Href" Match="@item.Match" Icon="@item.Icon" Class="st-nav-item">@item.Label</MudNavLink>
+        : @<NavLink href="@item.Href" Match="@item.Match" class="st-nav-item st-nav-item--logo" ActiveClass="active">
+              <span class="st-nav-logo-box">
+                  <span class="st-nav-logo st-brand-mask" style="--st-brand-url:url('@item.LogoUrl')"></span>
+              </span>
+              <span class="st-nav-label">@item.Label</span>
+          </NavLink>;
+
+    RenderFragment RenderGridLink(NavEntry item) => item.LogoUrl is null
+        ? @<MudNavLink Href="@item.Href" Match="@item.Match" Icon="@item.Icon" Class="st-nav-grid-item">@item.Label</MudNavLink>
+        : @<NavLink href="@item.Href" Match="@item.Match" class="st-nav-grid-item st-nav-grid-item--logo" ActiveClass="active">
+              <span class="st-nav-grid-logo-box">
+                  <span class="st-nav-grid-logo st-brand-mask" style="--st-brand-url:url('@item.LogoUrl')"></span>
+              </span>
+              <span class="st-nav-grid-label">@item.Label</span>
+          </NavLink>;
+
+    static int SectionOrder(string section)
+    {
+        int index = Array.IndexOf(UiSections.Order, section);
+        return index >= 0 ? index : int.MaxValue;
+    }
+
+    RenderFragment RenderRailCategory(NavCategory category) => @<text>
+        <div class="st-nav-section">@category.Title</div>
+        @foreach (NavEntry item in category.Items)
+        {
+            if (category.AdminOnly || !item.AdminOnly)
+            {
+                @RenderRailLink(item)
+            }
+            else
+            {
+                <AuthorizeView Policy="@ArrkPolicies.AdminOnly">
+                    @RenderRailLink(item)
+                </AuthorizeView>
+            }
+        }
+    </text>;
+
+    RenderFragment RenderGridCategory(NavCategory category) => @<div class="st-nav-grid-group">
+        <div class="st-nav-grid-section">@category.Title</div>
+        <div class="st-nav-grid">
+            @foreach (NavEntry item in category.Items)
+            {
+                if (category.AdminOnly || !item.AdminOnly)
+                {
+                    @RenderGridLink(item)
+                }
+                else
+                {
+                    <AuthorizeView Policy="@ArrkPolicies.AdminOnly">
+                        @RenderGridLink(item)
+                    </AuthorizeView>
+                }
+            }
+        </div>
+    </div>;
+}

@@ -4,8 +4,8 @@ How the `jellyfin` web player is implemented.
 
 ## Model
 
-Jellyfin negotiates and produces the stream. Stackarr owns the page, controls and proxy, so a
-browser can play any library item without seeing a Jellyfin URL or token. Stackarr does not
+Jellyfin negotiates and produces the stream. Arrk owns the page, controls and proxy, so a
+browser can play any library item without seeing a Jellyfin URL or token. Arrk does not
 reimplement transcoding.
 
 `/watch/{itemId}` renders a bare `<video>` and asks Jellyfin for a playable HLS stream using a
@@ -14,14 +14,14 @@ device profile composed from the browser's capabilities.
 | Layer | Responsibility |
 |---|---|
 | `Watch.razor`, `PlayerLayout.razor` | Page parameters, bare layout, controls and track menus |
-| `stackarr-player.js` | Capability probe, HLS attach, track selection, progress/completion, autoplay |
+| `arrk-player.js` | Capability probe, HLS attach, track selection, progress/completion, autoplay |
 | `JellyfinPlaybackService` | PlaybackInfo negotiation, device profile, track model, signed URLs, next episode |
 | `PlaybackEndpoints` | Start/stop/progress/complete/next/image endpoints and the stream proxy |
 | `HlsPlaylistRewriter` | Strips Jellyfin's `ApiKey` from playlists |
 
 ## Provisioning
 
-Stackarr completes the Jellyfin wizard, creates the Movies, TV Shows and Music libraries, links
+Arrk completes the Jellyfin wizard, creates the Movies, TV Shows and Music libraries, links
 the `/movies`, `/shows` and `/music` mounts and keeps their metadata on TMDb. Configuration is
 idempotent and re-applied on a schedule.
 
@@ -31,14 +31,14 @@ With `services.jellyfin.nvidia` on, the container gets the NVIDIA runtime and al
 Jellyfin is set to `nvenc` with hardware encoding and HDR tone mapping. The runtime flag alone
 only exposes the GPU.
 
-The OIDC RBAC plugin is configured with Stackarr's issuer, client id and current secret. When the
+The OIDC RBAC plugin is configured with Arrk's issuer, client id and current secret. When the
 secret rotates, the installer rewrites the configuration and restarts Jellyfin.
 
 ## Device profile
 
 `JellyfinDeviceProfileFactory` is a pure function over `BrowserCapabilities`:
 
-- The browser probes HLS, HEVC, AV1, VP9, FLAC, Opus, AC3 and EAC3; Stackarr never guesses from a
+- The browser probes HLS, HEVC, AV1, VP9, FLAC, Opus, AC3 and EAC3; Arrk never guesses from a
   User-Agent.
 - MKV is never advertised as direct play. Output is HLS fragmented MP4; Jellyfin copies when it
   can and re-encodes only when it must.
@@ -58,7 +58,7 @@ secret rotates, the installer rewrites the configuration and restarts Jellyfin.
 ## Continue Watching and autoplay
 
 Jellyfin's `Resume` list returns every half-watched item, while `NextUp` returns one next episode
-per series. Stackarr merges both into one streaming-style shelf:
+per series. Arrk merges both into one streaming-style shelf:
 
 - One card per series. In-progress episodes group by provider ids; the most recently played wins,
   then the furthest season/episode. If a later episode has been played, NextUp wins.
@@ -104,7 +104,7 @@ When the player is disabled, Play buttons open Jellyfin's own web client.
 
 ## Tests
 
-`tests/Stackarr.Jellyfin.Tests` covers device profile, playlist rewriting, session store,
+`tests/Arrk.Jellyfin.Tests` covers device profile, playlist rewriting, session store,
 negotiation rules, Continue Watching merge, next-episode ordering and real-container playback
 integration. `JellyfinPlaybackLiveTests` is an optional smoke test against a real library when
-`STACKARR_LIVE_JELLYFIN_URL` is set.
+`ARRK_LIVE_JELLYFIN_URL` is set.

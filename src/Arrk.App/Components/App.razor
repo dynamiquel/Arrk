@@ -1,0 +1,56 @@
+@inject UiRegistry Ui
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Arrk</title>
+    <base href="/" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    @* Applies the account's UI text size before the stylesheets paint, so a Large/Small
+       account never flashes the default size. Account → Appearance writes the cookie. *@
+    <script>
+        (function () {
+            var match = document.cookie.match(/(?:^|;\s*)st-text-size=(small|medium|large)/);
+            document.documentElement.dataset.textSize = match ? match[1] : 'medium';
+        })();
+        window.arrkTextSize = {
+            get: function () { return document.documentElement.dataset.textSize || 'medium'; },
+            has: function () { return /(?:^|;\s*)st-text-size=/.test(document.cookie); },
+            set: function (value) {
+                document.documentElement.dataset.textSize = value;
+                document.cookie = 'st-text-size=' + value + '; path=/; max-age=31536000; samesite=lax';
+            }
+        };
+        window.arrkLocalTime = {
+            hour: function () { return new Date().getHours(); }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+    @* Theme + shared-component styles come from the shared UI library (UiRegistry head assets). *@
+    @foreach (HeadAsset asset in Ui.HeadAssets.Where(a => a.Kind == HeadAssetKind.Style))
+    {
+        <link href="@AssetHref(asset)" rel="stylesheet" />
+    }
+    <HeadOutlet @rendermode="RenderMode.InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="RenderMode.InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    @foreach (HeadAsset asset in Ui.HeadAssets.Where(a => a.Kind == HeadAssetKind.Script))
+    {
+        <script src="@AssetHref(asset)"></script>
+    }
+</body>
+</html>
+
+@code {
+    long _version = DateTime.Now.Ticks;
+
+    string AssetHref(HeadAsset asset) => $"{asset.Href}?v={_version}";
+}

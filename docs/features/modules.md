@@ -1,7 +1,7 @@
 # Plugins and modules
 
-Stackarr's UI and backend are module-based. A plugin is a normal .NET class library whose DLL is
-dropped into Stackarr's `plugins/` folder. The host loads it at startup and wires it like a
+Arrk's UI and backend are module-based. A plugin is a normal .NET class library whose DLL is
+dropped into Arrk's `plugins/` folder. The host loads it at startup and wires it like a
 built-in module: services, hosted services, jobs, HTTP endpoints, pages, navigation, region slots
 and head assets. UI composition is in [`ui.md`](ui.md).
 
@@ -13,28 +13,28 @@ and head assets. UI composition is in [`ui.md`](ui.md).
   MyPlugin/assets/plugin.css      served from /plugins/MyPlugin/assets/plugin.css
 ```
 
-`<data>` is Stackarr's data route (the working directory for a standalone run). The folder is
-created automatically. Drop the DLLs in and restart Stackarr.
+`<data>` is Arrk's data route (the working directory for a standalone run). The folder is
+created automatically. Drop the DLLs in and restart Arrk.
 
 The loader:
 
 - loads each managed DLL into the default load context, recursively;
-- skips a DLL whose simple name is already loaded, so a plugin cannot shadow `Stackarr.Core`;
+- skips a DLL whose simple name is already loaded, so a plugin cannot shadow `Arrk.Core`;
 - resolves missing dependencies from beside the DLL;
 - ignores native libraries;
-- registers every `IStackarrModule` it finds.
+- registers every `IArrkModule` it finds.
 
 A runtime-loaded plugin cannot use `_content/<Assembly>/...` because that manifest is built into
 the host. Serve assets from the plugins folder instead.
 
 ## A minimal plugin
 
-Reference `Stackarr.Core` for modules and services, `Stackarr.Ui` for UI contracts, and the
+Reference `Arrk.Core` for modules and services, `Arrk.Ui` for UI contracts, and the
 feature abstraction assembly the plugin extends. Never reference a feature implementation such
-as `Stackarr.Tvarr` or `Stackarr.Music`.
+as `Arrk.Tvarr` or `Arrk.Music`.
 
 ```csharp
-public sealed class MyModule : IStackarrModule
+public sealed class MyModule : IArrkModule
 {
     public string ModuleName => "MyPlugin";
     public IReadOnlyList<Service> GetServices() => [];
@@ -47,12 +47,12 @@ public sealed class MyModule : IStackarrModule
 }
 ```
 
-[`samples/Stackarr.SamplePlugin`](../../samples/Stackarr.SamplePlugin) is a complete,
+[`samples/Arrk.SamplePlugin`](../../samples/Arrk.SamplePlugin) is a complete,
 compile-checked example with a module, navigation entry, Razor page and stylesheet.
 
 ## Module contract
 
-Implement `IStackarrModule` (`Stackarr.Core.Modules`). Only `ModuleName` and `GetServices()` are
+Implement `IArrkModule` (`Arrk.Core.Modules`). Only `ModuleName` and `GetServices()` are
 required; the rest are optional.
 
 | Member | Purpose |

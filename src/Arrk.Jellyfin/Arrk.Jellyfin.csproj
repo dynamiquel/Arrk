@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!--
+    The Jellyfin module owns its own UI (Razor class library): the in-site web player page and its
+    bare-video layout and script, contributed through the Arrk.Ui contracts.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\Arrk.Ui\Arrk.Ui.csproj" />
+    <ProjectReference Include="..\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Tv.Abstractions\Arrk.Tv.Abstractions.csproj" />
+    <ProjectReference Include="..\Arrk.Subtitles.Abstractions\Arrk.Subtitles.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Arrk.Jellyfin.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <!-- The in-site web player contributes its own HTTP endpoints (playback negotiation + a
+       token-hiding stream proxy), so the module needs the ASP.NET Core shared framework. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <Using Include="Arrk.Media.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Tv.Abstractions" />
+  </ItemGroup>
+</Project>

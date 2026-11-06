@@ -5,7 +5,7 @@
 set -euo pipefail
 
 zero="0000000000000000000000000000000000000000"
-max_ahead="${STACKARR_MAX_PUSH_COMMITS:-5}"
+max_ahead="${ARRK_MAX_PUSH_COMMITS:-5}"
 
 if ! git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
     git fetch origin main >/dev/null 2>&1 || true

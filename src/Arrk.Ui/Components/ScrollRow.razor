@@ -1,0 +1,58 @@
+@* Reusable horizontal scroller with hover arrow buttons (so grabbing the scrollbar is optional).
+   The arrows only appear when the track actually overflows, and each side hides once that end
+   is reached. *@
+@inject IJSRuntime JS
+
+<div class="st-scroll-row @Class" @ref="_row">
+    @if (ShowButtons)
+    {
+        <button type="button" class="st-scroll-btn st-scroll-btn--left" @onclick="() => ScrollAsync(-1)" aria-label="Scroll left">
+            <MudIcon Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small" />
+        </button>
+    }
+
+    <div class="st-scroll-track @TrackClass" @ref="_track">
+        @ChildContent
+    </div>
+
+    @if (ShowButtons)
+    {
+        <button type="button" class="st-scroll-btn st-scroll-btn--right" @onclick="() => ScrollAsync(1)" aria-label="Scroll right">
+            <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small" />
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string TrackClass { get; set; } = "";
+    [Parameter] public bool ShowButtons { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    ElementReference _row;
+    ElementReference _track;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("arrkScrollRow.init", _row, _track);
+        }
+        catch
+        {
+            /* JS scroll enhancement is non-critical */
+        }
+    }
+
+    async Task ScrollAsync(int direction)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("arrkScrollRow.scroll", _row, _track, direction);
+        }
+        catch
+        {
+            /* non-critical */
+        }
+    }
+}

@@ -1,9 +1,9 @@
-# MyAnimeList (`Stackarr.Mal`)
+# MyAnimeList (`Arrk.Mal`)
 
 The MyAnimeList integration. MAL is a specific provider, not a generic anime abstraction.
 
-`Stackarr.Mal` links a Stackarr user's MAL account over OAuth, shows and edits their anime list in
-the app, and pushes completed watch activity to MAL. The same identity can sign in to Stackarr.
+`Arrk.Mal` links an Arrk user's MAL account over OAuth, shows and edits their anime list in
+the app, and pushes completed watch activity to MAL. The same identity can sign in to Arrk.
 
 ```
 /account or /login
@@ -51,12 +51,12 @@ the first configured URI matching the origin that started it; otherwise the curr
   and the UI offers Reconnect.
 - Linking also adds an Identity external login (`mal`), so MAL can sign in. Unlinking follows the
   same "do not remove the only login method" rule as Discord.
-- MAL's `picture_url` becomes the Stackarr avatar when the account has none; a failed download
-  never blocks sign-in. MAL never receives a Stackarr password.
+- MAL's `picture_url` becomes the Arrk avatar when the account has none; a failed download
+  never blocks sign-in. MAL never receives an Arrk password.
 
 ## List and metadata
 
-MAL is the source of truth for status, score, progress, tags and comments. Stackarr caches
+MAL is the source of truth for status, score, progress, tags and comments. Arrk caches
 `MalListEntry` and `MalCatalogEntry` so pages and the watchlist shelf render instantly.
 
 - TMDB is preferred for artwork, title, overview, year and genres. The anime-lists dataset maps
@@ -111,7 +111,7 @@ MAL `plan_to_watch` entries appear as a virtual watchlist through `IExternalWatc
   `/movies`, with a capped shelf and a View all link.
 - `WatchlistButton` adds/removes the mapped entries. Adding puts not-yet-tracked entries on Plan
   to Watch and leaves watching/completed alone; removing touches only Plan to Watch.
-- Changes on MAL appear after the next pull; changes in Stackarr patch or delete on MAL
+- Changes on MAL appear after the next pull; changes in Arrk patch or delete on MAL
   immediately. Progress itself remains one-way.
 
 ## TV dialog row
@@ -122,11 +122,11 @@ hidden when MAL is not linked or the season has no mapping.
 
 ## Invariants
 
-- One MAL account per Stackarr user, and one Stackarr user per MAL account (both unique).
+- One MAL account per Arrk user, and one Arrk user per MAL account (both unique).
 - Tokens are encrypted at rest and used only server-side.
 - MAL score is 0–10; 0 means not rated.
-- Progress is monotonic from Stackarr's side; a lower edit made on MAL is left alone.
-- MAL entries stay per anime entry; Stackarr groups them for display but never merges progress.
+- Progress is monotonic from Arrk's side; a lower edit made on MAL is left alone.
+- MAL entries stay per anime entry; Arrk groups them for display but never merges progress.
 - A failed dataset refresh keeps the last good copy.
 
 ## Limitations

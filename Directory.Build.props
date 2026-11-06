@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!--
-      Development fallback for the Stackarr version (major.minor.revision).
+      Development fallback for the Arrk version (major.minor.revision).
       Every project in the repository inherits this value, so the app and all
       built-in modules report the same version. The release workflow owns the
       released value: it updates this property, tags the commit and builds the

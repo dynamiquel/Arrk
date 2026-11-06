@@ -1,11 +1,11 @@
 # Requests
 
-Stackarr's in-app request and approval system. TV and music fulfilment is covered in
+Arrk's in-app request and approval system. TV and music fulfilment is covered in
 [`tv.md`](tv.md) and [`music.md`](music.md).
 
 ## Model
 
-A request is a persisted "please add this" record. Stackarr moderates it, then hands it to the
+A request is a persisted "please add this" record. Arrk moderates it, then hands it to the
 owning library module. `Approved` means the backend accepted the request, not that the media is
 ready.
 

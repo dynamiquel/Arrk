@@ -5,14 +5,14 @@ How the `tv` concept is implemented. Music has its own guide in [`music.md`](mus
 ## Model
 
 Radarr is the library of record for movies, Sonarr for TV and anime, TMDB is discovery and
-metadata, and Stackarr is the single UI driving both.
+metadata, and Arrk is the single UI driving both.
 
-Stackarr keeps no TV library database. Every "do I have this?" answer comes from Radarr or
+Arrk keeps no TV library database. Every "do I have this?" answer comes from Radarr or
 Sonarr; TMDB is used for search, artwork and metadata. The arrs remain the source of truth and
 their UIs stay usable for advanced work.
 
 ```
-Stackarr UI (/movies, /tv, /discover/*)
+Arrk UI (/movies, /tv, /discover/*)
        |                    |
   library + writes     discovery/metadata
        v                    v
@@ -25,15 +25,15 @@ Stackarr UI (/movies, /tv, /discover/*)
    Jellyfin
 ```
 
-`Stackarr.Tvarr` registers the `tv` service, its DI graph, jobs and Razor class library.
+`Arrk.Tvarr` registers the `tv` service, its DI graph, jobs and Razor class library.
 Domain/provider keys (`TvMediaDomains`, `TvProviderIds`, `TvReleaseKinds`) live in
-`Stackarr.Tv.Abstractions`.
+`Arrk.Tv.Abstractions`.
 
 ## Containers and config
 
 Both containers use the LinuxServer images, the stack network, named config volumes, a
 `/downloads` read-only bind and `$tv:movies` → `/movies` (Radarr) or `$tv:shows` → `/shows`
-(Sonarr) read-write. API keys default to `stackarr`. They provision after `indexer`,
+(Sonarr) read-write. API keys default to `arrk`. They provision after `indexer`,
 `torrent_downloader` and `bazarr` (when the optional backend is enabled), so Prowlarr,
 Transmission and Bazarr exist first. Proxy is opt-in per service and exposes the arr's own
 UI/API.
@@ -106,7 +106,7 @@ Without TMDB credentials, Discover warns and only local/arr-backed search works.
 
 Search is delegated to the arrs through native commands (`SeriesSearch`, `SeasonSearch`,
 `EpisodeSearch`, `MoviesSearch`). Interactive search uses `/api/v3/release` and the shared
-release picker. Stackarr does not implement release selection, loop avoidance or queue awareness.
+release picker. Arrk does not implement release selection, loop avoidance or queue awareness.
 
 Interactive candidates are mapped to a shared `ReleaseCandidate` (title, indexer, protocol, size,
 seeders, score, rejection reasons, grab keys). Rejected releases are hidden by default. A
@@ -116,7 +116,7 @@ ambiguous.
 ## Local import
 
 Administrators can add files they already own without an indexer. Uploads are staged under
-`$downloads/stackarr-uploads` and handed to Radarr/Sonarr with `ManualImport` in copy mode, so the
+`$downloads/arrk-uploads` and handed to Radarr/Sonarr with `ManualImport` in copy mode, so the
 arr still chooses the final path, quality and metadata. Discovery offers **Upload** beside
 **Add to Library**; movie, season and episode dialogs offer upload; the library pages offer
 auto-detect upload with a scored match confirmation. Local import is admin-only and accepts only
@@ -142,7 +142,7 @@ requests.
 Failed downloads have two paths, both governed by `services.tv.failedDownloads.retriggerSearch`:
 
 1. The arr's own handling, kept enabled by `FailedDownloadHandlingSyncJob`.
-2. Stackarr-owned cleanup: when DownloadManagement deletes a slow, stalled or errored torrent, TV
+2. Arrk-owned cleanup: when DownloadManagement deletes a slow, stalled or errored torrent, TV
    maps its category (`tv` → Sonarr, `movies` → Radarr, otherwise both), writes a
    `PendingTorrentCleanup` row and resolves it through the arr's `ResolveFailedDownload`, which
    blocklists the release and searches again. It gives up after five attempts. Error deletions
@@ -171,4 +171,4 @@ namespaces. See [`requests.md`](requests.md).
 7. Upgrade downloads are not shown as "downloading" on library pages.
 8. The shared release picker assumes one provider and routes a grab by indexer name.
 9. Without TMDB, anime fallback filters only the Animation genre and does not set the anime flag.
-10. Search is delegated to the arrs; Stackarr does not fan out searches itself.
+10. Search is delegated to the arrs; Arrk does not fan out searches itself.

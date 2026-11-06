@@ -1,0 +1,92 @@
+@using Arrk.Core.Models
+@using Arrk.Core.Services
+
+@* One interactive-search release candidate. Shared by the movie, TV and music pickers so all
+   three render releases with the same chips, meta line and Grab action. *@
+
+<div class="st-release @(Release.Rejected ? "st-release--rejected" : "")">
+    <div class="st-release-body">
+        <div class="st-release-title" title="@Release.Title">@Release.Title</div>
+
+        <div class="st-release-chips">
+            @if (!string.IsNullOrEmpty(Release.QualityLabel))
+            {
+                <StChip Variant="info">@Release.QualityLabel</StChip>
+            }
+            @foreach (string tag in Release.FormatTags)
+            {
+                <StChip Variant="neutral">@tag</StChip>
+            }
+            @if (Release.IsUsenet)
+            {
+                <StChip Variant="neutral">Usenet</StChip>
+            }
+            @if (Release.Rejected)
+            {
+                <StChip Variant="error">Rejected</StChip>
+            }
+        </div>
+
+        <div class="st-release-meta">@MetaLine</div>
+
+        @if (Release.Rejected && Release.Rejections.Count > 0)
+        {
+            <div class="st-release-reasons" title="@string.Join(" · ", Release.Rejections)">
+                @string.Join(" · ", Release.Rejections)
+            </div>
+        }
+    </div>
+
+    <div class="st-release-actions">
+        @if (OnGrab.HasDelegate)
+        {
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                       Disabled="@Busy" OnClick="() => OnGrab.InvokeAsync()"
+                       title="Grab this release" AriaLabel="Grab this release">Grab</MudButton>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ReleaseCandidate Release { get; set; } = default!;
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnGrab { get; set; }
+
+    string MetaLine
+    {
+        get
+        {
+            List<string> parts = [];
+            string size = FormatSize(Release.Size);
+            if (!string.IsNullOrEmpty(size))
+                parts.Add(size);
+            if (!Release.IsUsenet)
+                parts.Add($"{Release.Seeders} seeder{(Release.Seeders == 1 ? "" : "s")}");
+            if (!string.IsNullOrEmpty(Release.Indexer))
+                parts.Add(Release.Indexer);
+            string age = FormatAge(Release.PublishDate);
+            if (!string.IsNullOrEmpty(age))
+                parts.Add(age);
+            return string.Join(" · ", parts);
+        }
+    }
+
+    static string FormatSize(long bytes) => bytes switch
+    {
+        <= 0 => "",
+        >= 1L << 30 => $"{bytes / (double)(1L << 30):0.0} GB",
+        >= 1L << 20 => $"{bytes / (double)(1L << 20):0} MB",
+        _ => $"{bytes / 1024.0:0} KB"
+    };
+
+    static string FormatAge(DateTime publishDate)
+    {
+        if (publishDate == DateTime.MinValue)
+            return "";
+        TimeSpan age = DateTime.UtcNow - publishDate.ToUniversalTime();
+        if (age.TotalDays >= 365) return $"{(int)(age.TotalDays / 365)}y";
+        if (age.TotalDays >= 1) return $"{(int)age.TotalDays}d";
+        if (age.TotalHours >= 1) return $"{(int)age.TotalHours}h";
+        return "just now";
+    }
+}

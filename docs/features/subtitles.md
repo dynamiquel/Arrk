@@ -1,22 +1,22 @@
 # Subtitles
 
-How Stackarr discovers, searches, downloads and places subtitles. The provider seam is described
+How Arrk discovers, searches, downloads and places subtitles. The provider seam is described
 in [`contracts.md`](contracts.md).
 
 ## Model
 
-`Stackarr.Subtitles` is the dispatcher and owns the whole workflow: shared settings, status,
+`Arrk.Subtitles` is the dispatcher and owns the whole workflow: shared settings, status,
 search, candidate merging, downloads, notifications, automatic import coverage and the UI. It
 asks every enabled provider for results and routes each download back to the provider that
 supplied the candidate.
 
-`Stackarr.Subtitles.Core` holds the implementation shared by the dispatcher and in-process
+`Arrk.Subtitles.Core` holds the implementation shared by the dispatcher and in-process
 providers: library resolution, filesystem status and sidecar writing.
 
 Two providers ship today:
 
-- `Stackarr.Subtitles.OpenSubtitles` — in-process, enabled by default.
-- `Stackarr.Bazarr` — optional container, disabled by default.
+- `Arrk.Subtitles.OpenSubtitles` — in-process, enabled by default.
+- `Arrk.Bazarr` — optional container, disabled by default.
 
 Adding a provider means adding an `ISubtitleProvider` implementation and a config section; it
 does not need its own status logic, scheduler or UI.
@@ -24,7 +24,7 @@ does not need its own status logic, scheduler or UI.
 ```
 movie / series / season / episode / player
                     |
-          Stackarr.Subtitles (dispatcher + UI)
+          Arrk.Subtitles (dispatcher + UI)
                     |
         ISubtitleProvider (all enabled)
           /                 \
@@ -90,10 +90,10 @@ account raises the download quota from 5 to 20 per day. VIP accounts have higher
 
 ## Bazarr
 
-Bazarr owns provider search, scoring and file placement through its own API. Stackarr keeps its
+Bazarr owns provider search, scoring and file placement through its own API. Arrk keeps its
 Sonarr/Radarr connections, language profile and provider list in sync.
 
-`providers` defaults to the free `gestdown` and `subf2m`. Stackarr no longer configures the
+`providers` defaults to the free `gestdown` and `subf2m`. Arrk no longer configures the
 `opensubtitlescom` provider inside Bazarr; OpenSubtitles is used directly through the built-in
 provider. Other Bazarr providers can still be configured in Bazarr's own UI when proxied.
 

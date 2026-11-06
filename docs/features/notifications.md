@@ -1,6 +1,6 @@
 # Notifications and events
 
-Stackarr has three related mechanisms with separate lifetimes: an in-process event bus, a durable
+Arrk has three related mechanisms with separate lifetimes: an in-process event bus, a durable
 event store, and user-facing notifications.
 
 | Concern | Purpose | Lifetime | Consumer |
@@ -55,10 +55,10 @@ episode matches a season or series follow). A topic that subscriptions never tar
 
 ## Where things live
 
-- `Stackarr.Core` (`Events/`, `Notifications/`): bus and store, `NotifyingEventStore`, the
+- `Arrk.Core` (`Events/`, `Notifications/`): bus and store, `NotifyingEventStore`, the
   notification model, `NotificationEventRegistry`, policy, inbox service, entity, purge job,
   subscriptions, per-user channel consent and `NotificationModule`.
-- `Stackarr.Notifications`: the delivery module with Discord webhook/DM and generic-webhook
+- `Arrk.Notifications`: the delivery module with Discord webhook/DM and generic-webhook
   channels, plus the inbox, All Events page and notification settings UI. It depends only on Core
   and the auth contracts.
 - Each domain module: its own `INotificationEventProvider` (topics, defaults, emoji, colour,
@@ -167,7 +167,7 @@ notifications:
   discord:
     enabled: true
     webhookUrl: "https://discord.com/api/webhooks/..."
-    username: Stackarr
+    username: Arrk
     avatarUrl: ""
     routing:                       # per-category webhooks; most specific wins
       media.tv.*: "https://discord.com/api/webhooks/.../tv"

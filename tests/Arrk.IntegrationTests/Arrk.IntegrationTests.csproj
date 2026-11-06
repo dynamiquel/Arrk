@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableTestingSupport>true</EnableTestingSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.56.35" />
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Arrk.TestSupport\Arrk.TestSupport.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Docker\Arrk.Docker.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.App\Arrk.App.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Orchestration\Arrk.Orchestration.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Configuration\Arrk.Configuration.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Tvarr\Arrk.Tvarr.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Music\Arrk.Music.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Slskd\Arrk.Slskd.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Prowlarr\Arrk.Prowlarr.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Bazarr\Arrk.Bazarr.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Subtitles.Abstractions\Arrk.Subtitles.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Transmission\Arrk.Transmission.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Jellyfin\Arrk.Jellyfin.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Navidrome\Arrk.Navidrome.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Downloads.Abstractions\Arrk.Downloads.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Tv.Abstractions\Arrk.Tv.Abstractions.csproj" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Using Include="Arrk.Media.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Downloads.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Tv.Abstractions" />
+  </ItemGroup>
+</Project>

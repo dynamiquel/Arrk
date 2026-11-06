@@ -1,0 +1,73 @@
+@* Dashboard tile body: all watchlists in one shelf. Unlike the Movies and Shows pages it does not
+   filter by domain, so a dashboard shows movie and TV titles together. *@
+@inject MediaCatalogService Catalog
+@inject IDialogService Dialogs
+@inject AuthenticationStateProvider AuthProvider
+
+<WatchlistSections Domain="@((MediaDomain?)null)" ShowTitle="false" OnItemClick="OpenDetailAsync" />
+
+@code {
+    bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        _isAdmin = state.User.IsInRole(ArrkRoles.Admin);
+    }
+
+    async Task OpenDetailAsync(MediaItem item)
+    {
+        if (string.Equals(item.MediaType, "tv", StringComparison.OrdinalIgnoreCase))
+        {
+            TvSeries? series = item.TmdbId > 0
+                ? await Catalog.GetLibrarySeriesAsync(item.TmdbId)
+                : null;
+            if (series is not null)
+            {
+                DialogParameters<SeriesDetailDialog> parameters = new()
+                {
+                    { x => x.Series, series },
+                    { x => x.IsAdmin, _isAdmin }
+                };
+                IDialogReference dialog = await Dialogs.ShowAsync<SeriesDetailDialog>(
+                    series.Title, parameters, DetailOptions());
+                await dialog.Result;
+                return;
+            }
+        }
+        else
+        {
+            TvMovie? movie = item.TmdbId > 0
+                ? await Catalog.GetLibraryMovieAsync(item.TmdbId)
+                : null;
+            if (movie is not null)
+            {
+                DialogParameters<MovieDetailDialog> parameters = new()
+                {
+                    { x => x.Movie, movie },
+                    { x => x.IsAdmin, _isAdmin }
+                };
+                IDialogReference dialog = await Dialogs.ShowAsync<MovieDetailDialog>(
+                    movie.Title, parameters, DetailOptions());
+                await dialog.Result;
+                return;
+            }
+        }
+
+        DialogParameters<RemoteMediaDialog> remoteParameters = new()
+        {
+            { x => x.Item, item },
+            { x => x.IsAdmin, _isAdmin }
+        };
+        IDialogReference remoteDialog = await Dialogs.ShowAsync<RemoteMediaDialog>(
+            item.Title, remoteParameters, DetailOptions());
+        await remoteDialog.Result;
+    }
+
+    static DialogOptions DetailOptions() => new()
+    {
+        FullWidth = true,
+        MaxWidth = MaxWidth.Medium,
+        CloseOnEscapeKey = true
+    };
+}

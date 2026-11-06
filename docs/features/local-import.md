@@ -1,12 +1,12 @@
 # Local media import
 
-How users add media they already own. The arrs remain the library of record; Stackarr stages the
+How users add media they already own. The arrs remain the library of record; Arrk stages the
 file, resolves the target and reports the import. TV behaviour is in [`tv.md`](tv.md).
 
 ## Model
 
 ```
-browser --raw upload--> Stackarr --> $downloads/stackarr-uploads/<batch>/<file>
+browser --raw upload--> Arrk --> $downloads/arrk-uploads/<batch>/<file>
                                       |
                                       | /api/v3/manualimport
                                       v
@@ -18,10 +18,10 @@ browser --raw upload--> Stackarr --> $downloads/stackarr-uploads/<batch>/<file>
 
 - Uploads are staged under the existing `$downloads` root, which both arr containers already mount.
   No extra volume is introduced.
-- The arrs' `/downloads` mount is read-only, so manual import always uses `copy`. Stackarr deletes
+- The arrs' `/downloads` mount is read-only, so manual import always uses `copy`. Arrk deletes
   the staged copy after success; failed copies are kept for retry and removed by the retention
   sweep.
-- The arr chooses the final path, filename, quality and metadata. Stackarr never writes into the
+- The arr chooses the final path, filename, quality and metadata. Arrk never writes into the
   media roots itself.
 - Local import is administrator-only; other users keep the request flow.
 - Only supported video containers and optional sidecar subtitles are accepted. The allowlist lives
@@ -31,7 +31,7 @@ browser --raw upload--> Stackarr --> $downloads/stackarr-uploads/<batch>/<file>
 ## Flows
 
 - **From discovery:** `RemoteMediaDialog` offers **Upload** beside **Add to Library** when the
-  TMDB/TVDB identity is already known. Stackarr adds the title without an indexer search, uploads
+  TMDB/TVDB identity is already known. Arrk adds the title without an indexer search, uploads
   the file(s), reprocesses them against that target and runs `ManualImport`.
 - **From the library:** the movie dialog has **Upload**; the series dialog has **Upload episodes**
   and each episode menu has **Upload file**; the library pages have auto-detect upload.
@@ -62,7 +62,7 @@ low confidence, failures and disabled AI keep the deterministic match. Decisions
 ## Subtitles
 
 Sidecar subtitles (`.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`, `.idx`, `.sup`) may be uploaded in the
-same batch. After the video imports, Stackarr matches each subtitle by season/episode or filename
+same batch. After the video imports, Arrk matches each subtitle by season/episode or filename
 similarity and copies it beside the video with a language suffix. Jellyfin picks it up on the next
 scan.
 
@@ -70,7 +70,7 @@ scan.
 
 | Route | Purpose |
 |---|---|
-| `POST /api/tv/uploads?batchId=&kind=&mediaType=&fileName=` | Raw-body upload; requires `X-Stackarr-Upload` and Admin |
+| `POST /api/tv/uploads?batchId=&kind=&mediaType=&fileName=` | Raw-body upload; requires `X-Arrk-Upload` and Admin |
 | `GET /api/tv/uploads/batch/{batchId}` | Current upload rows for reconnect/status |
 | `DELETE /api/tv/uploads/batch/{batchId}` | Cancel and remove a staged batch |
 
@@ -102,7 +102,7 @@ ai:
 1. Admin-only; both the dialog and the HTTP endpoint enforce it.
 2. The arr is the authority for quality, languages, rejections and the final path.
 3. Staging is always inside `$downloads`, never a new volume.
-4. Import mode is `copy`; Stackarr owns cleanup of the source.
+4. Import mode is `copy`; Arrk owns cleanup of the source.
 5. A destructive replace requires the explicit switch.
 6. AI never invents a title and only runs after the deterministic matcher has candidates.
 7. Unknown extensions are rejected before a byte is written.

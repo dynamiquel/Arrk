@@ -1,0 +1,385 @@
+@* Music discovery, embedded as the "Music" tab of the Discover page (Deezer-powered). *@
+@inject MusicCatalogService Catalog
+@inject MusicDialogLauncher Launcher
+@inject NavidromeService Navidrome
+@inject IJSRuntime JS
+@inject ILogger<MusicDiscover> Logger
+@implements IDisposable
+@using Arrk.Navidrome
+
+<div class="st-discover-controls">
+    <SearchBox @bind-Value="_searchTerm" Placeholder="Search artists, albums, songs and playlists..."
+               DebounceInterval="400" OnSearch="OnSearchDebounced" Class="st-discover-search" />
+    @if (!string.IsNullOrEmpty(_searchTerm))
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="@(() => ClearSearch())" />
+    }
+</div>
+
+@if (_loading)
+{
+    <LoadingView />
+}
+else if (_searching)
+{
+    @if (_results.IsEmpty)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.SearchOff" Message="@($"No results for \"{_searchTerm}\"")" />
+    }
+    else
+    {
+        @if (_results.TopResult is not null)
+        {
+            <MudText Typo="Typo.h6" Class="st-music-shelf-title">Top result</MudText>
+            <div class="st-music-grid">
+                <MusicCard Item="_results.TopResult" OnClick="OpenItem" OnPlay="PlayItem" />
+            </div>
+        }
+        <MusicShelf Title="Artists" Items="_results.Artists" OnItemClick="OpenItem" OnPlay="PlayItem" />
+        <MusicShelf Title="Albums" Items="_results.Albums" OnItemClick="OpenItem" OnPlay="PlayItem" />
+        <MusicShelf Title="Playlists" Items="_results.Playlists" OnItemClick="OpenItem" />
+        <MusicShelf Title="Songs" Items="_results.Tracks" OnItemClick="OpenItem" OnPlay="PlayItem" />
+    }
+}
+else
+{
+    <StTabs T="MusicTab" Items="Tabs" Value="_tab" ValueChanged="SelectTab" />
+
+    if (_tab == MusicTab.Charts)
+    {
+        @if (_hero is not null)
+        {
+            <div class="st-music-hero" style="@HeroStyle">
+                <div class="st-music-hero-body">
+                    <MudText Typo="Typo.caption" Style="text-transform:uppercase;letter-spacing:.1em;color:var(--st-text-secondary);">#1 · Top Song</MudText>
+                    <MudText Typo="Typo.h4" Class="st-featured-title">@_hero.Title</MudText>
+                    <MudText Typo="Typo.subtitle1" Style="color:var(--st-text-secondary);">@_hero.ArtistName</MudText>
+                    <div style="display:flex;gap:var(--st-space-sm);margin-top:var(--st-space-md);flex-wrap:wrap;">
+                        @if (!string.IsNullOrEmpty(_hero.PreviewUrl))
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayCircle" OnClick="() => PlayPreview(_hero)">
+                                <span class="st-btn-label">Preview</span>
+                            </MudButton>
+                        }
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Album" OnClick="() => OpenItem(TrackArtist(_hero))">
+                            <span class="st-btn-label">View Artist</span>
+                        </MudButton>
+                    </div>
+                </div>
+            </div>
+        }
+        <MusicShelf Title="Top Albums" Items="_chartAlbums" OnItemClick="OpenItem" OnPlay="PlayItem" />
+        <MusicShelf Title="Top Artists" Items="_chartArtists" OnItemClick="OpenItem" OnPlay="PlayItem" />
+        <MusicShelf Title="Top Songs" Items="_chartTracks.Take(36).ToList()" OnItemClick="OpenItem" OnPlay="PlayItem" />
+    }
+    else if (_tab == MusicTab.Top100)
+    {
+        <div class="st-music-country-row">
+            <MudSelect T="MusicCountry" Value="_country" ValueChanged="SelectCountry"
+                       Label="Country" Variant="Variant.Outlined" Dense="true" Class="st-music-country-select">
+                @foreach (MusicCountry c in MusicCatalogService.Countries)
+                {
+                    <MudSelectItem Value="c">@c.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        <MusicShelf Title="@($"Top 100 Songs · {_country.Name}")" Items="_countryTracks" OnItemClick="OpenItem" OnPlay="PlayItem" />
+    }
+    else if (_tab == MusicTab.Playlists)
+    {
+        <div class="st-music-country-row">
+            <MudSelect T="int" Value="_playlistGenreId" ValueChanged="SelectPlaylistGenre"
+                       Label="Genre" Variant="Variant.Outlined" Dense="true" Class="st-music-country-select">
+                <MudSelectItem Value="0">Featured</MudSelectItem>
+                @foreach (DeezerService.DeezerGenre genre in _genres)
+                {
+                    <MudSelectItem Value="genre.Id">@genre.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+        @if (_playlists.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.QueueMusic" Message="No playlists right now." />
+        }
+        else
+        {
+            <MudText Typo="Typo.h6" Class="st-music-shelf-title">@PlaylistShelfTitle</MudText>
+            <div class="st-music-grid" data-testid="music-playlists">
+                @foreach (MusicItem playlist in _playlists)
+                {
+                    <MusicCard Item="playlist" OnClick="OpenItem" />
+                }
+            </div>
+        }
+    }
+    else if (_tab == MusicTab.Genres)
+    {
+        <div class="st-music-genre-grid">
+            @foreach (DeezerService.DeezerGenre genre in _genres)
+            {
+                <button type="button" class="st-music-genre-tile @(_genreId == genre.Id ? "active" : "")"
+                        style="@GenreTileStyle(genre)" @onclick="() => SelectGenre(genre.Id)">
+                    @genre.Name
+                </button>
+            }
+        </div>
+        @if (_genreId > 0)
+        {
+            <MusicShelf Title="@($"{GenreName} Playlists")" Items="_genrePlaylists" OnItemClick="OpenItem" />
+            <MusicShelf Title="@($"{GenreName} Albums")" Items="_genreAlbums" OnItemClick="OpenItem" OnPlay="PlayItem" />
+            <MusicShelf Title="@($"{GenreName} Songs")" Items="_genreTracks.Take(36).ToList()" OnItemClick="OpenItem" OnPlay="PlayItem" />
+        }
+    }
+}
+
+@code {
+    enum MusicTab { Charts, Top100, Playlists, Genres }
+
+    static readonly StTabItem<MusicTab>[] Tabs =
+    [
+        new(MusicTab.Charts, "Charts", Icons.Material.Filled.TrendingUp),
+        new(MusicTab.Top100, "Top 100", Icons.Material.Filled.FormatListNumbered),
+        new(MusicTab.Playlists, "Playlists", Icons.Material.Filled.QueueMusic),
+        new(MusicTab.Genres, "Genres", Icons.Material.Filled.Category)
+    ];
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    MusicTab _tab = MusicTab.Charts;
+    string _searchTerm = "";
+    bool _searching;
+    bool _loading = true;
+    bool _isAdmin;
+    CancellationTokenSource? _cts;
+
+    MusicItem? _hero;
+    List<MusicItem> _chartAlbums = [];
+    List<MusicItem> _chartArtists = [];
+    List<MusicItem> _chartTracks = [];
+    MusicCountry _country = MusicCatalogService.Countries[0];
+    List<MusicItem> _countryTracks = [];
+    List<MusicItem> _playlists = [];
+    int _playlistGenreId;
+    List<DeezerService.DeezerGenre> _genres = [];
+    int _genreId;
+    List<MusicItem> _genreAlbums = [];
+    List<MusicItem> _genreTracks = [];
+    List<MusicItem> _genrePlaylists = [];
+    MusicSearchResult _results = MusicSearchResult.Empty;
+
+    string GenreName => _genres.FirstOrDefault(g => g.Id == _genreId)?.Name ?? "Genre";
+    string PlaylistShelfTitle => _playlistGenreId == 0
+        ? "Featured playlists"
+        : $"{_genres.FirstOrDefault(g => g.Id == _playlistGenreId)?.Name ?? "Genre"} playlists";
+    string HeroStyle => _hero is null || string.IsNullOrEmpty(_hero.ArtUrl)
+        ? ""
+        : $"background-image:linear-gradient(90deg, rgba(15,10,24,0.96) 0%, rgba(15,10,24,0.72) 45%, rgba(15,10,24,0.35) 100%), url('{_hero.ArtUrl}');background-size:cover;background-position:center;";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask is not null)
+            _isAdmin = (await AuthStateTask).User.IsInRole(ArrkRoles.Admin);
+        _cts = new CancellationTokenSource();
+        await LoadTabAsync();
+    }
+
+    async Task LoadTabAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            switch (_tab)
+            {
+                case MusicTab.Charts:
+                    if (_chartTracks.Count == 0)
+                    {
+                        _chartTracks = await Catalog.GetChartTracksAsync(_cts!.Token);
+                        _hero = _chartTracks.FirstOrDefault();
+                    }
+                    if (_chartAlbums.Count == 0) _chartAlbums = await Catalog.GetChartAlbumsAsync(_cts!.Token);
+                    if (_chartArtists.Count == 0) _chartArtists = await Catalog.GetChartArtistsAsync(_cts!.Token);
+                    break;
+                case MusicTab.Top100:
+                    _countryTracks = await Catalog.GetCountryChartTracksAsync(_country.Code, _cts!.Token);
+                    break;
+                case MusicTab.Playlists:
+                    if (_genres.Count == 0) _genres = await Catalog.GetGenresAsync(_cts!.Token);
+                    if (_playlists.Count == 0) _playlists = await Catalog.GetChartPlaylistsAsync(100, _cts!.Token);
+                    break;
+                case MusicTab.Genres:
+                    if (_genres.Count == 0) _genres = await Catalog.GetGenresAsync(_cts!.Token);
+                    break;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Music discovery load failed for {Tab}", _tab);
+        }
+        _loading = false;
+    }
+
+    async Task SelectTab(MusicTab tab)
+    {
+        _tab = tab;
+        await LoadTabAsync();
+    }
+
+    async Task SelectCountry(MusicCountry country)
+    {
+        _country = country;
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _countryTracks = await Catalog.GetCountryChartTracksAsync(country.Code, _cts!.Token);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Country chart load failed");
+        }
+        _loading = false;
+    }
+
+    async Task SelectGenre(int genreId)
+    {
+        _genreId = genreId;
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _genreAlbums = await Catalog.GetGenreAlbumsAsync(genreId, _cts!.Token);
+            _genreTracks = await Catalog.GetGenreTracksAsync(genreId, _cts!.Token);
+            _genrePlaylists = await Catalog.GetGenrePlaylistsAsync(genreId, 100, _cts!.Token);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Genre load failed");
+        }
+        _loading = false;
+    }
+
+    async Task SelectPlaylistGenre(int genreId)
+    {
+        _playlistGenreId = genreId;
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _playlists = genreId == 0
+                ? await Catalog.GetChartPlaylistsAsync(100, _cts!.Token)
+                : await Catalog.GetGenrePlaylistsAsync(genreId, 100, _cts!.Token);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Playlist genre load failed");
+            _playlists = [];
+        }
+        _loading = false;
+    }
+
+    async Task OnSearchDebounced(string value)
+    {
+        _searchTerm = value;
+        _searching = !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= 2;
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _results = _searching ? await Catalog.SearchAsync(value, _cts!.Token) : MusicSearchResult.Empty;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Music search failed");
+        }
+        _loading = false;
+    }
+
+    Task ClearSearch()
+    {
+        _searchTerm = "";
+        _searching = false;
+        _results = MusicSearchResult.Empty;
+        return Task.CompletedTask;
+    }
+
+    async Task PlayPreview(MusicItem track)
+    {
+        if (string.IsNullOrEmpty(track.PreviewUrl)) return;
+        var queue = new[]
+        {
+            new { id = "", title = track.Title, artist = track.ArtistName, albumArtist = track.ArtistName, album = track.AlbumName, cover = track.ArtUrl, stream = track.PreviewUrl, artistDeezerId = track.ArtistDeezerId, albumDeezerId = track.AlbumDeezerId }
+        };
+        // A one-off queue: prev/next never reach a preview.
+        try { await JS.InvokeVoidAsync("arrkMusic.play", queue, 0); }
+        catch { /* player is an enhancement */ }
+    }
+
+    async Task PlayItem(MusicItem item)
+    {
+        if (item.EntityType == MusicEntityType.Track)
+        {
+            // A song we already hold must play the real file, not Deezer's 30s preview. Resolve it in
+            // Navidrome (the same path the library song tiles use) and only fall back to a preview.
+            if (item.IsInLibrary || item.HasFile)
+            {
+                try
+                {
+                    string? songId = await Navidrome.FindSongIdAsync(item.Title, item.ArtistName);
+                    if (!string.IsNullOrEmpty(songId))
+                    {
+                        await PlayStream(songId, item);
+                        return;
+                    }
+                }
+                catch { /* fall through to the preview */ }
+            }
+            if (!string.IsNullOrEmpty(item.PreviewUrl))
+            {
+                await PlayPreview(item);
+                return;
+            }
+        }
+        await OpenItem(item);
+    }
+
+    async Task PlayStream(string songId, MusicItem track)
+    {
+        var queue = new[]
+        {
+            new { id = songId, title = track.Title, artist = track.ArtistName, albumArtist = track.ArtistName, album = track.AlbumName,
+                  cover = track.ArtUrl, stream = NavidromeService.PlayerStreamUrl(songId),
+                  artistDeezerId = track.ArtistDeezerId, albumDeezerId = track.AlbumDeezerId }
+        };
+        try { await JS.InvokeVoidAsync("arrkMusic.play", queue, 0); }
+        catch { /* player is an enhancement */ }
+    }
+
+    static MusicItem TrackArtist(MusicItem track) => new()
+    {
+        EntityType = MusicEntityType.Artist,
+        Title = track.ArtistName,
+        DeezerId = track.ArtistDeezerId,
+        ArtUrl = track.ArtUrl
+    };
+
+    async Task OpenItem(MusicItem item)
+    {
+        IDialogReference dialog = await Launcher.OpenAsync(item, _isAdmin);
+        await dialog.Result;
+        Catalog.InvalidateLibraryCache();
+    }
+
+    static string GenreTileStyle(DeezerService.DeezerGenre genre)
+    {
+        string img = !string.IsNullOrEmpty(genre.PictureBig) ? genre.PictureBig : genre.PictureXl ?? "";
+        return string.IsNullOrEmpty(img) ? "" : $"background-image:linear-gradient(135deg, rgba(15,10,24,.55), rgba(15,10,24,.35)), url('{img}');";
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

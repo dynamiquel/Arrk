@@ -1,0 +1,103 @@
+@* Admin review queue for pending self-service sign-ups. Hidden when nothing is pending. *@
+@implements IDisposable
+@inject UserService Users
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@if (_pending.Count > 0)
+{
+    <SectionContainer Icon="@Icons.Material.Filled.PersonAdd" Title="@($"Pending accounts ({_pending.Count})")">
+        <div style="padding:var(--st-space-sm);">
+            <MudTable Items="_pending" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm">
+                <HeaderContent>
+                    <MudTh>Username</MudTh>
+                    <MudTh>Signed up</MudTh>
+                    <MudTh Align="Right">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Username">
+                        <div style="font-weight:600;">@context.Username</div>
+                    </MudTd>
+                    <MudTd DataLabel="Signed up">
+                        @context.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Align="Right">
+                        <StIconButton Icon="@Icons.Material.Filled.Check" Title="Approve account"
+                                      OnClick="@(() => ApproveAsync(context))" />
+                        <StIconButton Icon="@Icons.Material.Filled.Close" Title="Deny and delete account" Variant="ActionVariant.Danger"
+                                      OnClick="@(() => DenyAsync(context))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </div>
+    </SectionContainer>
+}
+
+@code {
+    List<ArrkUser> _pending = [];
+    Timer? _timer;
+    CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+
+        (Timer Timer, CancellationTokenSource Cts) result = AsyncTimerHelper.Create(
+            async ct =>
+            {
+                await ReloadAsync();
+                await InvokeAsync(StateHasChanged);
+            },
+            TimeSpan.FromSeconds(30),
+            TimeSpan.FromSeconds(30));
+        _timer = result.Timer;
+        _cts = result.Cts;
+    }
+
+    async Task ReloadAsync()
+        => _pending = [.. (await Users.GetUsersInRoleAsync(ArrkRoles.Pending))
+            .OrderBy(u => u.CreatedAt)];
+
+    async Task ApproveAsync(ArrkUser user)
+    {
+        try
+        {
+            await Users.SetRoleAsync(user.Id, UserRole.User);
+            Snackbar.Add($"{user.Username} approved and can sign in now.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    async Task DenyAsync(ArrkUser user)
+    {
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Deny account",
+            $"Deny and delete {user.Username}? They will not be able to sign in.",
+            yesText: "Deny", cancelText: "Cancel");
+
+        if (confirmed != true)
+            return;
+
+        try
+        {
+            await Users.DeleteAsync(user.Id);
+            Snackbar.Add($"{user.Username} denied.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _timer?.Dispose();
+    }
+}

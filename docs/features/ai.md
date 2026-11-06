@@ -1,6 +1,6 @@
 # AI
 
-Stackarr has an optional AI layer. It is off by default, provider-agnostic, and extends
+Arrk has an optional AI layer. It is off by default, provider-agnostic, and extends
 deterministic features rather than replacing them.
 
 ## Principles
@@ -24,7 +24,7 @@ deterministic features rather than replacing them.
 
 ## Architecture
 
-`src/Stackarr.Ai` is a module and Razor class library. It references no domain module. Domain
+`src/Arrk.Ai` is a module and Razor class library. It references no domain module. Domain
 modules implement narrow contracts and register them in their own `ConfigureServices`; the AI
 module discovers them through DI.
 
@@ -98,17 +98,17 @@ toggles live in that module's section and appear on the admin page through
 
 | Feature | Owned by | Config |
 |---|---|---|
-| Assistant popup with actions | `Stackarr.Ai` + module sources | `ai.features.assistant` |
-| Release ranking (music first) | `Stackarr.Music` | `ai.features.releaseRanking` |
-| Local import matching | `Stackarr.Tvarr` | `ai.features.importMatching` |
+| Assistant popup with actions | `Arrk.Ai` + module sources | `ai.features.assistant` |
+| Release ranking (music first) | `Arrk.Music` | `ai.features.releaseRanking` |
+| Local import matching | `Arrk.Tvarr` | `ai.features.importMatching` |
 | Assistant recommendations | Tvarr and Music sources | `ai.features.assistant` |
 | Personas | built-ins plus per-user choice | `ai.personas` |
-| Download progress and failures | `Stackarr.DownloadManagement` | `ai.features.assistant` |
-| Host, storage, jobs, images | `Stackarr.Orchestration` (admin) | `ai.features.assistant` |
-| Request moderation | `Stackarr.Requests` (admin) | `ai.features.assistant` |
-| MyAnimeList updates | `Stackarr.Mal` | `ai.features.assistant` |
-| Custom CSS generation | `Stackarr.Ai` | `ai.features.style` |
-| Usage admin page | `Stackarr.Ai` | admin only |
+| Download progress and failures | `Arrk.DownloadManagement` | `ai.features.assistant` |
+| Host, storage, jobs, images | `Arrk.Orchestration` (admin) | `ai.features.assistant` |
+| Request moderation | `Arrk.Requests` (admin) | `ai.features.assistant` |
+| MyAnimeList updates | `Arrk.Mal` | `ai.features.assistant` |
+| Custom CSS generation | `Arrk.Ai` | `ai.features.style` |
+| Usage admin page | `Arrk.Ai` | admin only |
 
 Music query expansion, import rescue, per-user "For you" recommendations and the digest are
 planned.

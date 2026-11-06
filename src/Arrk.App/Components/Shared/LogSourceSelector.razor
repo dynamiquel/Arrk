@@ -1,0 +1,82 @@
+@using Arrk.Core.Services
+@using Arrk.Orchestration
+@using Microsoft.Extensions.Configuration
+@using Arrk.App.Components.Shared
+@inject ServiceProvisioner Provisioner
+@inject IConfiguration Configuration
+@implements IDisposable
+
+<MudSelect T="LogSource" @bind-Value="Value" @bind-Value:event="onchange" Label="Log Source" Class="@($"st-log-source-select {Class}")" Style="@Style" Variant="Variant.Outlined" Dense="true" Clearable="false">
+    <MudSelectItem T="LogSource" Value="@LogSource.Arrk">
+        <MudIcon Icon="@Icons.Material.Filled.Apps" Size="Size.Small" Class="mr-2" />
+        Arrk
+    </MudSelectItem>
+    @foreach (ContainerInfo container in _allContainers)
+    {
+        <MudSelectItem T="LogSource" Value="@LogSource.Container(container.Labels.TryGetValue(ContainerLabels.Service, out string? svc) ? svc : "unknown", container.Name)">
+            <MudIcon Icon="@GetServiceIcon(container.Labels.TryGetValue(ContainerLabels.Service, out string? svc2) ? svc2 : "unknown")" Size="Size.Small" Class="mr-2" />
+            @container.Name
+        </MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter] public LogSource Value { get; set; } = LogSource.Arrk;
+    [Parameter] public EventCallback<LogSource> ValueChanged { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+    [Parameter] public IReadOnlyList<Service> Services { get; set; } = [];
+
+    private List<ContainerInfo> _allContainers = [];
+    private Timer? _refreshTimer;
+    private CancellationTokenSource? _cts;
+    private bool _loaded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ = LoadContainersAsync();
+        (_refreshTimer, _cts) = AsyncTimerHelper.Create(
+            async ct => await LoadContainersAsync(ct),
+            TimeSpan.FromSeconds(10),
+            TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadContainersAsync(CancellationToken ct = default)
+    {
+        using CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+        try
+        {
+            List<ContainerInfo> containers = await Provisioner.GetAllManagedContainers(timeoutCts.Token);
+            _allContainers = containers.OrderBy(c => c.Name).ToList();
+            _loaded = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+        catch { }
+    }
+
+    private static string GetServiceIcon(string key) => key switch
+    {
+        "tv" => "\U0001F4FA",
+        "music" => "\U0001F3B5",
+        "jellyfin" => "\U0001F3AC",
+        "navidrome" => "\U0001F3B6",
+        "traefik" => "\U0001F310",
+        "vpn" => "\U0001F512",
+        "prowlarr" => "\U0001F50D",
+        "torrent_downloader" => "\u26A1",
+        "bazarr" => "\U0001F4CC",
+        "indexer" => "\U0001F50D",
+        "reverse_proxy" => "\U0001F310",
+        _ => "\U0001F4FA"
+    };
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _refreshTimer?.Dispose();
+    }
+}

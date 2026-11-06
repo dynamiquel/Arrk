@@ -1,0 +1,108 @@
+@using Arrk.Auth.Abstractions
+@using Arrk.Mal.Services
+@using Arrk.Tvarr
+@attribute [UiRegion("tv.series.links", EnabledConfigPath = "services:mal")]
+@attribute [UiRegion("tv.movie.links", EnabledConfigPath = "services:mal")]
+@inject MalAccountService Accounts
+@inject MalMappingDataset Dataset
+@inject AuthenticationStateProvider AuthProvider
+@inject IDialogService DialogService
+
+@if (_malId > 0)
+{
+    <MudButton Variant="Variant.Outlined" Size="Size.Small" Class="st-hero-link" OnClick="OpenAsync">
+        <span class="mal-logo-inline st-brand-mask"
+              style="--st-brand-url:url('/_content/Arrk.Mal/img/mal-logo.svg')"></span>
+        MAL
+    </MudButton>
+}
+
+@code {
+    [Parameter] public object? Context { get; set; }
+
+    int _userId;
+    int _malId;
+    string _loadedKey = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        string key = Context switch
+        {
+            TvSeriesActionContext series => $"series:{series.Series.Id}:{series.Series.TvdbId}:{series.Series.TmdbId}",
+            TvMovieActionContext movie => $"movie:{movie.Movie.Id}:{movie.Movie.TmdbId}",
+            TvMediaLinkContext remote => $"remote:{remote.TmdbId}:{remote.IsMovie}",
+            _ => ""
+        };
+        if (string.IsNullOrEmpty(key) || key == _loadedKey)
+            return;
+        _loadedKey = key;
+        _malId = 0;
+
+        AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!int.TryParse(state.User.FindFirst(ArrkClaims.UserIdClaim)?.Value, out _userId))
+            return;
+        if (await Accounts.GetAsync(_userId) is null)
+            return;
+
+        try
+        {
+            await Dataset.EnsureLoadedAsync();
+        }
+        catch
+        {
+            return;
+        }
+
+        if (Context is TvSeriesActionContext seriesContext)
+        {
+            _malId = ResolveSeries(seriesContext.Series);
+        }
+        else if (Context is TvMovieActionContext movieContext && movieContext.Movie.TmdbId > 0)
+        {
+            _malId = Dataset.MoviesForTmdb(movieContext.Movie.TmdbId).FirstOrDefault()?.MalId ?? 0;
+        }
+        else if (Context is TvMediaLinkContext remote)
+        {
+            _malId = remote.IsMovie
+                ? Dataset.MoviesForTmdb(remote.TmdbId).FirstOrDefault()?.MalId ?? 0
+                : Dataset.AllForTmdb(remote.TmdbId)
+                    .Where(x => string.Equals(x.Type, "TV", StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(x.Type, "ONA", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(x => x.TmdbSeason ?? int.MaxValue)
+                    .ThenBy(x => x.MalId)
+                    .FirstOrDefault()?.MalId ?? 0;
+        }
+    }
+
+    int ResolveSeries(Arrk.Tv.Abstractions.TvSeries series)
+    {
+        IReadOnlyList<MalDatasetEntry> entries = series.TvdbId > 0
+            ? Dataset.AllForTvdb(series.TvdbId)
+            : [];
+        if (entries.Count == 0 && series.TmdbId > 0)
+            entries = Dataset.AllForTmdb(series.TmdbId);
+
+        MalDatasetEntry? entry = entries
+            .Where(x => string.Equals(x.Type, "TV", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(x.Type, "ONA", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(x => x.TvdbSeason ?? int.MaxValue)
+            .ThenBy(x => x.MalId)
+            .FirstOrDefault();
+        return entry?.MalId ?? 0;
+    }
+
+    async Task OpenAsync()
+    {
+        if (_malId <= 0)
+            return;
+
+        DialogParameters<MalDetailDialog> parameters = new() { { x => x.MalId, _malId } };
+        DialogOptions options = new()
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+        await DialogService.ShowAsync<MalDetailDialog>("MyAnimeList", parameters, options);
+    }
+}

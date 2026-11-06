@@ -1,0 +1,658 @@
+@* Album detail, mirrors MovieDetailDialog exactly (MediaDetailHero + st-detail-body + DialogActions). *@
+@using Arrk.Navidrome
+@using Arrk.Navidrome.Models
+@inject MusicCatalogService Catalog
+@inject MusicReleaseProvider MusicReleases
+@inject SlskdReleaseProvider SoulseekReleases
+@inject NavidromeService Navidrome
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        @if (_loading)
+        {
+            <div style="padding:32px;"><LoadingView /></div>
+        }
+        else
+        {
+            <StMusicDetailHeader Title="@Album.Title" ArtUrl="@Album.ArtUrl" Icon="@Icons.Material.Filled.Album"
+                                 Subtitle="@AlbumSubtitle" OnClose="() => MudDialog.Cancel()">
+                <Badges>
+                    <StaleBadge Level="Album.Staleness" DaysRemaining="Album.DaysRemaining"
+                                ShowBookmarked="Album.IsBookmarked" BookmarkLabel="Album.BookmarkLabel"
+                                IsPinned="Album.IsPinned" />
+                    @if (!IsLibrary)
+                    {
+                        <StatusPill Variant="remote" Icon="@Icons.Material.Filled.AddCircleOutline" Label="Not in Library" />
+                    }
+                    else if (Album.IsDownloading)
+                    {
+                        <StatusPill Variant="info" Label="Downloading" />
+                    }
+                    else if (Album.LibraryStatus is not ("Unmonitored" or ""))
+                    {
+                        <StatusPill Variant="@Album.StatusVariant" Icon="@StatusIcon" Label="@Album.LibraryStatus" />
+                    }
+                    @if (IsLibrary)
+                    {
+                        <StatusPill Variant="@(Album.IsMonitored ? "info" : "neutral")"
+                                         Icon="@(Album.IsMonitored ? Icons.Material.Filled.Visibility : Icons.Material.Outlined.VisibilityOff)"
+                                         Label="@(Album.IsMonitored ? "Monitored" : "Unmonitored")" />
+                    }
+                    @if (Album.IsUnidentified)
+                    {
+                        <StatusPill Variant="warning" Icon="@Icons.Material.Filled.HelpOutline" Label="Unidentified" />
+                    }
+                </Badges>
+                <Actions>
+                    @if (IsLibrary)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@_busy"
+                                   Class="st-play-cta st-btn-gradient" OnClick="() => PlayAlbum(false)">
+                            Play
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Shuffle" Disabled="@_busy"
+                                   OnClick="() => PlayAlbum(true)">
+                            Shuffle
+                        </MudButton>
+                        @if (IsAdmin)
+                        {
+                            <PinButton ProviderKey="music"
+                                       ItemKey="@MediaItemKeys.MusicAlbum(Album.ArtistName, Album.Title)"
+                                       Title="@Album.Title" IsPinned="Album.IsPinned" OnToggled="OnPinToggled" />
+                        }
+                    }
+                </Actions>
+            </StMusicDetailHeader>
+
+            <div class="st-detail-body">
+                @if (!string.IsNullOrEmpty(Album.Overview))
+                {
+                    <MudText Typo="Typo.body2" Class="st-detail-overview">@Album.Overview</MudText>
+                }
+
+                @if (_technical.HasInfo)
+                {
+                    <MetaGrid>
+                        <MetaItem Label="Format">
+                            <MusicFormatLine Technical="_technical" />
+                        </MetaItem>
+                    </MetaGrid>
+                }
+
+                @if (Album.Genres.Count > 0)
+                {
+                    <div class="st-detail-chips">
+                        @foreach (string genre in Album.Genres)
+                        {
+                            <StChip Variant="neutral">@genre</StChip>
+                        }
+                    </div>
+                }
+
+                @if (Album.Tracks.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-4 mb-1">@Album.Tracks.Count track@(Album.Tracks.Count == 1 ? "" : "s")</MudText>
+                    <div class="st-music-tracklist">
+                        @for (int i = 0; i < Album.Tracks.Count; i++)
+                        {
+                            MusicTrackItem track = Album.Tracks[i];
+                            // Only a song we actually hold is "in library", a Deezer preview must not
+                            // make a missing song look available (it greys out like a playlist row does).
+                            bool playable = track.HasFile || _availableTitles.Contains(NormalizeTitle(track.Title));
+                            bool downloading = track.IsDownloading;
+                            bool hasTech = track.HasFile && _trackTech.TryGetValue(track.TrackId, out MusicTechnical? tech) && tech.HasInfo;
+                            <StTrackRow Number="@(track.Number > 0 ? track.Number : i + 1)"
+                                        Title="@track.Title"
+                                        Meta="@track.DurationLabel"
+                                        Hoverable="playable"
+                                        Missing="@(!playable && !downloading)">
+                                <Actions>
+                                    @if (track.IsUnidentified)
+                                    {
+                                        <span class="st-music-track-unidentified" title="Not matched to Deezer metadata">Unidentified</span>
+                                    }
+                                    @if (track.HasFile && _trackTech.TryGetValue(track.TrackId, out MusicTechnical? badgeTech) && !string.IsNullOrEmpty(badgeTech.Badge))
+                                    {
+                                        <span class="st-format-line-part st-format-line--audio" title="@badgeTech.FormatSummary">@badgeTech.Badge</span>
+                                    }
+                                    @if (downloading)
+                                    {
+                                        <span class="st-music-track-download" title="Downloading">
+                                            <MudIcon Icon="@Icons.Material.Filled.CloudDownload" Size="Size.Small" Style="font-size:0.9rem;color:var(--st-blue);" />
+                                            @if (track.DownloadSize > 0)
+                                            {
+                                                <span class="st-music-track-download-pct">@(Math.Round(track.DownloadPercent))%</span>
+                                            }
+                                        </span>
+                                    }
+                                    else if (playable)
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Color="Color.Primary"
+                                                       title="Play" AriaLabel="Play" OnClick="() => PlayTrack(track)" />
+                                    }
+                                    else
+                                    {
+                                        @if (track.Monitored)
+                                        {
+                                            <span class="st-music-track-missing" title="Wanted but not in your library yet">Missing</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="st-music-track-unmonitored" title="Not requested — the album is held because you grabbed this song">Unmonitored</span>
+                                        }
+                                        @if (!string.IsNullOrEmpty(track.PreviewUrl))
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Primary"
+                                                           title="Preview" AriaLabel="Preview" OnClick="() => PlayTrack(track)" />
+                                        }
+                                    }
+                                    <StTrackMenu IsAdmin="IsAdmin" HasFile="track.HasFile" HasMediaInfo="hasTech"
+                                                 OnResearch="() => ResearchTrack(track)"
+                                                 OnInteractive="() => OpenTrackInteractiveSearch(track)"
+                                                 OnMediaInfo="() => OpenTrackInfo(track)"
+                                                 OnLyrics="() => OpenLyrics(track)"
+                                                 OnDelete="() => DeleteTrackFile(track)" />
+                                </Actions>
+                            </StTrackRow>
+                        }
+                    </div>
+                }
+
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (IsLibrary)
+        {
+            @if (_technical.HasInfo)
+            {
+                <MudButton OnClick="OpenMediaInfo" Variant="Variant.Outlined" Color="Color.Default" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Info">
+                    <span class="st-btn-label">Media Info</span>
+                </MudButton>
+            }
+            @if (Album.IsDownloading && IsAdmin)
+            {
+                <MudButton OnClick="CancelDownload" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Cancel">
+                    <span class="st-btn-label">Cancel</span>
+                </MudButton>
+            }
+            @if (IsAdmin)
+            {
+                <MudButton OnClick="Retry" Variant="Variant.Outlined" Color="Color.Default" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Refresh">
+                    <span class="st-btn-label">Retry</span>
+                </MudButton>
+                <StSearchButton OnSearch="Search" OnInteractive="OpenInteractiveSearch"
+                                EnableInteractive="true" Disabled="@_busy" />
+            }
+            @if (IsAdmin)
+            {
+                <MudButton OnClick="ToggleMonitored" Variant="@(Album.IsMonitored ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Disabled="@_busy"
+                           StartIcon="@(Album.IsMonitored ? Icons.Material.Filled.Visibility : Icons.Material.Outlined.VisibilityOff)">
+                    <span class="st-btn-label">@(Album.IsMonitored ? "Monitored" : "Monitor")</span>
+                </MudButton>
+                <MudButton OnClick="Delete" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Delete">
+                    <span class="st-btn-label">Delete</span>
+                </MudButton>
+            }
+        }
+        else if (IsAdmin)
+        {
+            <MudButton OnClick="Add" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" Disabled="@_busy" StartIcon="@Icons.Material.Filled.Add">
+                <span class="st-btn-label">Add to Library</span>
+            </MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="Request" Variant="Variant.Filled" Color="Color.Primary" Class="st-btn-gradient" StartIcon="@Icons.Material.Filled.Inbox">
+                <span class="st-btn-label">Request</span>
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [CascadingParameter] private Task<AuthenticationState>? AuthStateTask { get; set; }
+    [Parameter] public MusicItem Album { get; set; } = new();
+    [Parameter] public bool IsAdmin { get; set; }
+
+    bool _loading = true;
+    bool _busy;
+    MusicTechnical _technical = new();
+    // Probed in parallel, so the collection must tolerate concurrent writes.
+    readonly System.Collections.Concurrent.ConcurrentDictionary<int, MusicTechnical> _trackTech = new();
+
+    bool IsLibrary => Album.LibraryId > 0 || Album.IsInLibrary;
+
+    string StatusIcon => Album.LibraryStatus switch
+    {
+        "Downloaded" => Icons.Material.Filled.CheckCircle,
+        "Partial" => Icons.Material.Filled.IncompleteCircle,
+        "Missing" => Icons.Material.Filled.ErrorOutline,
+        "Downloading" => Icons.Material.Filled.CloudDownload,
+        _ => Icons.Material.Filled.LibraryAddCheck
+    };
+
+    string AlbumSubtitle
+    {
+        get
+        {
+            List<string> parts = [];
+            if (!string.IsNullOrWhiteSpace(Album.ArtistName))
+                parts.Add(Album.ArtistName);
+            if (Album.Year > 0)
+                parts.Add(Album.Year.ToString());
+            return string.Join(" · ", parts);
+        }
+    }
+
+    readonly HashSet<string> _availableTitles = new(StringComparer.Ordinal);
+
+    static string NormalizeTitle(string value) =>
+        new(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthStateTask is not null)
+            IsAdmin = (await AuthStateTask).User.IsInRole(ArrkRoles.Admin);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        // Always refresh a library album so the popup's track rows carry each song's current download
+        // state (the grid tile it was opened from only had placeholder tracks). Metadata-only items
+        // (Discover cards) are fetched only when they don't already carry a track list.
+        bool libraryAlbum = Album.LibraryId > 0;
+        if (Album.Tracks.Count == 0 || libraryAlbum)
+        {
+            try
+            {
+                MusicItem? detail = Album.DeezerId > 0
+                    ? await Catalog.GetAlbumAsync(Album.DeezerId)
+                    : Album.LibraryId > 0 ? await Catalog.GetLibraryAlbumAsync(Album.LibraryId) : null;
+                if (detail is not null)
+                    Album = detail with { LibraryId = Album.LibraryId > 0 ? Album.LibraryId : detail.LibraryId };
+            }
+            catch { /* show what we have */ }
+        }
+        if (IsLibrary)
+        {
+            // The album's media info and the per-track availability come from independent sources
+            // (ffprobe vs Navidrome), so resolve both at once rather than one after the other.
+            Task<MusicTechnical> technicalTask = Album.LibraryId > 0
+                ? Catalog.GetAlbumTechnicalAsync(Album.LibraryId)
+                : Task.FromResult(new MusicTechnical());
+            Task<List<SubsonicSong>> songsTask = ResolveAlbumSongsAsync();
+            await Task.WhenAll(technicalTask, songsTask);
+
+            try { _technical = await technicalTask; }
+            catch { /* optional */ }
+            // Availability is per-track: a torrent may cover only some of the album's tracks.
+            try
+            {
+                foreach (SubsonicSong song in await songsTask)
+                    _availableTitles.Add(NormalizeTitle(song.Title));
+            }
+            catch { /* leave everything marked missing */ }
+
+            await LoadTrackTechnicalAsync();
+        }
+        else if (Album.LibraryId > 0)
+        {
+            try { _technical = await Catalog.GetAlbumTechnicalAsync(Album.LibraryId); }
+            catch { /* optional */ }
+        }
+        _loading = false;
+    }
+
+    /// <summary>
+    /// Probes each downloaded track so we can show a per-track Lossless badge and Media Info.
+    /// Probes run with bounded concurrency (each spawns an ffprobe process), sequentially this is
+    /// the main cost of opening an album, and the results are cached per track.
+    /// </summary>
+    async Task LoadTrackTechnicalAsync()
+    {
+        if (Album.LibraryId <= 0)
+            return;
+
+        List<MusicTrackItem> probeTargets = Album.Tracks.Where(t => t.TrackId > 0 && t.HasFile).ToList();
+        if (probeTargets.Count == 0)
+            return;
+
+        using SemaphoreSlim gate = new(4);
+        await Task.WhenAll(probeTargets.Select(async track =>
+        {
+            await gate.WaitAsync();
+            try { _trackTech[track.TrackId] = await Catalog.GetTrackTechnicalAsync(Album.LibraryId, track.TrackId); }
+            catch { /* optional */ }
+            finally { gate.Release(); }
+        }));
+    }
+
+    async Task OpenTrackInfo(MusicTrackItem track)
+    {
+        if (!_trackTech.TryGetValue(track.TrackId, out MusicTechnical? tech))
+            return;
+        DialogParameters<MusicInfoDialog> p = new() { { x => x.Title, track.Title }, { x => x.Technical, tech } };
+        await DialogService.ShowAsync<MusicInfoDialog>($"{track.Title} · Media Info", p,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true });
+    }
+
+    /// <summary>The traditional (plain list) lyrics view for one song of this album.</summary>
+    async Task OpenLyrics(MusicTrackItem track)
+    {
+        string? songId = null;
+        try { songId = await Navidrome.FindSongIdAsync(track.Title, Album.ArtistName); }
+        catch { /* the dialog resolves it itself as a fallback */ }
+
+        DialogParameters<LyricsDialog> p = new()
+        {
+            { x => x.Title, track.Title },
+            { x => x.Artist, Album.ArtistName },
+            { x => x.SongId, songId },
+            { x => x.AlbumId, Album.LibraryId },
+            { x => x.TrackId, track.TrackId },
+            { x => x.DeezerTrackId, track.DeezerId },
+            { x => x.IsAdmin, IsAdmin }
+        };
+        await DialogService.ShowAsync<LyricsDialog>($"{track.Title} · Lyrics", p,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true });
+    }
+
+    /// <summary>Drops any file placed for this song (e.g. a wrong import) and re-searches it from scratch.</summary>
+    async Task ResearchTrack(MusicTrackItem track)
+    {
+        _busy = true;
+        try
+        {
+            await Catalog.ResearchTrackAsync(Album.ArtistName, track.Title, track.DeezerId);
+            Album = Album with { Tracks = Album.Tracks.Select(t => t.TrackId == track.TrackId ? t with { HasFile = false, FilePath = "" } : t).ToList() };
+            _trackTech.TryRemove(track.TrackId, out _);
+            Snackbar.Add($"Searching \"{track.Title}\"…", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Search failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    async Task OpenTrackInteractiveSearch(MusicTrackItem track)
+    {
+        DialogParameters<StReleaseSearchDialog> parameters = new()
+        {
+            { x => x.Title, track.Title },
+            { x => x.Subtitle, Album.ArtistName },
+            { x => x.Providers, new List<ReleaseProvider> { MusicReleases, SoulseekReleases } },
+            { x => x.Query, new ReleaseSearchQuery
+                {
+                    Domain = MusicMediaDomains.Music,
+                    Kind = MusicReleaseKinds.Track,
+                    Artist = Album.ArtistName,
+                    Album = Album.Title,
+                    Title = track.Title,
+                    LibraryId = Album.LibraryId > 0 ? Album.LibraryId.ToString() : null,
+                    Noun = "music"
+                } },
+            { x => x.IsAdmin, IsAdmin }
+        };
+        DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+        await DialogService.ShowAsync<StReleaseSearchDialog>($"Interactive search · {track.Title}", parameters, options);
+    }
+
+    /// <summary>Deletes this song's placed file and clears it from the library.</summary>
+    async Task DeleteTrackFile(MusicTrackItem track)
+    {
+        if (Album.LibraryId <= 0)
+            return;
+        bool? confirm = await DialogService.ShowMessageBoxAsync("Delete file",
+            $"Delete the file for \"{track.Title}\"? The song will show as missing and can be re-searched.",
+            yesText: "Delete", cancelText: "Cancel");
+        if (confirm != true)
+            return;
+        _busy = true;
+        try
+        {
+            await Catalog.DeleteTrackFileAsync(Album.LibraryId, track.TrackId);
+            Album = Album with { Tracks = Album.Tracks.Select(t => t.TrackId == track.TrackId ? t with { HasFile = false, FilePath = "" } : t).ToList() };
+            _trackTech.TryRemove(track.TrackId, out _);
+            Snackbar.Add($"Deleted the file for \"{track.Title}\".", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    async Task OpenMediaInfo()
+    {
+        DialogParameters<MusicInfoDialog> p = new() { { x => x.Title, Album.Title }, { x => x.Technical, _technical } };
+        await DialogService.ShowAsync<MusicInfoDialog>("Media Info", p,
+            new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true });
+    }
+
+    void OnPinToggled(bool pinned) => Album = Album with { IsPinned = pinned };
+
+    async Task PlayAlbum(bool shuffle)
+    {
+        _busy = true;
+        try
+        {
+            List<SubsonicSong> songs = await ResolveAlbumSongsAsync();
+            if (songs.Count == 0)
+            {
+                Snackbar.Add($"\"{Album.Title}\" isn't in Navidrome yet.", Severity.Info);
+                return;
+            }
+            if (shuffle)
+                songs = [.. songs.OrderBy(_ => Random.Shared.Next())];
+            await PlaySongs(songs, 0);
+        }
+        catch { /* player is an enhancement */ }
+        finally { _busy = false; }
+    }
+
+    /// <summary>
+    /// Resolves the album's playable songs. Prefers the whole Navidrome album, but falls back to
+    /// matching each track by title/artist, needed for releases whose files aren't tagged, so
+    /// Navidrome couldn't group them under the album.
+    /// </summary>
+    async Task<List<SubsonicSong>> ResolveAlbumSongsAsync()
+    {
+        string? albumId = await Navidrome.FindAlbumIdAsync(Album.Title, Album.ArtistName);
+        if (!string.IsNullOrEmpty(albumId))
+        {
+            SubsonicAlbumWithSongs? full = await Navidrome.GetAlbumAsync(albumId);
+            if (full is { Song.Count: > 0 })
+                return full.Song;
+        }
+
+        List<MusicTrackItem> tracks = Album.Tracks;
+        if (tracks.Count == 0 && Album.LibraryId > 0)
+        {
+            MusicItem? detail = await Catalog.GetLibraryAlbumAsync(Album.LibraryId);
+            tracks = detail?.Tracks ?? [];
+        }
+
+        List<SubsonicSong> found = [];
+        foreach (MusicTrackItem track in tracks)
+        {
+            string? id = await Navidrome.FindSongIdAsync(track.Title, Album.ArtistName);
+            if (!string.IsNullOrEmpty(id))
+                found.Add(new SubsonicSong { Id = id, Title = track.Title, Artist = Album.ArtistName, Album = Album.Title });
+        }
+        return found;
+    }
+
+    async Task PlayTrack(MusicTrackItem track)
+    {
+        try
+        {
+            // Prefer the real file. A track opened from Discover carries a Deezer preview even when
+            // we hold it, so the preview must be the *last* resort, not the first, otherwise clicking
+            // play on a downloaded song would play a 30s clip.
+            List<SubsonicSong> songs = await ResolveAlbumSongsAsync();
+            int index = songs.FindIndex(s => string.Equals(s.Title, track.Title, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0)
+            {
+                await PlaySongs(songs, index);
+                return;
+            }
+
+            string? id = await Navidrome.FindSongIdAsync(track.Title, Album.ArtistName);
+            if (!string.IsNullOrEmpty(id))
+            {
+                await Play(new { id, title = track.Title, artist = Album.ArtistName, albumArtist = Album.ArtistName, album = Album.Title, cover = Album.ArtUrl, stream = NavidromeService.PlayerStreamUrl(id), artistDeezerId = Album.ArtistDeezerId, albumDeezerId = Album.DeezerId });
+                return;
+            }
+
+            // Not in the library, a preview is the only option, and only because the user asked.
+            if (!string.IsNullOrEmpty(track.PreviewUrl))
+            {
+                await Play(new { id = "", title = track.Title, artist = Album.ArtistName, albumArtist = Album.ArtistName, album = Album.Title, cover = Album.ArtUrl, stream = track.PreviewUrl, artistDeezerId = Album.ArtistDeezerId, albumDeezerId = Album.DeezerId });
+                return;
+            }
+
+            Snackbar.Add($"\"{track.Title}\" isn't in Navidrome yet.", Severity.Info);
+        }
+        catch { /* player is an enhancement */ }
+    }
+
+    async Task PlaySongs(List<SubsonicSong> songs, int index)
+    {
+        var queue = songs.Select(s => new
+        {
+            id = s.Id,
+            title = s.Title,
+            artist = s.Artist,
+            album = s.Album,
+            cover = !string.IsNullOrEmpty(s.CoverArt) ? NavidromeService.CoverArtUrl(s.CoverArt) : "",
+            stream = NavidromeService.PlayerStreamUrl(s.Id)
+        }).ToList();
+        await JS.InvokeVoidAsync("arrkMusic.play", queue, index);
+    }
+
+    async Task Play(object song) => await JS.InvokeVoidAsync("arrkMusic.play", new[] { song }, 0);
+
+    async Task Add()
+    {
+        DialogParameters<AddAlbumDialog> p = new() { { x => x.Album, Album } };
+        IDialogReference dialog = await DialogService.ShowAsync<AddAlbumDialog>($"Add {Album.Title}", p,
+            new DialogOptions { MaxWidth = MaxWidth.Small, CloseOnEscapeKey = true });
+        DialogResult result = await dialog.Result;
+        if (result is { Canceled: false })
+            MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    async Task Search()
+    {
+        if (Album.LibraryId <= 0) return;
+        _busy = true;
+        try
+        {
+            MusicGrabResult result = await Catalog.SearchAndGrabAlbumAsync(Album.LibraryId);
+            Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add($"Search failed: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task OpenInteractiveSearch()
+    {
+        DialogParameters<StReleaseSearchDialog> parameters = new()
+        {
+            { x => x.Title, Album.Title },
+            { x => x.Subtitle, Album.ArtistName },
+            { x => x.Providers, new List<ReleaseProvider> { MusicReleases, SoulseekReleases } },
+            { x => x.Query, new ReleaseSearchQuery
+                {
+                    Domain = MusicMediaDomains.Music,
+                    Kind = MusicReleaseKinds.Album,
+                    Artist = Album.ArtistName,
+                    Album = Album.Title,
+                    LibraryId = Album.LibraryId > 0 ? Album.LibraryId.ToString() : null,
+                    Title = Album.Title,
+                    Noun = "music"
+                } },
+            { x => x.IsAdmin, IsAdmin }
+        };
+        DialogOptions options = new() { FullWidth = true, MaxWidth = MaxWidth.Medium, CloseOnEscapeKey = true };
+        await DialogService.ShowAsync<StReleaseSearchDialog>($"Interactive search · {Album.Title}", parameters, options);
+    }
+
+    async Task Retry()
+    {
+        if (Album.LibraryId <= 0) return;
+        _busy = true;
+        try
+        {
+            await Catalog.ToggleAlbumMonitoredAsync(Album.LibraryId, true);
+            MusicGrabResult result = await Catalog.SearchAndGrabAlbumAsync(Album.LibraryId);
+            Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Info);
+        }
+        catch (Exception ex) { Snackbar.Add($"Retry failed: {ex.Message}", Severity.Error); }
+        _busy = false;
+    }
+
+    async Task CancelDownload()
+    {
+        if (Album.LibraryId <= 0) return;
+        _busy = true;
+        try { await Catalog.ToggleAlbumMonitoredAsync(Album.LibraryId, false); Snackbar.Add("Download cancelled (unmonitored).", Severity.Info); }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        _busy = false;
+    }
+
+    async Task ToggleMonitored()
+    {
+        _busy = true;
+        try
+        {
+            await Catalog.ToggleAlbumMonitoredAsync(Album.LibraryId, !Album.IsMonitored);
+            Album = Album with { IsMonitored = !Album.IsMonitored };
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+        _busy = false;
+    }
+
+    async Task Delete()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync("Remove album",
+            $"Remove \"{Album.Title}\" and delete its files?", yesText: "Remove", cancelText: "Cancel");
+        if (confirm != true) return;
+        _busy = true;
+        try
+        {
+            await Catalog.RemoveAlbumAsync(Album);
+            Snackbar.Add($"Removed {Album.Title}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); _busy = false; }
+    }
+
+    async Task Request()
+    {
+        DialogParameters<RequestMusicDialog> p = new()
+        {
+            { x => x.Item, Album },
+            { x => x.Kind, Arrk.Core.Requests.RequestKind.Album }
+        };
+        IDialogReference dialog = await DialogService.ShowAsync<RequestMusicDialog>($"Request {Album.Title}", p);
+        DialogResult result = await dialog.Result;
+        if (result is { Canceled: false })
+            MudDialog.Close(DialogResult.Ok(true));
+    }
+}

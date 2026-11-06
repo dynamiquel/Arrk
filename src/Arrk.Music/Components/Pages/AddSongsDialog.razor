@@ -1,0 +1,133 @@
+@* Add songs to a playlist: a searchable list. Searching queries Navidrome directly, so any song
+   in the library can be added (not just the ones currently loaded). *@
+@using Arrk.Navidrome
+@inject NavidromeService Navidrome
+@inject MusicCatalogService Catalog
+@inject ISnackbar Snackbar
+
+<MudDialog Class="st-media-dialog">
+    <DialogContent>
+        <DialogCloseButton Class="st-dialog-close--floating" />
+        <div class="st-detail-body" style="padding-top:8px;">
+            <MudText Typo="Typo.h6" Class="mb-2">Add songs</MudText>
+
+            <MudTextField T="string" @bind-Value="_search"
+                          Placeholder="Search songs, artists or albums..."
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true" DebounceInterval="350" OnDebounceIntervalElapsed="OnSearchAsync"
+                          Margin="Margin.Normal" Variant="Variant.Outlined" Class="mb-3" />
+
+            @if (_loading)
+            {
+                <LoadingView Message="Loading songs…" />
+            }
+            else if (Displayed.Count == 0)
+            {
+                <EmptyState Icon="@Icons.Material.Filled.LibraryMusic"
+                            Message="@(string.IsNullOrWhiteSpace(_search)
+                                ? "No downloaded songs yet — they'll appear here once albums finish downloading."
+                                : $"No songs match \"{_search}\".")" />
+            }
+            else
+            {
+                <div class="st-music-tracklist" style="max-height:60vh;overflow:auto;">
+                    @foreach (SongRow row in Displayed)
+                    {
+                        <StTrackRow Title="@row.Title" Meta="@row.Meta">
+                            <Actions>
+                                <MudIconButton Icon="@(_added.Contains(row.Key) ? Icons.Material.Filled.Check : Icons.Material.Filled.Add)"
+                                               Size="Size.Small" Color="Color.Primary" title="Add" AriaLabel="Add"
+                                               Disabled="@(_busy is not null)" OnClick="() => AddAsync(row)" />
+                            </Actions>
+                        </StTrackRow>
+                    }
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Close(DialogResult.Ok(true))" Variant="Variant.Filled" Color="Color.Primary">Done</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string PlaylistId { get; set; } = "";
+
+    List<MusicItem> _library = [];
+    List<SubsonicSong> _navResults = [];
+    readonly HashSet<string> _added = new(StringComparer.OrdinalIgnoreCase);
+    readonly CancellationTokenSource _cts = new();
+    SongRow? _busy;
+    string _search = "";
+    bool _loading = true;
+
+    /// <summary>A row to add: library rows resolve their Navidrome id on add; search rows already have it.</summary>
+    sealed record SongRow(string Title, string Artist, string Album, string? SongId)
+    {
+        public string Key => $"{Title}|{Artist}";
+        public string Meta => string.IsNullOrEmpty(Album) ? Artist : $"{Artist} · {Album}";
+    }
+
+    List<SongRow> Displayed => string.IsNullOrWhiteSpace(_search)
+        ? _library.Select(s => new SongRow(s.Title, s.ArtistName, s.AlbumName, null)).ToList()
+        : _navResults.Select(s => new SongRow(s.Title, s.Artist, s.Album, s.Id)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _library = (await Catalog.GetLibrarySongsAsync())
+                .Where(s => s.HasFile)
+                .OrderBy(s => s.ArtistName).ThenBy(s => s.Title)
+                .ToList();
+        }
+        catch { _library = []; }
+        _loading = false;
+    }
+
+    async Task OnSearchAsync(string value)
+    {
+        _search = value;
+        _navResults = [];
+        if (string.IsNullOrWhiteSpace(value) || value.Trim().Length < 2)
+            return;
+
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _navResults = await Navidrome.SearchSongsAsync(value.Trim(), 100);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Search failed: {ex.Message}", Severity.Error);
+        }
+        _loading = false;
+        StateHasChanged();
+    }
+
+    async Task AddAsync(SongRow song)
+    {
+        _busy = song;
+        try
+        {
+            string? id = song.SongId ?? await Navidrome.FindSongIdAsync(song.Title, song.Artist);
+            if (string.IsNullOrEmpty(id))
+            {
+                Snackbar.Add($"\"{song.Title}\" isn't in Navidrome yet.", Severity.Info);
+            }
+            else
+            {
+                await Navidrome.AddToPlaylistAsync(PlaylistId, [id]);
+                _added.Add(song.Key);
+                Snackbar.Add($"Added {song.Title}.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not add song: {ex.Message}", Severity.Error);
+        }
+        _busy = null;
+    }
+}
