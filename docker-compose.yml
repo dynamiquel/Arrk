@@ -5,7 +5,7 @@
 # container. It is the declarative equivalent of `scripts/run-stackarr.sh`.
 #
 # Quick start (copy this file and a .env next to your data, then):
-#   docker compose up -d --build
+#   docker compose up -d
 #
 # Everything is configurable through the environment. All values have defaults; a typical
 # setup looks like:
@@ -16,7 +16,9 @@
 #   STACKARR_CONFIG_DIR=/srv/stackarr/config
 #   STACKARR_DOWNLOADS_DIR=/srv/stackarr/downloads
 #   STACKARR_MEDIA_DIR=/srv/stackarr/media
-#   STACKARR_IMAGE=stackarr:latest
+#
+#   # Optional: run another tag or a local build instead of the published image.
+#   # STACKARR_IMAGE=ghcr.io/dynamiquel/stackarr:dev
 #
 #   # Uncomment to publish the web UI on the host (omit for a tunnel-only stack):
 #   # STACKARR_HOST_PORT=5186
@@ -25,10 +27,7 @@ name: ${STACKARR_CONTAINER_NAME:-stackarr}
 
 services:
   stackarr:
-    image: ${STACKARR_IMAGE:-stackarr:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${STACKARR_IMAGE:-ghcr.io/dynamiquel/stackarr:latest}
     container_name: ${STACKARR_CONTAINER_NAME:-stackarr}
     restart: unless-stopped
     environment:
