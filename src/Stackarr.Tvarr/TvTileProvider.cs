@@ -77,11 +77,11 @@ public sealed class TvTileProvider : ITileProvider
         // Interactive shelves from the Movies/Shows pages. They are not part of the default
         // dashboard but can be added from the editor; the dashboard version is unified.
         new(
-            "media.continue-watching", "Media", "Continue Watching", Icons.Material.Filled.PlayCircle,
+            "tv.continue-watching", "TV", "Continue Watching", Icons.Material.Filled.PlayCircle,
             typeof(ContinueWatchingTile), Description: "Resume movies and episodes in progress, across the whole library.",
             EnabledConfigPath: "services:tv", DefaultSize: TileSize.VeryLarge),
         new(
-            "media.watchlists", "Media", "Watchlists", Icons.Material.Filled.Bookmark,
+            "tv.watchlists", "TV", "Watchlists", Icons.Material.Filled.Bookmark,
             typeof(WatchlistTile), Description: "Your watchlists with movie and TV titles together.",
             EnabledConfigPath: "services:tv", DefaultSize: TileSize.VeryLarge)
     ];
