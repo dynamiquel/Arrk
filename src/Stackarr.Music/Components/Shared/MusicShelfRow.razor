@@ -204,7 +204,7 @@
             Title = current.Title,
             ArtistName = current.Artist,
             AlbumName = current.Album,
-            ArtUrl = AlbumArt(current.Artist, current.Album, current.CoverArt)
+            ArtUrl = MusicCatalogService.TrackArtUrl(current.Artist, current.Album, current.CoverArt)
         };
     }
 
@@ -223,13 +223,8 @@
         Title = history.Title,
         ArtistName = history.Artist,
         AlbumName = history.Album,
-        ArtUrl = AlbumArt(history.Artist, history.Album, history.CoverArtUrl)
+        ArtUrl = MusicCatalogService.TrackArtUrl(history.Artist, history.Album, history.CoverArtUrl)
     };
-
-    static string AlbumArt(string artist, string album, string coverArt) =>
-        !string.IsNullOrEmpty(coverArt)
-            ? NavidromeService.CoverArtUrl(coverArt)
-            : MusicCatalogService.AlbumArtUrl(artist, album);
 
     async Task ResumeQueueAsync()
     {

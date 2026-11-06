@@ -327,6 +327,22 @@ public class MusicCatalogServiceTests
     }
 
     [Test]
+    public async Task TrackArtUrl_AcceptsCoverIdsAndAlreadyResolvedUrls()
+    {
+        await Assert.That(MusicCatalogService.TrackArtUrl("Radiohead", "In Rainbows", "mf-123"))
+            .IsEqualTo("/api/music/player/cover/mf-123");
+
+        // Play history persists the queue's cover URL, so resolving it again must not double-proxy.
+        await Assert.That(MusicCatalogService.TrackArtUrl("Radiohead", "In Rainbows", "/api/music/player/cover/mf-123"))
+            .IsEqualTo("/api/music/player/cover/mf-123");
+        await Assert.That(MusicCatalogService.TrackArtUrl("Radiohead", "In Rainbows", "https://cdn.example/art.jpg"))
+            .IsEqualTo("https://cdn.example/art.jpg");
+
+        await Assert.That(MusicCatalogService.TrackArtUrl("Radiohead", "In Rainbows", ""))
+            .IsEqualTo("/api/music/art/album?artist=Radiohead&title=In%20Rainbows");
+    }
+
+    [Test]
     public async Task GetRecentlyAdded_ReturnsHeldAlbums_NewestFirst()
     {
         (MusicCatalogService catalog, _, _, TestMusicDb db) = Build();
