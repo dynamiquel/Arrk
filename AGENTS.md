@@ -30,6 +30,7 @@ You need:
 Bootstrap once:
 
 ```bash
+./scripts/setup-git-hooks.sh
 dotnet tool restore
 dotnet restore Stackarr.slnx
 ```
@@ -44,11 +45,16 @@ there, and open a pull request. A human decides when to merge.
 
 ### Remote or ephemeral checkout (one agent per clone)
 
+Always branch from the **remote** main, not from a local `main` that may carry old history:
+
 ```bash
-git switch -c agent/<task-slug>
+git fetch origin main
+git switch -c agent/<task-slug> origin/main
 # ...edit, build, test...
-git add -A
+git status --short          # review first; stage only task files
+git add <task files>
 git commit -m "<focused message>"
+git log --oneline origin/main..HEAD   # must show only your task commits
 git push -u origin agent/<task-slug>
 gh pr create --fill --base main
 ```
@@ -58,7 +64,8 @@ gh pr create --fill --base main
 Do not edit the shared working tree. Create an isolated worktree and do everything there:
 
 ```bash
-git worktree add .worktrees/<task-slug> -b agent/<task-slug>
+git fetch origin main
+git worktree add .worktrees/<task-slug> -b agent/<task-slug> origin/main
 cd .worktrees/<task-slug>
 # ...edit, build, test, commit...
 ```
@@ -68,6 +75,14 @@ touch another agent's worktree, branch, containers or network.
 
 ### Rules
 
+- **Base every task branch on `origin/main`.** Run `git fetch origin main` first; never
+  branch from local `main` or a long-lived local branch.
+- **A task branch carries only task commits.** Before pushing, `git log --oneline
+  origin/main..HEAD` must show only your focused commits (normally one). If it shows local
+  history, rebuild on `origin/main` and cherry-pick only your commit.
+- **Never push local history.** The versioned pre-push hook blocks `main`, branches whose
+  base is not `origin/main`, and branches with too many commits ahead. Do not bypass it with
+  `--no-verify`.
 - Keep commits focused and the message descriptive.
 - Do not rewrite shared history. Force-push only your own branch, preferably with
   `--force-with-lease`.

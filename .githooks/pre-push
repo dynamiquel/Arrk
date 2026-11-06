@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#
+# Refuse pushes that would put local history or a stale-main branch on the remote.
+# Install with: ./scripts/setup-git-hooks.sh
+set -euo pipefail
+
+zero="0000000000000000000000000000000000000000"
+max_ahead="${STACKARR_MAX_PUSH_COMMITS:-5}"
+
+if ! git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
+    git fetch origin main >/dev/null 2>&1 || true
+fi
+
+origin_main="$(git rev-parse --verify --quiet refs/remotes/origin/main || true)"
+if [ -z "$origin_main" ]; then
+    echo "pre-push: origin/main is unavailable. Fetch it before pushing." >&2
+    exit 1
+fi
+
+while read -r local_ref local_sha remote_ref _remote_sha; do
+    # Branch deletion: nothing to validate.
+    if [ "$local_sha" = "$zero" ]; then
+        continue
+    fi
+
+    case "$remote_ref" in
+        refs/heads/main|refs/heads/master)
+            echo "pre-push: refusing to push directly to $remote_ref." >&2
+            echo "Push a task branch and open a pull request instead." >&2
+            exit 1
+            ;;
+        refs/heads/*)
+            ;;
+        *)
+            # Tags and other refs are outside this guard.
+            continue
+            ;;
+    esac
+
+    if ! git merge-base --is-ancestor "$origin_main" "$local_sha"; then
+        echo "pre-push: $local_ref is not based on origin/main." >&2
+        echo "Fetch origin/main, then rebase or rebuild the branch on it before pushing." >&2
+        exit 1
+    fi
+
+    ahead="$(git rev-list --count "$origin_main..$local_sha")"
+    if [ "$ahead" -gt "$max_ahead" ]; then
+        echo "pre-push: $local_ref has $ahead commits not in origin/main (maximum $max_ahead)." >&2
+        echo "Push a branch containing only your task commits, not local history." >&2
+        exit 1
+    fi
+done
+
+exit 0
