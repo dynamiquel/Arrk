@@ -74,11 +74,11 @@ See the [feature tour](https://dynamiquel.github.io/Stackarr/features.html) for 
 
 ## Quick start
 
-The launcher creates the storage directories and Docker network, builds the image and starts
-Stackarr:
+Stackarr is published as `ghcr.io/dynamiquel/stackarr:latest`. The launcher creates the
+storage directories and Docker network, pulls the published image and starts Stackarr:
 
 ```bash
-./scripts/run-stackarr.sh --build
+./scripts/run-stackarr.sh
 ```
 
 The UI is available at `http://localhost:5186`. Data defaults to `./stackarr-data`; pass
@@ -87,13 +87,13 @@ The UI is available at `http://localhost:5186`. Data defaults to `./stackarr-dat
 The same deployment with Docker Compose:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-Or build and run the container directly:
+Or pull and run the container directly:
 
 ```bash
-docker build -t stackarr:latest .
+docker pull ghcr.io/dynamiquel/stackarr:latest
 
 docker network create stackarr-media-net
 
@@ -107,7 +107,7 @@ docker run -d \
   -v /srv/stackarr/media:/media \
   -p 5186:5186 \
   -e StackName=media \
-  stackarr:latest
+  ghcr.io/dynamiquel/stackarr:latest
 ```
 
 `StackName` namespaces every container Stackarr creates (`stackarr-<name>-*`) and its Docker

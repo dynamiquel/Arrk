@@ -145,7 +145,7 @@
             <span class="step-num">1</span>
             <div>
               <h3>Get the project</h3>
-              <p>Clone the repository. If you only want to build the image, this is all you need.</p>
+              <p>Clone the repository if you want to use the launcher or Compose. The plain <code>docker run</code> below needs only Docker.</p>
               <div class="code-block">
                 <div class="code-head">
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
@@ -162,16 +162,17 @@ cd Stackarr</code></pre>
             <div>
               <h3>Recommended: use the launcher</h3>
               <p>
-                The script creates the storage directories and Docker network, builds the image,
-                then starts Stackarr. It defaults to <code>./stackarr-data/{config,downloads,media}</code>
-                and publishes the UI on <code>:5186</code>.
+                The script creates the storage directories and Docker network, pulls
+                <code>ghcr.io/dynamiquel/stackarr:latest</code>, then starts Stackarr. It defaults
+                to <code>./stackarr-data/{config,downloads,media}</code> and publishes the UI on
+                <code>:5186</code>.
               </p>
               <div class="code-block">
                 <div class="code-head">
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>./scripts/run-stackarr.sh --build</code></pre>
+                <pre><code>./scripts/run-stackarr.sh</code></pre>
               </div>
               <p style="margin-top: 12px">
                 Point it at existing storage or choose another port:
@@ -181,7 +182,7 @@ cd Stackarr</code></pre>
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>./scripts/run-stackarr.sh --build \
+                <pre><code>./scripts/run-stackarr.sh \
   --data-root /srv/stackarr \
   --name stackarr \
   --stack-name media \
@@ -199,15 +200,15 @@ cd Stackarr</code></pre>
               <h3>Or: Docker Compose</h3>
               <p>
                 The Compose file describes only the Stackarr container; Stackarr handles the rest.
-                It writes data under <code>./stackarr-data</code> by default and is tunnel-only
-                unless you publish a port.
+                It pulls the published image, writes data under <code>./stackarr-data</code> by
+                default and is tunnel-only unless you publish a port.
               </p>
               <div class="code-block">
                 <div class="code-head">
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
                   <button class="copy-btn" type="button" data-copy><svg aria-hidden="true"><use href="assets/icons.svg#i-copy"></use></svg><span>Copy</span></button>
                 </div>
-                <pre><code>docker compose up -d --build</code></pre>
+                <pre><code>docker compose up -d</code></pre>
               </div>
               <p style="margin-top: 12px">A small <code>.env</code> makes the deployment easier to read:</p>
               <div class="code-block code-block--tight">
@@ -231,7 +232,7 @@ STACKARR_MEDIA_DIR=/srv/stackarr/media
             <span class="step-num">4</span>
             <div>
               <h3>Or: plain <code>docker run</code></h3>
-              <p>Create the network and directories first, then run the container.</p>
+              <p>Create the network and directories first, then pull the published image and run the container.</p>
               <div class="code-block">
                 <div class="code-head">
                   <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> shell</span>
@@ -239,8 +240,7 @@ STACKARR_MEDIA_DIR=/srv/stackarr/media
                 </div>
                 <pre><code>mkdir -p /srv/stackarr/{config,downloads,media}
 docker network create stackarr-media-net
-
-docker build -t stackarr:latest .
+docker pull ghcr.io/dynamiquel/stackarr:latest
 
 docker run -d \
   --name stackarr \
@@ -252,7 +252,7 @@ docker run -d \
   -v /srv/stackarr/media:/media \
   -p 5186:5186 \
   -e StackName=media \
-  stackarr:latest</code></pre>
+  ghcr.io/dynamiquel/stackarr:latest</code></pre>
               </div>
               <p style="margin-top: 12px">
                 <code>StackName</code> namespaces every container Stackarr creates

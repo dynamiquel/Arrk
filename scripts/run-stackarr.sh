@@ -11,8 +11,8 @@
 #   # Default: ./stackarr-data/{config,downloads,media}, UI on http://localhost:5186
 #   ./scripts/run-stackarr.sh
 #
-#   # Build the image first, then run a tunnel-only instance (no host ports at all)
-#   ./scripts/run-stackarr.sh --build --data-root /srv/stackarr \
+#   # Run a tunnel-only instance (no host ports at all)
+#   ./scripts/run-stackarr.sh --data-root /srv/stackarr \
 #       --name stackarr-media --stack-name media --no-port
 #
 #   # Point at existing storage and publish the UI on a different port
@@ -29,7 +29,7 @@ REPO_ROOT="$(dirname -- "$SCRIPT_DIR")"
 
 CONTAINER_NAME="stackarr"
 STACK_NAME=""
-IMAGE="stackarr:latest"
+IMAGE="ghcr.io/dynamiquel/stackarr:latest"
 DATA_ROOT="./stackarr-data"
 CONFIG_DIR=""
 DOWNLOADS_DIR=""
@@ -56,8 +56,8 @@ Examples:
   # Default: ./stackarr-data/{config,downloads,media}, UI on http://localhost:5186
   ./scripts/run-stackarr.sh
 
-  # Build the image, then run a tunnel-only instance (no host ports at all)
-  ./scripts/run-stackarr.sh --build --data-root /srv/stackarr \
+  # Run a tunnel-only instance (no host ports at all)
+  ./scripts/run-stackarr.sh --data-root /srv/stackarr \
       --name stackarr-media --stack-name media --no-port
 
   # Point at existing storage and publish the UI on a different port
@@ -71,7 +71,7 @@ Options:
   -n, --name NAME          Container name (default: stackarr)
   -s, --stack-name NAME    Stack name; namespaces containers and the Docker network
                            (default: derived from --name, else "default")
-  -i, --image IMAGE        Image to run (default: stackarr:latest)
+  -i, --image IMAGE        Image to run (default: ghcr.io/dynamiquel/stackarr:latest)
   -r, --data-root DIR      Directory holding config/, downloads/ and media/
                            (default: ./stackarr-data)
       --config-dir DIR     Config mount source (overrides --data-root/config)
@@ -83,7 +83,7 @@ Options:
       --docker-socket PATH Docker socket to mount (default: /var/run/docker.sock)
       --restart POLICY     Docker restart policy (default: unless-stopped)
   -e, --env KEY=VALUE      Extra environment variable for the container (repeatable)
-      --build              Build the image from the repo Dockerfile first
+      --build              Build the image locally from the repo Dockerfile instead of pulling it
   -f, --force              Replace an existing container with the same name
   -h, --help               Show this help
 EOF
@@ -169,7 +169,8 @@ if [ "$BUILD" -eq 1 ]; then
 fi
 
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    die "image not found: $IMAGE (run with --build, or pull/build it first)"
+    echo "==> Pulling $IMAGE"
+    docker pull "$IMAGE" || die "could not pull image: $IMAGE (use --build to build it locally)"
 fi
 
 echo "==> Ensuring Docker network: $NETWORK"
