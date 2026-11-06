@@ -9,7 +9,7 @@
       image with the same version. Do not bump it in a normal pull request.
       Third-party modules ship their own csproj and set their own <Version>.
     -->
-    <Version>0.500.0</Version>
+    <Version>0.500.1</Version>
     <!-- Keep InformationalVersion clean (no "+<commit sha>" suffix). -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
