@@ -119,26 +119,6 @@ The first start creates `/config/arrk.yaml` with defaults and a placeholder admi
 (`admin` / `admin`). **Change the password after signing in.** Every other option has a default;
 a minimal config only sets storage, VPN and routes.
 
-### Moving an existing installation to Arrk
-
-Back up your config directory, stop the old application, and keep mounting that **same directory**
-at `/config` when switching images. **Do not rename or delete the database.** Arrk opens an existing
-`stackarr.db` in place, including its SQLite WAL/shared-memory files, and reads and edits existing
-`stackarr.yaml` / `stackarr.json` configuration files. These legacy files take precedence if both
-old and new names exist. Fresh standalone installations use `arrk.db` and `arrk.yaml` instead.
-The database tables and EF migration IDs are unchanged, so users, settings and library state are
-retained. Configuration history remains available without renaming archived files.
-
-`STACKARR_DATA_ROUTE` remains supported when `ARRK_DATA_ROUTE` is not set. Compose accepts the old
-`STACKARR_CONFIG_DIR`, `STACKARR_DOWNLOADS_DIR`, `STACKARR_MEDIA_DIR` and `STACKARR_STACK_NAME`
-variables as fallbacks for their `ARRK_*` equivalents. Never run both versions against the same
-database. Old queued background jobs are not migrated; recurring jobs are registered by Arrk.
-
-Internal Docker resource names and management labels retain the `stackarr` prefix so existing
-containers, networks and volumes remain discoverable. Keep the same stack name and storage mounts.
-Existing authentication keys and encrypted database tokens retain their original protection identity.
-Rebuild drop-in plugins against the `Arrk.*` assemblies before loading them.
-
 New to this? The [setup page](https://dynamiquel.github.io/Arrk/setup.html) covers
 requirements, storage layout and troubleshooting. The [setup guide](https://dynamiquel.github.io/Arrk/guide.html)
 walks through metadata, quality profiles, indexers, VPN, players, subtitles, remote access, users
