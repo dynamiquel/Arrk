@@ -41,7 +41,9 @@ permissions:
 
 jobs:
   image:
-    name: Image ${{ inputs.version }}
+    # Lead with the tags being published: for a branch build that is the branch, which says more
+    # than the internal version stamped into the assemblies.
+    name: Image ${{ inputs.tags != '' && format('{0} ({1})', inputs.tags, inputs.version) || inputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     outputs:
