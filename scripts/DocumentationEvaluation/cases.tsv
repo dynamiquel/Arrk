@@ -1,0 +1,89 @@
+# id	group	language	question	reference keywords	relevant module/topic/section ids (semicolon-separated); - means unsupported
+en01	paraphrases	en	How do I stop favourites being deleted?	protect favourites pin media cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+en02	paraphrases	en	Where are my settings backed up?	configuration storage backup	orchestration/setup/storage-and-backups
+en03	paraphrases	en	Can I keep a beloved movie forever instead of it aging out?	pin movie stale cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+en04	paraphrases	en	Does starring a film guarantee it stays on disk?	watchlist bookmark protection cleanup	medialifecycle/lifecycle/watchlist-is-not-a-download;medialifecycle/lifecycle/thresholds-and-protections
+en05	paraphrases	en	I need a copy of the settings before replacing the server	configuration backup storage	orchestration/setup/storage-and-backups;orchestration/setup/upgrades-and-legacy-installations
+en06	paraphrases	en	Is saving arrk.yaml enough to recover everything?	backup configuration volumes media	orchestration/setup/storage-and-backups
+en07	paraphrases	en	The upload picked a different movie with the same name	upload wrong match correct	tvarr/video/auto-detect-and-correct-a-match
+en08	paraphrases	en	How can I bring in a film that's already on my hard drive?	upload local movie title	tvarr/video/upload-a-known-title
+en09	paraphrases	en	Download says done but the movie won't start	finished downloading not playable import	tvarr/video/finished-downloading-but-not-playable
+en10	paraphrases	en	How do I get captions for an episode?	missing subtitles provider	jellyfin/playback/get-missing-subtitles
+en11	paraphrases	en	The voices are in the wrong language	audio language selection	jellyfin/playback/audio-and-subtitle-selection
+en12	paraphrases	en	Playback buffers whenever it has to convert the video	stream transcode playback problems	jellyfin/playback/stream-or-transcode-problems
+en13	paraphrases	en	Can just the torrent downloader go through the tunnel?	downloader VPN routing	downloadmanagement/downloads/route-a-service-through-vpn
+en14	paraphrases	en	What happens if a torrent has no peers for ages?	torrent stalled peers cleanup	downloadmanagement/downloads/slow-stalled-and-errored-torrents
+en15	paraphrases	en	Why does it keep uploading after finishing?	seeding ratio upload completed	downloadmanagement/downloads/seeding-and-disk-pressure;downloadmanagement/downloads/read-the-downloads-page
+en16	paraphrases	en	I freed disk space but the transfers didn't restart	paused downloads disk space resume	downloadmanagement/downloads/seeding-and-disk-pressure
+en17	paraphrases	en	How can my family ask me to add films?	household request title approval	auth/household/request-a-title
+en18	paraphrases	en	If I reject a request is that title banned forever?	deny request blacklist	auth/household/request-blacklist-versus-release-failure
+en19	paraphrases	en	I want to open Arrk when I'm away from home	remote access HTTPS public address	auth/household/remote-access-and-https
+en20	paraphrases	en	How can I get a private Discord message when a film arrives?	Discord direct messages notifications	notifications/notifications/enable-discord-direct-messages
+en21	paraphrases	en	My notifications have gone quiet	missing alerts delivery	notifications/notifications/missing-or-noisy-alerts
+en22	paraphrases	en	Does adding a movie to watch later start a download?	watchlist bookmark not download	medialifecycle/lifecycle/watchlist-is-not-a-download
+en23	paraphrases	en	Does playing one episode reset its whole season's age?	history staleness clock episode season	medialifecycle/lifecycle/history-and-the-staleness-clock
+en24	paraphrases	en	The album has gaps where some songs should be	music missing tracks	music/music/lyrics-and-missing-tracks
+en25	paraphrases	en	Can I connect my own desktop assistant without paying for Arrk's model?	MCP external assistant provider	ai/assistant/connect-an-external-assistant-with-mcp
+en26	paraphrases	en	Will an AI company receive my private library information?	AI privacy provider data	ai/assistant/ranking-matching-and-privacy
+en27	paraphrases	en	Which model option is intended to be cheapest?	Low Medium High model cost	ai/assistant/choose-low-medium-or-high
+en28	paraphrases	en	Do I need AI just to browse and play things?	AI disabled unavailable normal playback	ai/assistant/when-the-assistant-cannot-help;ai/assistant/enable-only-what-you-want
+en29	paraphrases	en	Can I turn on cleanup without it erasing my collection?	media autoCleanup deletion review pins	medialifecycle/lifecycle/review-before-enabling-deletion;medialifecycle/lifecycle/thresholds-and-protections
+en30	paraphrases	en	Why doesn't restarting with an empty config folder keep my old accounts?	upgrade existing configuration accounts	orchestration/setup/upgrades-and-legacy-installations
+es01	languages	es	¿Cómo evito que se borren mis películas favoritas?	protect favourites pin media cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+es02	languages	es	¿Dónde debo guardar una copia de seguridad de mi configuración?	configuration storage backup	orchestration/setup/storage-and-backups
+es03	languages	es	¿Cómo consigo subtítulos que faltan?	missing subtitles provider	jellyfin/playback/get-missing-subtitles
+es04	languages	es	¿Cómo accedo al servidor cuando estoy fuera de casa?	remote access HTTPS public address	auth/household/remote-access-and-https
+es05	languages	es	En Playlist Bridge, ¿sincronizar una lista descarga las canciones que faltan?	Playlist Bridge missing tracks sync downloads	playlist-bridge/guide/missing-tracks-are-not-downloads
+fr01	languages	fr	Comment empêcher la suppression de mes films préférés ?	protect favourites pin media cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+fr02	languages	fr	Où sauvegarder les paramètres de mon installation ?	configuration storage backup	orchestration/setup/storage-and-backups
+fr03	languages	fr	Comment obtenir les sous-titres manquants ?	missing subtitles provider	jellyfin/playback/get-missing-subtitles
+fr04	languages	fr	Comment accéder à mon serveur depuis l'extérieur de chez moi ?	remote access HTTPS public address	auth/household/remote-access-and-https
+fr05	languages	fr	Dans Playlist Bridge, synchroniser une liste télécharge-t-il les morceaux absents ?	Playlist Bridge missing tracks sync downloads	playlist-bridge/guide/missing-tracks-are-not-downloads
+de01	languages	de	Wie verhindere ich, dass meine Lieblingsfilme gelöscht werden?	protect favourites pin media cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+de02	languages	de	Wo sollte ich meine Einstellungen sichern?	configuration storage backup	orchestration/setup/storage-and-backups
+de03	languages	de	Wie bekomme ich fehlende Untertitel?	missing subtitles provider	jellyfin/playback/get-missing-subtitles
+de04	languages	de	Wie erreiche ich meinen Server von unterwegs?	remote access HTTPS public address	auth/household/remote-access-and-https
+de05	languages	de	Lädt Playlist Bridge beim Abgleich auch fehlende Lieder herunter?	Playlist Bridge missing tracks sync downloads	playlist-bridge/guide/missing-tracks-are-not-downloads
+pt01	languages	pt	Como evito que os meus filmes favoritos sejam apagados?	protect favourites pin media cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+pt02	languages	pt	Onde devo guardar uma cópia de segurança das configurações?	configuration storage backup	orchestration/setup/storage-and-backups
+pt03	languages	pt	Como obtenho as legendas que estão em falta?	missing subtitles provider	jellyfin/playback/get-missing-subtitles
+pt04	languages	pt	Como acedo ao servidor quando estou fora de casa?	remote access HTTPS public address	auth/household/remote-access-and-https
+pt05	languages	pt	O Playlist Bridge descarrega as músicas em falta ao sincronizar?	Playlist Bridge missing tracks sync downloads	playlist-bridge/guide/missing-tracks-are-not-downloads
+ja01	languages	ja	お気に入りの映画が自動削除されないようにするには？	protect favourites pin media cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+ja02	languages	ja	設定のバックアップはどこに保存すればいいですか？	configuration storage backup	orchestration/setup/storage-and-backups
+ja03	languages	ja	不足している字幕を入手するには？	missing subtitles provider	jellyfin/playback/get-missing-subtitles
+ja04	languages	ja	外出先から自宅のサーバーにアクセスするには？	remote access HTTPS public address	auth/household/remote-access-and-https
+ja05	languages	ja	Playlist Bridgeで同期すると不足した曲もダウンロードされますか？	Playlist Bridge missing tracks sync downloads	playlist-bridge/guide/missing-tracks-are-not-downloads
+zh01	languages	zh	如何防止我收藏的电影被自动删除？	protect favourites pin media cleanup	medialifecycle/lifecycle/thresholds-and-protections;medialifecycle/lifecycle/review-before-enabling-deletion
+zh02	languages	zh	应该在哪里备份我的配置和设置？	configuration storage backup	orchestration/setup/storage-and-backups
+zh03	languages	zh	如何获取缺失的字幕？	missing subtitles provider	jellyfin/playback/get-missing-subtitles
+zh04	languages	zh	如何在外出时访问家里的服务器？	remote access HTTPS public address	auth/household/remote-access-and-https
+zh05	languages	zh	Playlist Bridge同步播放列表时会下载缺失的歌曲吗？	Playlist Bridge missing tracks sync downloads	playlist-bridge/guide/missing-tracks-are-not-downloads
+p01	plugins	en	How do I recover Backup Vault's archive password if I forgot it?	Backup Vault encryption password recovery	backup-vault/guide/recover-an-encryption-password
+p02	plugins	en	Will Backup Vault's retention erase my actual films?	Backup Vault archive retention films	backup-vault/guide/keep-or-expire-archives
+p03	plugins	en	Can Backup Vault restore the settings while Arrk is still running?	Backup Vault restore live database	backup-vault/guide/restore-a-configuration-archive
+p04	plugins	en	Where do I set a time for automatic Backup Vault snapshots?	Backup Vault schedule configuration snapshots	backup-vault/guide/schedule-configuration-snapshots
+p05	plugins	en	Can I see what Playlist Bridge will change before applying it?	Playlist Bridge preview sync changes	playlist-bridge/guide/preview-a-playlist-sync
+p06	plugins	en	Does Playlist Bridge fetch the tracks it can't match?	Playlist Bridge unmatched tracks downloads	playlist-bridge/guide/missing-tracks-are-not-downloads
+p07	plugins	en	Will Preserve destination favourites stop library cleanup deleting the audio?	Playlist Bridge favourites library cleanup protection	playlist-bridge/guide/keep-favourites-in-a-mirror
+p08	plugins	en	How do I stop Playlist Bridge accessing my music account?	Playlist Bridge disconnect revoke access	playlist-bridge/guide/disconnect-and-revoke-access
+p09	plugins	en	In Reading Room how can I bring in an M4B audiobook?	Reading Room import M4B	reading-room/guide/import-a-book
+p10	plugins	en	Can Reading Room pick up an audiobook where I left off?	Reading Room resume listening progress	reading-room/guide/resume-listening
+p11	plugins	en	How do I save my Reading Room highlights outside the app?	Reading Room export notes highlights	reading-room/guide/export-reading-notes
+p12	plugins	en	Does keeping a Reading Room book also protect movies?	Reading Room protect book shelf cleanup	reading-room/guide/protect-a-book-from-shelf-cleanup
+p13	plugins	en	My Subtitle Workshop captions appear two seconds too early	Subtitle Workshop shift subtitle timing offset	subtitle-workshop/guide/shift-subtitle-timing
+p14	plugins	en	Subtitle Workshop shows weird symbols instead of accents	Subtitle Workshop text encoding accents	subtitle-workshop/guide/correct-text-encoding
+p15	plugins	en	Can I save Subtitle Workshop edits without losing the old subtitle?	Subtitle Workshop save source copy	subtitle-workshop/guide/save-without-replacing-the-source
+p16	plugins	en	Does Subtitle Workshop have an internet subtitle search?	Subtitle Workshop download missing remote provider	subtitle-workshop/guide/download-missing-subtitles-elsewhere
+p17	plugins	en	How do I authorize a tablet in Remote Shelf?	Remote Shelf pair device approval	remote-shelf/guide/pair-a-device
+p18	plugins	en	Can Remote Shelf avoid slowing everything down during the day?	Remote Shelf bandwidth quiet hours	remote-shelf/guide/limit-transfer-bandwidth
+p19	plugins	en	If my Remote Shelf copy expires is the movie deleted from the server?	Remote Shelf expire offline copies server	remote-shelf/guide/expire-offline-copies
+p20	plugins	en	Will revoking a lost Remote Shelf device erase its offline files?	Remote Shelf revoke lost device erasure	remote-shelf/guide/revoke-a-lost-device
+n01	unsupported	en	What will the weather be tomorrow?	weather forecast tomorrow	-
+n02	unsupported	en	How do I file my income tax return?	income tax return	-
+n03	unsupported	en	Can Arrk guarantee every backup is legally admissible evidence?	backup legally admissible guarantee	-
+n04	unsupported	en	How do I recover Backup Vault archives without the encryption password?	Backup Vault decrypt without password	backup-vault/guide/recover-an-encryption-password
+n05	unsupported	es	¿Cuánto cuesta un billete de avión a Madrid?	flight ticket Madrid price	-
+n06	unsupported	ja	明日の天気予報を教えてください	weather forecast tomorrow	-
+n07	unsupported	en	How do I enable automatic OAuth client registration for MCP?	MCP automatic OAuth registration	ai/assistant/connect-an-external-assistant-with-mcp
+n08	unsupported	en	Does remote playback require buying a new graphics card?	remote playback graphics card purchase requirement	-

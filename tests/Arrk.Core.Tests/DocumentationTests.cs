@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using Arrk.Core.Documentation;
+using Arrk.TestSupport;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Arrk.Core.Tests;
@@ -72,6 +73,31 @@ public class DocumentationTests
         await Assert.That(catalog.Search("How do I use AI?").Count).IsGreaterThan(0);
         await Assert.That(catalog.Search("subtitle").Single().Section).IsEqualTo("subtitles");
         await Assert.That(catalog.Search("how do I").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Search_FindsBackupAndDeletionInstructions_DespiteOverlappingPluginDocumentation()
+    {
+        List<DocumentationDocument> documents = [];
+        foreach (string file in Directory.GetFiles(RepoPaths.Combine("src"), "*.md", SearchOption.AllDirectories)
+            .Where(f => Path.GetFileName(Path.GetDirectoryName(f)) == "Documentation"))
+        {
+            string module = Directory.GetParent(Path.GetDirectoryName(file)!)!.Name.Replace("Arrk.", "").ToLowerInvariant();
+            documents.Add(new(module + "/" + Path.GetFileNameWithoutExtension(file), File.ReadAllText(file)));
+        }
+        foreach (string file in Directory.GetFiles(RepoPaths.Combine("scripts", "DocumentationEvaluation", "Fixtures"), "*.md"))
+            documents.Add(new(Path.GetFileNameWithoutExtension(file) + "/guide", File.ReadAllText(file)));
+        DocumentationCatalog catalog = new([new Provider(documents.ToArray())]);
+
+        DocumentationMatch backup = catalog.Search("Where are my settings backed up?").First();
+        await Assert.That(backup.Topic).IsEqualTo("orchestration/setup");
+        await Assert.That(backup.Section).IsEqualTo("storage-and-backups");
+        await Assert.That(catalog.Search("How do I stop favourites being deleted?").Take(3)
+            .Any(m => m.Topic == "medialifecycle/lifecycle" && m.Section == "review-before-enabling-deletion")).IsTrue();
+        // A named plugin's similar operation must remain distinct from library cleanup.
+        DocumentationMatch plugin = catalog.Search("Playlist Bridge disconnect revoke access").First();
+        await Assert.That(plugin.Topic).IsEqualTo("playlist-bridge/guide");
+        await Assert.That(plugin.Section).IsEqualTo("disconnect-and-revoke-access");
     }
 
     [Test]
