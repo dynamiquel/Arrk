@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "src/**/Documentation/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -29,6 +30,11 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
+      - name: Build shared product guides
+        run: |
+          python3 site/build-guides.py
+          python3 site/test-product-guides.py
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3

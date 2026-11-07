@@ -6,6 +6,7 @@ using Arrk.Ai;
 using Arrk.Core;
 using Arrk.Core.Notifications;
 using Arrk.Core.Configuration;
+using Arrk.Core.Documentation;
 using Arrk.Core.Lifecycle;
 using Arrk.Core.Modules;
 using Arrk.Core.Requests;
@@ -40,6 +41,7 @@ public class MusicModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("music", typeof(MusicModule).Assembly);
         services.ConfigureConfig<MusicConfig>(configuration.GetSection("services:music"));
 
         // The module owns its UI contributions (all gated by services:music:enabled): navigation,

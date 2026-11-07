@@ -46,8 +46,7 @@ public sealed class MusicAssistantRecommendationsTool(
                             subtitle = p.Item.Subtitle,
                             year = p.Item.Year,
                             status = p.Item.Status,
-                            reason = p.Reason,
-                            artUrl = p.Item.ArtUrl
+                            reason = p.Reason
                         })
                         .ToList();
 

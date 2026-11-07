@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
+using Arrk.Core.Documentation;
 using Arrk.Core.Modules;
 using Arrk.Core.Services;
 using Arrk.Ui;
@@ -19,6 +20,7 @@ public sealed class SamplePluginModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("sampleplugin", typeof(SamplePluginModule).Assembly);
         services.AddSingleton<INavigationProvider, SamplePluginNavigation>();
         services.AddSingleton<IHeadAssetProvider, SamplePluginHeadAssets>();
     }

@@ -11,6 +11,7 @@ public sealed class AppHeadAssetProvider : IHeadAssetProvider
 {
     public IReadOnlyList<HeadAsset> Assets { get; } =
     [
+        new("Arrk.App.styles.css", HeadAssetKind.Style, Order: 100),
         new("js/logViewer.js", HeadAssetKind.Script, Order: 110),
         new("js/arrk-chrome.js", HeadAssetKind.Script, Order: 140)
     ];

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Arrk.Ai;
+using Arrk.Core.Documentation;
 using Arrk.Core.Modules;
 using Arrk.Core.Notifications;
 using Arrk.Core.Services;
@@ -18,6 +19,7 @@ public class OrchestrationModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("orchestration", typeof(OrchestrationModule).Assembly);
         services.AddSingleton<INotificationEventProvider, HealthNotificationEvents>();
         services.AddSingleton<INavigationProvider, OrchestrationNavigation>();
         services.AddSingleton<IHeadAssetProvider, OrchestrationHeadAssets>();

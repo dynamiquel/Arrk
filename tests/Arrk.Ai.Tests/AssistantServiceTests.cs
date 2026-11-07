@@ -122,6 +122,24 @@ public class AssistantServiceTests
     }
 
     [Test]
+    public async Task OversizedLookup_DoesNotHideLaterResults_AndOutputTokensAreBounded()
+    {
+        using AssistantTestHost host = new(packs: [new EchoAssistantTool()]);
+        host.Config.Features.Assistant.MaxOutputTokens = 700;
+        ScriptedChatClient client = new ScriptedChatClient()
+            .ThenToolCall("echo_lookup", new Dictionary<string, object?> { ["query"] = new string('x', 9000) })
+            .ThenToolCall("echo_lookup", new Dictionary<string, object?> { ["query"] = "later-result" })
+            .ThenAnswer("The later lookup succeeded.");
+        await Collect(host.CreateService(client).StreamAsync(AssistantTestHost.User(), "look up two items"));
+
+        string replay = client.Requests[2].Messages.Last().Text!;
+        await Assert.That(replay).Contains("found:later-result");
+        await Assert.That(replay).Contains("\"omitted\":true");
+        await Assert.That(replay).DoesNotContain(new string('x', 100));
+        await Assert.That(client.Requests.All(r => r.Options?.MaxOutputTokens == 700)).IsTrue();
+    }
+
+    [Test]
     public async Task ARepeatedToolCall_IsExecutedOnce()
     {
         EchoAssistantTool pack = new();

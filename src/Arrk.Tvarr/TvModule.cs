@@ -9,6 +9,7 @@ using Hangfire;
 using Arrk.Ai;
 using Arrk.Core;
 using Arrk.Core.Configuration;
+using Arrk.Core.Documentation;
 using Arrk.Core.Lifecycle;
 using Arrk.Core.Models;
 using Arrk.Core.Modules;
@@ -43,6 +44,7 @@ public class TvModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("tvarr", typeof(TvModule).Assembly);
         services.Configure<TvConfig>(configuration.GetSection("services:tv"));
 
         // The module owns its navigation (gated by services:tv:enabled) and its discovery section,
