@@ -24,6 +24,16 @@ public interface IEventStore
     /// <summary>Delete events older than the given cutoff. Returns the number removed.</summary>
     Task<int> PurgeOlderThanAsync(DateTime cutoff, CancellationToken ct = default);
 
+    /// <summary>
+    /// Delete events by age, applying topic-specific cutoffs before the default cutoff.
+    /// A null cutoff means "keep forever" for that topic; its events are excluded from the
+    /// default purge. The most specific matching topic pattern wins.
+    /// </summary>
+    Task<int> PurgeAsync(
+        DateTime defaultCutoff,
+        IReadOnlyDictionary<string, DateTime?> topicCutoffs,
+        CancellationToken ct = default);
+
     /// <summary>Distinct event types, optionally scoped to a category.</summary>
     Task<IReadOnlyList<string>> GetEventTypesAsync(string? category = null, CancellationToken ct = default);
 }

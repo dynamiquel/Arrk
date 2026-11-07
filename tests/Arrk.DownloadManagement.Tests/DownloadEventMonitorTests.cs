@@ -374,6 +374,11 @@ public class DownloadEventMonitorTests
         public Task<int> PurgeOlderThanAsync(DateTime cutoff, CancellationToken ct = default)
             => throw new InvalidOperationException("db down");
 
+        public Task<int> PurgeAsync(
+            DateTime defaultCutoff,
+            IReadOnlyDictionary<string, DateTime?> topicCutoffs,
+            CancellationToken ct = default) => throw new InvalidOperationException("db down");
+
         public Task<IReadOnlyList<string>> GetEventTypesAsync(string? category = null, CancellationToken ct = default)
             => throw new InvalidOperationException("db down");
     }

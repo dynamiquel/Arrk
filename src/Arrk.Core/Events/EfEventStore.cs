@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Arrk.Core.Models;
 using Arrk.Notifications;
@@ -73,6 +74,63 @@ public sealed class EfEventStore(IDbContextFactory<ArrkDbContext> dbContextFacto
         return await db.SystemEvents.Where(e => e.Timestamp < cutoff).ExecuteDeleteAsync(ct);
     }
 
+    public async Task<int> PurgeAsync(
+        DateTime defaultCutoff,
+        IReadOnlyDictionary<string, DateTime?> topicCutoffs,
+        CancellationToken ct = default)
+    {
+        List<(string Pattern, DateTime? Cutoff)> topics = topicCutoffs
+            .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
+            .Select(kv => (Pattern: kv.Key.Trim(), Cutoff: kv.Value))
+            .OrderByDescending(t => Specificity(t.Pattern))
+            .ToList();
+
+        if (defaultCutoff == DateTime.MinValue && topics.All(t => t.Cutoff is null))
+            return 0;
+
+        await using ArrkDbContext db = await dbContextFactory.CreateDbContextAsync(ct);
+        int removed = 0;
+        List<string> moreSpecificPatterns = [];
+
+        // Most specific first: a narrower topic (job.metrics.#) keeps its own cutoff instead of
+        // being swallowed by a broader one (job.#).
+        foreach ((string pattern, DateTime? cutoff) in topics)
+        {
+            string likePattern = ToLikePattern(pattern);
+            if (cutoff is { } topicCutoff)
+            {
+                IQueryable<SystemEvent> query = db.SystemEvents.Where(e =>
+                    e.Topic != null &&
+                    EF.Functions.Like(e.Topic, likePattern) &&
+                    e.Timestamp < topicCutoff);
+
+                foreach (string narrower in moreSpecificPatterns)
+                {
+                    string captured = narrower;
+                    query = query.Where(e => !EF.Functions.Like(e.Topic!, captured));
+                }
+
+                removed += await query.ExecuteDeleteAsync(ct);
+            }
+
+            moreSpecificPatterns.Add(likePattern);
+        }
+
+        if (defaultCutoff > DateTime.MinValue)
+        {
+            IQueryable<SystemEvent> query = db.SystemEvents.Where(e => e.Timestamp < defaultCutoff);
+            foreach (string specific in moreSpecificPatterns)
+            {
+                string captured = specific;
+                query = query.Where(e => e.Topic == null || !EF.Functions.Like(e.Topic, captured));
+            }
+
+            removed += await query.ExecuteDeleteAsync(ct);
+        }
+
+        return removed;
+    }
+
     public async Task<IReadOnlyList<string>> GetEventTypesAsync(string? category = null, CancellationToken ct = default)
     {
         await using ArrkDbContext db = await dbContextFactory.CreateDbContextAsync(ct);
@@ -99,4 +157,27 @@ public sealed class EfEventStore(IDbContextFactory<ArrkDbContext> dbContextFacto
         SourceName = record.SourceName,
         Data = record.Data
     };
+
+    static int Specificity(string pattern) =>
+        pattern.Count(c => c == '.') * 1000 + pattern.Length;
+
+    static string ToLikePattern(string pattern)
+    {
+        string normalized = pattern.Trim();
+        if (normalized is "" or "#" or "*")
+            return "%";
+
+        StringBuilder builder = new(normalized.Length);
+        foreach (char c in normalized)
+        {
+            builder.Append(c switch
+            {
+                '#' or '*' => '%',
+                '+' => '_',
+                _ => c
+            });
+        }
+
+        return builder.ToString();
+    }
 }

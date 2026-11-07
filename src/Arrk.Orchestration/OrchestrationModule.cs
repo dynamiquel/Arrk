@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Hangfire;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Arrk.Ai;
 using Arrk.Core.Documentation;
@@ -31,6 +32,10 @@ public class OrchestrationModule : IArrkModule
 
     public void ConfigureJobs(IArrkJobProvider jobs, IServiceProvider services)
     {
+        // Config reconciliation is driven by ConfigSyncer's options-change subscription, so the
+        // old periodic safety-net job is removed from existing Hangfire databases on upgrade.
+        services.GetRequiredService<IRecurringJobManager>().RemoveIfExists("ConfigSync");
+
         jobs
             .RegisterScheduled<StatusUpdateJob>(
                 j => j.Execute(CancellationToken.None),
@@ -41,9 +46,6 @@ public class OrchestrationModule : IArrkModule
             .RegisterScheduled<ServiceRecoveryJob>(
                 j => j.Execute(CancellationToken.None),
                 ServiceRecoveryJob.DefaultCron)
-            .RegisterScheduled<ConfigSyncJob>(
-                j => j.Execute(CancellationToken.None),
-                ConfigSyncJob.DefaultCron)
             .RegisterScheduled<DockerOrchestrationJob>(
                 j => j.Execute(CancellationToken.None),
                 DockerOrchestrationJob.DefaultCron)

@@ -39,7 +39,7 @@ public sealed class FakeEventStore : IEventStore
                 Timestamp = record.Timestamp,
                 Category = record.Category,
                 EventType = record.EventType,
-                Topic = record.Notification?.Key,
+                Topic = record.Topic ?? record.Notification?.Key,
                 Severity = record.Severity.ToString(),
                 Message = record.Message,
                 Source = record.Source,
@@ -96,6 +96,11 @@ public sealed class FakeEventStore : IEventStore
             _events.Enqueue(e);
         return Task.FromResult(removed);
     }
+
+    public Task<int> PurgeAsync(
+        DateTime defaultCutoff,
+        IReadOnlyDictionary<string, DateTime?> topicCutoffs,
+        CancellationToken ct = default) => PurgeOlderThanAsync(defaultCutoff, ct);
 
     public Task<IReadOnlyList<string>> GetEventTypesAsync(string? category = null, CancellationToken ct = default)
     {

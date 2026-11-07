@@ -114,7 +114,12 @@ builder.Services.AddHangfire(hangfireConfig => hangfireConfig
 // The default server drains the general queue; music acquisition can enqueue hundreds of slow
 // (multi-minute) searches, which would otherwise starve the every-minute Music Download Import and
 // Soulseek failure check. A small dedicated server owns the "music" queue so those always run.
-builder.Services.AddHangfireServer();
+// Hangfire defaults to five workers per CPU, which leaves dozens of idle workers and SQLite
+// connections on an otherwise quiet instance. One worker per CPU is plenty for the recurring jobs.
+builder.Services.AddHangfireServer(options =>
+{
+    options.WorkerCount = Math.Max(1, Environment.ProcessorCount);
+});
 builder.Services.AddHangfireServer(options =>
 {
     options.Queues = [ArrkHangfireJobProvider.MusicQueue];

@@ -266,4 +266,97 @@ public class EfEventStoreTests : IDisposable
         IReadOnlyList<SystemEvent> events = await store.QueryAsync(new SystemEventQuery { Limit = 100 });
         await Assert.That(events.Count).IsEqualTo(25);
     }
+
+    [Test]
+    public async Task PurgeAsync_AppliesTopicRetentionBeforeDefault()
+    {
+        EfEventStore store = new(_factory);
+        DateTime now = new(2026, 11, 7, 12, 0, 0, DateTimeKind.Utc);
+
+        await store.RecordAsync(Record("job-old", "old job", category: EventCategory.Job, timestamp: now.AddDays(-10)) with { Topic = "job.metrics.started" });
+        await store.RecordAsync(Record("job-new", "new job", category: EventCategory.Job, timestamp: now.AddDays(-5)) with { Topic = "job.metrics.started" });
+        await store.RecordAsync(Record("download-old", "old download", timestamp: now.AddDays(-40)) with { Topic = "downloads.completed" });
+        await store.RecordAsync(Record("download-new", "new download", timestamp: now.AddDays(-10)) with { Topic = "downloads.completed" });
+        await store.RecordAsync(Record("audit-old", "old audit", timestamp: now.AddDays(-40)));
+        await store.RecordAsync(Record("audit-new", "new audit", timestamp: now.AddDays(-10)));
+
+        int removed = await store.PurgeAsync(
+            now.AddDays(-30),
+            new Dictionary<string, DateTime?> { ["job.#"] = now.AddDays(-7) });
+
+        await Assert.That(removed).IsEqualTo(3);
+        IReadOnlyList<SystemEvent> remaining = await store.QueryAsync(new SystemEventQuery { Limit = 100 });
+        await Assert.That(remaining.Select(e => e.EventType)).IsEquivalentTo(["job-new", "download-new", "audit-new"]);
+    }
+
+    [Test]
+    public async Task PurgeAsync_TopicOverrideCanKeepEventsLongerThanDefault()
+    {
+        EfEventStore store = new(_factory);
+        DateTime now = new(2026, 11, 7, 12, 0, 0, DateTimeKind.Utc);
+
+        await store.RecordAsync(Record("keep", "keep me", timestamp: now.AddDays(-60)) with { Topic = "media.keep.added" });
+        await store.RecordAsync(Record("drop", "drop me", timestamp: now.AddDays(-40)) with { Topic = "media.drop.added" });
+
+        int removed = await store.PurgeAsync(
+            now.AddDays(-30),
+            new Dictionary<string, DateTime?> { ["media.keep.#"] = now.AddDays(-90) });
+
+        await Assert.That(removed).IsEqualTo(1);
+        IReadOnlyList<SystemEvent> remaining = await store.QueryAsync(new SystemEventQuery());
+        await Assert.That(remaining.Single().EventType).IsEqualTo("keep");
+    }
+
+    [Test]
+    public async Task PurgeAsync_NullTopicCutoff_KeepsThatTopicForever()
+    {
+        EfEventStore store = new(_factory);
+        DateTime now = new(2026, 11, 7, 12, 0, 0, DateTimeKind.Utc);
+
+        await store.RecordAsync(Record("forever", "keep forever", category: EventCategory.Job, timestamp: now.AddDays(-100)) with { Topic = "job.metrics.started" });
+        await store.RecordAsync(Record("drop", "drop me", timestamp: now.AddDays(-40)));
+
+        int removed = await store.PurgeAsync(
+            now.AddDays(-30),
+            new Dictionary<string, DateTime?> { ["job.#"] = null });
+
+        await Assert.That(removed).IsEqualTo(1);
+        IReadOnlyList<SystemEvent> remaining = await store.QueryAsync(new SystemEventQuery());
+        await Assert.That(remaining.Single().EventType).IsEqualTo("forever");
+    }
+
+    [Test]
+    public async Task PurgeAsync_MostSpecificTopicWins()
+    {
+        EfEventStore store = new(_factory);
+        DateTime now = new(2026, 11, 7, 12, 0, 0, DateTimeKind.Utc);
+
+        await store.RecordAsync(Record("specific", "specific topic", category: EventCategory.Job, timestamp: now.AddDays(-10)) with { Topic = "job.metrics.started" });
+        await store.RecordAsync(Record("broad", "broad topic", category: EventCategory.Job, timestamp: now.AddDays(-10)) with { Topic = "job.other.started" });
+
+        int removed = await store.PurgeAsync(
+            DateTime.MinValue,
+            new Dictionary<string, DateTime?>
+            {
+                ["job.#"] = now.AddDays(-7),
+                ["job.metrics.#"] = now.AddDays(-30)
+            });
+
+        await Assert.That(removed).IsEqualTo(1);
+        IReadOnlyList<SystemEvent> remaining = await store.QueryAsync(new SystemEventQuery());
+        await Assert.That(remaining.Single().EventType).IsEqualTo("specific");
+    }
+
+    [Test]
+    public async Task PurgeAsync_DefaultCutoffOfMinValue_DoesNothing()
+    {
+        EfEventStore store = new(_factory);
+        DateTime now = new(2026, 11, 7, 12, 0, 0, DateTimeKind.Utc);
+        await store.RecordAsync(Record("old", "old", timestamp: now.AddDays(-400)));
+
+        int removed = await store.PurgeAsync(DateTime.MinValue, new Dictionary<string, DateTime?>());
+
+        await Assert.That(removed).IsEqualTo(0);
+        await Assert.That((await store.QueryAsync(new SystemEventQuery())).Count).IsEqualTo(1);
+    }
 }

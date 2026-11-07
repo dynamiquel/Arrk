@@ -12,7 +12,8 @@ event store, and user-facing notifications.
 Rules that keep them separate:
 
 - The bus never persists and is never used for user-facing alerts.
-- The store records every event, whether or not anyone wants to be notified.
+- The store records every event, whether or not anyone wants to be notified, until its
+  retention window expires.
 - Notifications are a subset: only enabled topics, formatted and delivered. A disabled
   notification never enters the inbox and is never sent externally.
 - Public alerts target the `User` audience and can use shared channels. Movie/series-added,
@@ -256,6 +257,25 @@ The old URL fields, dictionary routing, and `roleRouting` are removed rather tha
 `topics` enables or disables an event everywhere; `exclude` removes a topic from one transport,
 including shared routes and DMs.
 
+### Event retention
+
+The durable audit log is trimmed daily by `EventPurgeJob`. The default applies to every event;
+topic overrides keep noisy topics for less time. `job.#` defaults to 7 days because background
+jobs produce start/finish audit rows continuously. `0` keeps that scope forever.
+
+```yaml
+events:
+  retention:
+    enabled: true
+    defaultRetentionDays: 30    # all events without a topic override
+    topicRetentionDays:
+      job.#: 7                  # supports #/* (any depth) and + (one level)
+```
+
+Patterns use the same wildcard syntax as notification topics. The most specific matching pattern
+wins; events matching a topic override are excluded from the default purge. The job runs at
+`30 4 * * *`, after the inbox cleanup.
+
 Transport settings are registered and validated by their owning modules at `notifications:discord`
 and `notifications:webhook`; they are not properties on the engine's `NotificationConfig`.
 All clients read monitored options on each send. Discord `enabled` controls both webhook and DM
@@ -271,7 +291,7 @@ and updates check row ownership; unauthenticated UI never queries a shared inbox
 later do not inherit historical public alerts. Legacy ownerless rows are excluded, with no
 notification data migration. The Blazor UI consumes `INotificationService` server-side; there
 is no dedicated REST API. Queries support category prefix, key, unread-only, search, since and
-limit. `NotificationPurgeJob` trims the inbox daily.
+limit. `NotificationPurgeJob` trims the inbox daily; `EventPurgeJob` trims the audit log daily.
 
 - The app-bar bell is a unified inbox: live activity first, then unread notifications, with a
   badge, per-item dismiss and "Mark all read".
@@ -322,7 +342,8 @@ The registry picks it up and throws at startup on duplicates.
 `tests/Arrk.Notifications.Tests` exercises audience composition, arbitrary roles, follower
 preferences, account eligibility, public role delivery with no local accounts, private-recipient
 isolation, independent read state, client failure isolation, topic policy and retention against
-SQLite. Transport tests use local HTTP endpoints and a fake Discord REST handler for protocol
+SQLite. `tests/Arrk.DownloadManagement.Tests` covers `EfEventStore` topic-aware purging and
+`EventPurgeJob` retention mapping against SQLite. Transport tests use local HTTP endpoints and a fake Discord REST handler for protocol
 errors, rate limits, DM identity caching, opt-outs, config reload and nested module settings.
 Producer tests in Requests, TV, Downloads and Lifecycle assert the intended selectors. Live
 Discord smoke tests remain explicitly environment-gated; ordinary tests never contact Discord.

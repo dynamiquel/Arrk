@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Arrk.Core.Documentation;
+using Arrk.Core.Events;
 using Arrk.Core.Modules;
 using Arrk.Core.Services;
 using Arrk.Ui;
@@ -30,6 +31,7 @@ public class NotificationModule : IArrkModule
         services.AddSingleton<NotificationAudienceResolver>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<NotificationPurgeJob>();
+        services.AddSingleton<EventPurgeJob>();
 
         // The module owns the notifications UI: the event-log page, plus the app-bar bell which is
         // discovered from its [UiRegion] attribute.
@@ -38,5 +40,10 @@ public class NotificationModule : IArrkModule
     }
 
     public void ConfigureJobs(IArrkJobProvider jobs, IServiceProvider services) =>
-        jobs.RegisterScheduled<NotificationPurgeJob>(j => j.Execute(CancellationToken.None), NotificationPurgeJob.DefaultCron);
+        jobs.RegisterScheduled<NotificationPurgeJob>(
+                j => j.Execute(CancellationToken.None),
+                NotificationPurgeJob.DefaultCron)
+            .RegisterScheduled<EventPurgeJob>(
+                j => j.Execute(CancellationToken.None),
+                EventPurgeJob.DefaultCron);
 }

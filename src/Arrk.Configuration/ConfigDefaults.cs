@@ -26,6 +26,8 @@ public static class ConfigDefaults
             icon: "Notifications", group: "Infrastructure", order: 40, groupOrder: 10));
         registry.Register(new ConfigSectionProvider<MonitoringConfig>("monitoring", "Monitoring",
             icon: "MonitorHeart", group: "Infrastructure", order: 50, groupOrder: 10));
+        registry.Register(new ConfigSectionProvider<EventsConfig>("events", "Events",
+            icon: "History", group: "Infrastructure", order: 55, groupOrder: 10));
         registry.Register(new ConfigSectionProvider<QualityProfilesConfig>("qualityProfiles", "Qualities",
             icon: "HighQuality", group: "Infrastructure", order: 60, groupOrder: 10));
         registry.Register(new ConfigSectionProvider<UiConfig>("ui", "Interface",
