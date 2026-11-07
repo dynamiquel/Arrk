@@ -57,8 +57,8 @@ public static class UiDefaults
                 new() { Id = "system.updated", Size = DashboardTileSize.Small },
                 new() { Id = "services.unhealthy", Size = DashboardTileSize.Small },
                 new() { Id = "system.host", Size = DashboardTileSize.Small },
-                new() { Id = "system.storage", Size = DashboardTileSize.Small },
-                new() { Id = "system.speedtest", Size = DashboardTileSize.Small }
+                new() { Id = "system.storage", Size = DashboardTileSize.Medium },
+                new() { Id = "system.speedtest", Size = DashboardTileSize.Medium }
             ]
         },
         new()
