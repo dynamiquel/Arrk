@@ -1,4 +1,4 @@
-using Arrk.Core.Configuration;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 
 namespace Arrk.Core.Tests;

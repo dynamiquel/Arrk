@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Arrk.App.Services;
-using Arrk.Core.Configuration;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.Ui;
 

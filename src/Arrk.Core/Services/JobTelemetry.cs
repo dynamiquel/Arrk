@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Arrk.Core.Events;
+using Arrk.Notifications;
 
 namespace Arrk.Core.Services;
 

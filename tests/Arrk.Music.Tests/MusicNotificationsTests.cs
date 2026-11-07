@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Music.Services;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Music;
 
 namespace Arrk.Music.Tests;

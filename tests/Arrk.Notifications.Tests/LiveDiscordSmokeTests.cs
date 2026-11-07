@@ -1,6 +1,6 @@
-using Arrk.Core.Configuration;
 using Arrk.Core.Events;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
+using Arrk.Notifications.Discord;
 using Arrk.TestSupport;
 
 namespace Arrk.Notifications.Tests;
@@ -26,18 +26,15 @@ public class LiveDiscordSmokeTests
         if (Skip())
             return;
 
-        NotificationConfig config = new()
+        DiscordNotificationConfig config = new()
         {
-            Discord = new DiscordConfig
-            {
-                Enabled = true,
-                WebhookUrl = WebhookUrl()!,
-                Username = "Arrk"
-            }
+            Enabled = true,
+            Routing = [new() { Url = WebhookUrl()! }],
+            Username = "Arrk"
         };
 
         await using TestDatabase db = new();
-        DiscordNotificationChannel channel = TestNotifications.DiscordChannel(db, config);
+        DiscordNotificationClient channel = TestNotifications.DiscordChannel(db, config);
 
         NotificationMessage message = new()
         {
@@ -55,7 +52,7 @@ public class LiveDiscordSmokeTests
             ]
         };
 
-        NotificationDeliveryResult result = await channel.SendAsync(message);
+        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Everyone).SingleResultAsync();
 
         // Offline / DNS failure: skip rather than fail the suite.
         if (!result.Success && result.Error is not null && result.Error.Contains("request failed"))

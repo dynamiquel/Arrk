@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Ai;
-using Arrk.Core.Notifications;
 using Arrk.Core.Services;
 using Arrk.DownloadManagement;
 using Arrk.Notifications;
@@ -45,7 +44,8 @@ public static class ServiceRegistryFactory
         loader.RegisterModule(new DownloadManagementModule());
         loader.RegisterModule(new NotificationModule());
         loader.RegisterModule(new AiModule());
-        loader.RegisterModule(new NotificationDeliveryModule());
+        loader.RegisterModule(new Notifications.Discord.DiscordNotificationModule());
+        loader.RegisterModule(new Notifications.Webhook.WebhookNotificationModule());
         loader.RegisterModule(new TraefikModule());
         loader.RegisterModule(new GluetunModule());
         loader.RegisterModule(new Cloudflared.CloudflaredModule());

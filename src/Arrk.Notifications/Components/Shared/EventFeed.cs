@@ -1,7 +1,7 @@
 using MudBlazor;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Notifications.Components.Shared;
 

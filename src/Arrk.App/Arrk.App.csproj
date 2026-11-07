@@ -20,6 +20,8 @@
     <ProjectReference Include="..\Arrk.Orchestration\Arrk.Orchestration.csproj" />
     <ProjectReference Include="..\Arrk.DownloadManagement\Arrk.DownloadManagement.csproj" />
     <ProjectReference Include="..\Arrk.Notifications\Arrk.Notifications.csproj" />
+    <ProjectReference Include="..\Arrk.Notifications.Discord\Arrk.Notifications.Discord.csproj" />
+    <ProjectReference Include="..\Arrk.Notifications.Webhook\Arrk.Notifications.Webhook.csproj" />
     <ProjectReference Include="..\Arrk.Speedtest\Arrk.Speedtest.csproj" />
     <ProjectReference Include="..\Arrk.Requests\Arrk.Requests.csproj" />
     <ProjectReference Include="..\Arrk.WatchActivity\Arrk.WatchActivity.csproj" />

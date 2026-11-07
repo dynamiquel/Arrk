@@ -1,5 +1,5 @@
 using Arrk.Core.Configuration;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Notifications.Tests;
 

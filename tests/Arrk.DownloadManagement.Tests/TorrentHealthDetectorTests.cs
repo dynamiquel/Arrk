@@ -3,7 +3,7 @@ using Arrk.Core;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
 using Arrk.Core.Services;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 using Arrk.TestSupport;
 namespace Arrk.DownloadManagement.Tests;

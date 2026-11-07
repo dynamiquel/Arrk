@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Arrk.Auth.Abstractions;
 using Arrk.Core.Events;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Core;
 
@@ -26,15 +26,6 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<EfEventStore>(),
             sp.GetServices<INotificationService>(),
             sp.GetService<ILogger<NotifyingEventStore>>()));
-
-        // Notification catalogue. Modules contribute their own event definitions.
-        services.AddSingleton<NotificationEventRegistry>();
-
-        // Per-user entity subscriptions and per-transport consent. Shared by every delivery
-        // transport; the dispatcher resolves subscribers before a channel sees the message.
-        services.AddSingleton<NotificationSubscriptionService>();
-        services.AddSingleton<UserNotificationChannelService>();
-        services.AddSingleton<NotificationStackInfo>();
 
         // Watch-state facade. Always resolvable; player modules contribute IWatchStateProvider
         // implementations (Jellyfin today). With none registered it simply returns empty.

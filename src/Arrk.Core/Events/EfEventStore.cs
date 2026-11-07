@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Arrk.Core.Models;
+using Arrk.Notifications;
 
 namespace Arrk.Core.Events;
 

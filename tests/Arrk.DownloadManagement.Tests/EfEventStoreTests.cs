@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Arrk.Core;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 namespace Arrk.DownloadManagement.Tests;
 
 /// <summary>

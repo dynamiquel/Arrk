@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.TestSupport;
 using Arrk.Tvarr.Clients;
 using Arrk.Tvarr.Services;
@@ -108,9 +108,9 @@ public class MediaImportMonitorTests
         await Assert.That(notification.Body).Contains("Batman Knightfall");
         await Assert.That(notification.Body).Contains("now available in your library");
         await Assert.That(notification.Style!.ThumbnailUrl).IsEqualTo("https://img/poster.jpg");
-        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
-        await Assert.That(notification.Entity).IsNotNull();
-        await Assert.That(notification.Entity!.ItemKey).IsEqualTo("tv:movie:tmdb:100");
+        await Assert.That(notification.Audience.Roles).IsEquivalentTo(new[] { "User" });
+        await Assert.That(notification.Audience.FollowersOf).IsNotNull();
+        await Assert.That(notification.Audience.FollowersOf!.ItemKey).IsEqualTo("tv:movie:tmdb:100");
 
         SystemEventRecord record = store.Records.Last(r => r.Notification is not null);
         await Assert.That(record.Source).IsEqualTo("radarr:26");

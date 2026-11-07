@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Arrk.Ai;
 using Arrk.Core;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Configuration;
 using Arrk.Core.Lifecycle;
 using Arrk.Core.Modules;

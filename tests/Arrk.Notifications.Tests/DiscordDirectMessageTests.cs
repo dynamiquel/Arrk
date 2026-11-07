@@ -3,11 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Auth.Abstractions;
-using Arrk.Core.Configuration;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Notifications.Discord;
 using Arrk.TestSupport;
-using NotificationDiscordConfig = Arrk.Core.Configuration.DiscordConfig;
 
 namespace Arrk.Notifications.Tests;
 
@@ -17,28 +15,25 @@ namespace Arrk.Notifications.Tests;
 /// </summary>
 public class DiscordDirectMessageTests
 {
-    static NotificationConfig Config(bool dmEnabled = true) => new()
+    static DiscordNotificationConfig Config(bool dmEnabled = true) => new()
     {
-        Discord = new NotificationDiscordConfig
+        Enabled = true,
+        DirectMessages = new DiscordDirectMessageConfig
         {
-            Enabled = true,
-            DirectMessages = new DiscordDirectMessageConfig
-            {
-                Enabled = dmEnabled,
-                BotToken = "bot-token",
-                ApplicationId = "1176189027259531344",
-                ApiBaseUrl = "https://discord.test/api/v10"
-            }
+            Enabled = dmEnabled,
+            BotToken = "bot-token",
+            ApplicationId = "1176189027259531344",
+            ApiBaseUrl = "https://discord.test/api/v10"
         }
     };
 
     static (DiscordBotClient Client, FakeHttpMessageHandler Handler) CreateBot(
-        NotificationConfig? config = null)
+        DiscordNotificationConfig? config = null)
     {
         FakeHttpMessageHandler handler = new();
         DiscordBotClient client = new(
             new FakeHttpClientFactory(handler),
-            new MutableOptionsMonitor<NotificationConfig>(config ?? Config()),
+            new MutableOptionsMonitor<DiscordNotificationConfig>(config ?? Config()),
             NullLogger<DiscordBotClient>.Instance);
         return (client, handler);
     }
@@ -140,6 +135,65 @@ public class DiscordDirectMessageTests
     }
 
     [Test]
+    public async Task Bot_uses_reloaded_transport_options()
+    {
+        FakeHttpMessageHandler handler = new();
+        handler.EnqueueJson("""{"id":"dm-1"}""");
+        handler.EnqueueJson("""{"id":"message-1"}""");
+        MutableOptionsMonitor<DiscordNotificationConfig> options = new(Config(dmEnabled: false));
+        DiscordBotClient client = new(new FakeHttpClientFactory(handler), options,
+            NullLogger<DiscordBotClient>.Instance);
+
+        await Assert.That(client.IsConfigured).IsFalse();
+        DiscordNotificationConfig updated = Config();
+        updated.DirectMessages.BotToken = "replacement-token";
+        updated.DirectMessages.ApiBaseUrl = "https://replacement.test/api/v10";
+        options.Update(updated);
+
+        DiscordDirectMessageResult result = await client.SendDirectMessageAsync("42", Payload(), null);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(handler.Requests[0].Uri.Host).IsEqualTo("replacement.test");
+        await Assert.That(handler.Requests[0].Headers!["Authorization"]).IsEqualTo("Bot replacement-token");
+    }
+
+    [Test]
+    public async Task Client_skips_direct_and_global_delivery_when_disabled_after_reload()
+    {
+        await using TestDatabase db = new();
+        FakeHttpMessageHandler handler = new();
+        MutableOptionsMonitor<DiscordNotificationConfig> options = new(Config());
+        DiscordNotificationClient client = BuildChannel(handler, TestNotifications.UserChannels(db),
+            new StubIdentityStore("42"), options);
+        await Assert.That(client.CanSendDirectMessages).IsTrue();
+        options.Update(new DiscordNotificationConfig { Enabled = false });
+
+        NotificationDeliveryResult direct = await client.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
+        NotificationDeliveryResult global = await client.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
+
+        await Assert.That(client.CanSendDirectMessages).IsFalse();
+        await Assert.That(direct.Skipped).IsTrue();
+        await Assert.That(global.Skipped).IsTrue();
+        await Assert.That(handler.Requests).IsEmpty();
+    }
+
+    [Test]
+    public async Task Client_applies_transport_exclusions_to_direct_recipients()
+    {
+        await using TestDatabase db = new();
+        FakeHttpMessageHandler handler = new();
+        DiscordNotificationConfig config = Config();
+        config.Exclude.Add("downloads.#");
+        DiscordNotificationClient client = BuildChannel(handler, TestNotifications.UserChannels(db),
+            new StubIdentityStore("42"), new MutableOptionsMonitor<DiscordNotificationConfig>(config));
+
+        NotificationDeliveryResult result = await client.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
+
+        await Assert.That(result.Skipped).IsTrue();
+        await Assert.That(handler.Requests).IsEmpty();
+    }
+
+    [Test]
     public async Task Channel_delivers_to_an_opted_in_linked_user_and_caches_the_dm()
     {
         await using TestDatabase db = new();
@@ -148,13 +202,13 @@ public class DiscordDirectMessageTests
         handler.EnqueueJson("""{"id":"message-1"}""");
 
         UserNotificationChannelService userChannels = TestNotifications.UserChannels(db);
-        await userChannels.SetEnabledAsync(7, DiscordNotificationChannel.ChannelName, true);
-        DiscordNotificationChannel channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
+        await userChannels.SetEnabledAsync(7, DiscordNotificationClient.ChannelName, true);
+        DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendToUserAsync(7, Message());
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
-        UserNotificationChannel? binding = await userChannels.GetAsync(7, DiscordNotificationChannel.ChannelName);
+        UserNotificationChannel? binding = await userChannels.GetAsync(7, DiscordNotificationClient.ChannelName);
         await Assert.That(binding!.Destination).IsEqualTo("42:dm-1");
         await Assert.That(binding.LastSentAt).IsNotNull();
         await Assert.That(handler.Requests.Count).IsEqualTo(2);
@@ -169,11 +223,11 @@ public class DiscordDirectMessageTests
         handler.EnqueueJson("""{"id":"message-new"}""");
 
         UserNotificationChannelService userChannels = TestNotifications.UserChannels(db);
-        await userChannels.SetEnabledAsync(7, DiscordNotificationChannel.ChannelName, true);
-        await userChannels.SetDestinationAsync(7, DiscordNotificationChannel.ChannelName, "99:dm-old");
-        DiscordNotificationChannel channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
+        await userChannels.SetEnabledAsync(7, DiscordNotificationClient.ChannelName, true);
+        await userChannels.SetDestinationAsync(7, DiscordNotificationClient.ChannelName, "99:dm-old");
+        DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendToUserAsync(7, Message());
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(handler.Requests[0].Uri.AbsolutePath).EndsWith("/users/@me/channels");
@@ -188,14 +242,14 @@ public class DiscordDirectMessageTests
         handler.EnqueueJson("""{"id":"dm-1"}""");
         handler.EnqueueJson("""{"id":"message-1"}""");
         UserNotificationChannelService userChannels = TestNotifications.UserChannels(db);
-        DiscordNotificationChannel channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
+        DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendToUserAsync(7, Message());
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsFalse();
         await Assert.That(handler.Requests.Count).IsEqualTo(2);
-        UserNotificationChannel? binding = await userChannels.GetAsync(7, DiscordNotificationChannel.ChannelName);
+        UserNotificationChannel? binding = await userChannels.GetAsync(7, DiscordNotificationClient.ChannelName);
         await Assert.That(binding).IsNotNull();
         await Assert.That(binding!.Enabled).IsTrue();
         await Assert.That(binding.Destination).IsEqualTo("42:dm-1");
@@ -207,10 +261,10 @@ public class DiscordDirectMessageTests
         await using TestDatabase db = new();
         FakeHttpMessageHandler handler = new();
         UserNotificationChannelService userChannels = TestNotifications.UserChannels(db);
-        await userChannels.SetEnabledAsync(7, DiscordNotificationChannel.ChannelName, false);
-        DiscordNotificationChannel channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
+        await userChannels.SetEnabledAsync(7, DiscordNotificationClient.ChannelName, false);
+        DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendToUserAsync(7, Message());
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
@@ -223,26 +277,27 @@ public class DiscordDirectMessageTests
         await using TestDatabase db = new();
         FakeHttpMessageHandler handler = new();
         UserNotificationChannelService userChannels = TestNotifications.UserChannels(db);
-        await userChannels.SetEnabledAsync(7, DiscordNotificationChannel.ChannelName, true);
-        DiscordNotificationChannel channel = BuildChannel(handler, userChannels, new StubIdentityStore(null));
+        await userChannels.SetEnabledAsync(7, DiscordNotificationClient.ChannelName, true);
+        DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore(null));
 
-        NotificationDeliveryResult result = await channel.SendToUserAsync(7, Message());
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
         await Assert.That(handler.Requests).IsEmpty();
     }
 
-    static DiscordNotificationChannel BuildChannel(
+    static DiscordNotificationClient BuildChannel(
         FakeHttpMessageHandler handler,
         UserNotificationChannelService userChannels,
-        IExternalIdentityStore identities)
+        IExternalIdentityStore identities,
+        MutableOptionsMonitor<DiscordNotificationConfig>? options = null)
     {
-        NotificationConfig config = Config();
+        options ??= new MutableOptionsMonitor<DiscordNotificationConfig>(Config());
         FakeHttpClientFactory factory = new(handler);
         DiscordBotClient bot = new(
             factory,
-            new MutableOptionsMonitor<NotificationConfig>(config),
+            options,
             NullLogger<DiscordBotClient>.Instance);
         DiscordWebhookClient webhook = new(factory, NullLogger<DiscordWebhookClient>.Instance);
 
@@ -250,15 +305,15 @@ public class DiscordDirectMessageTests
         identityServices.AddSingleton(identities);
         ServiceProvider identityProvider = identityServices.BuildServiceProvider();
 
-        return new DiscordNotificationChannel(
+        return new DiscordNotificationClient(
             webhook,
             bot,
             userChannels,
             TestNotifications.StackInfo(),
             identityProvider.GetRequiredService<IServiceScopeFactory>(),
-            new MutableOptionsMonitor<NotificationConfig>(config),
+            options,
             TestCatalog.Registry(),
-            NullLogger<DiscordNotificationChannel>.Instance);
+            NullLogger<DiscordNotificationClient>.Instance);
     }
 
     static NotificationMessage Message() => new()
