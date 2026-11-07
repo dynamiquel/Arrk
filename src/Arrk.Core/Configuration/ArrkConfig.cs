@@ -23,6 +23,9 @@ public class ArrkConfig
     [Description("Monitoring and health-check settings")]
     public MonitoringConfig Monitoring { get; set; } = new();
 
+    [Description("Event log settings")]
+    public EventsConfig Events { get; set; } = new();
+
     [Description("Stop managed containers on application shutdown")]
     [Display(Name = "Stop containers on shutdown")]
     public bool StopContainersOnShutdown { get; set; } = true;

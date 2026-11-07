@@ -177,6 +177,11 @@ public class MusicNotificationsTests
 
         public Task<int> PurgeOlderThanAsync(DateTime cutoff, CancellationToken ct = default) => Task.FromResult(0);
 
+        public Task<int> PurgeAsync(
+            DateTime defaultCutoff,
+            IReadOnlyDictionary<string, DateTime?> topicCutoffs,
+            CancellationToken ct = default) => Task.FromResult(0);
+
         public Task<IReadOnlyList<string>> GetEventTypesAsync(string? category = null, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<string>>([]);
     }

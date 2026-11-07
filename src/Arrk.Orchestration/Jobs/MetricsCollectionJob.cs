@@ -4,7 +4,7 @@ namespace Arrk.Orchestration.Jobs;
 
 public class MetricsCollectionJob(ServiceStateManager stateManager)
 {
-    public const string DefaultCron = "*/5 * * * * *";
+    public const string DefaultCron = "*/10 * * * * *";
 
     [JobDisplayName("Metrics Collection")]
     public Task Execute(CancellationToken ct)

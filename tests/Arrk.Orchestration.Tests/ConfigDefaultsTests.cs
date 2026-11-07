@@ -120,4 +120,25 @@ public class ConfigDefaultsTests
         await Assert.That(config.IsServiceEnabled("services:tv")).IsFalse();
         await Assert.That(config.IsServiceEnabled("services:music")).IsTrue();
     }
+
+    [Test]
+    public async Task EventRetention_BindsFromRootConfiguration()
+    {
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["events:retention:enabled"] = "false",
+                ["events:retention:defaultRetentionDays"] = "14",
+                ["events:retention:topicRetentionDays:job.#"] = "3",
+                ["events:retention:topicRetentionDays:media.#"] = "90"
+            })
+            .Build();
+
+        ArrkConfig config = configuration.Get<ArrkConfig>()!;
+
+        await Assert.That(config.Events.Retention.Enabled).IsFalse();
+        await Assert.That(config.Events.Retention.DefaultRetentionDays).IsEqualTo(14);
+        await Assert.That(config.Events.Retention.TopicRetentionDays["job.#"]).IsEqualTo(3);
+        await Assert.That(config.Events.Retention.TopicRetentionDays["media.#"]).IsEqualTo(90);
+    }
 }

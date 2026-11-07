@@ -67,6 +67,12 @@ public sealed class NotifyingEventStore(
     public Task<int> PurgeOlderThanAsync(DateTime cutoff, CancellationToken ct = default)
         => inner.PurgeOlderThanAsync(cutoff, ct);
 
+    public Task<int> PurgeAsync(
+        DateTime defaultCutoff,
+        IReadOnlyDictionary<string, DateTime?> topicCutoffs,
+        CancellationToken ct = default)
+        => inner.PurgeAsync(defaultCutoff, topicCutoffs, ct);
+
     public Task<IReadOnlyList<string>> GetEventTypesAsync(string? category = null, CancellationToken ct = default)
         => inner.GetEventTypesAsync(category, ct);
 }

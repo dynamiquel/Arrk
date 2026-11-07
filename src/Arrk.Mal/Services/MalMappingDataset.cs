@@ -47,6 +47,9 @@ public sealed class MalMappingDataset(
 
     public async Task EnsureLoadedAsync(CancellationToken ct = default)
     {
+        if (!config.CurrentValue.Enabled)
+            return;
+
         if (_loaded && DateTime.UtcNow - _loadedAt < TimeSpan.FromHours(12))
             return;
 
@@ -57,6 +60,9 @@ public sealed class MalMappingDataset(
                 return;
 
             MalConfig current = config.CurrentValue;
+            if (!current.Enabled)
+                return;
+
             string path = FilePath;
             bool needsDownload = !File.Exists(path)
                 || DateTime.UtcNow - File.GetLastWriteTimeUtc(path) > TimeSpan.FromDays(Math.Max(1, current.DatasetRefreshDays));
