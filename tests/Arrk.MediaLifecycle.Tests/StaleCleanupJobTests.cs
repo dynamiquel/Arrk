@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core.Configuration;
 using Arrk.Core.Lifecycle;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Playback;
 using Arrk.TestSupport;
 
@@ -31,8 +31,8 @@ public class StaleCleanupJobTests
         await job.Execute(CancellationToken.None);
         await Assert.That(events.Records.Count).IsEqualTo(1);
         await Assert.That(events.Records[0].Topic).IsEqualTo(MediaLifecycleTopics.AboutToBeStale);
-        await Assert.That(events.Records[0].Notification!.Audience).IsEqualTo(NotificationAudience.Subscribers);
-        await Assert.That(events.Records[0].Notification!.Entity).IsNotNull();
+        await Assert.That(events.Records[0].Notification!.Audience.Roles).IsEmpty();
+        await Assert.That(events.Records[0].Notification!.Audience.FollowersOf!.ItemKey).IsEqualTo("movie-1");
 
         // Same level again: no duplicate alert.
         await job.Execute(CancellationToken.None);

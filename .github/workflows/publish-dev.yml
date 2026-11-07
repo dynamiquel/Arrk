@@ -1,28 +1,73 @@
 name: Publish dev image
+run-name: Publish dev image ${{ inputs.ref || github.event.workflow_run.head_branch || github.ref_name }}
 
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch to build; its name becomes the image tag. Defaults to the branch selected above.
+        required: false
+        type: string
 
 permissions:
   contents: read
   packages: write
 
+# One build per branch: a newer run on a branch replaces that branch's image, while a build for
+# another branch — a pull request under test, for example — keeps running.
 concurrency:
-  group: publish-dev
+  group: publish-dev-${{ inputs.ref || github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
+  prepare:
+    name: Resolve branch tag
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success' && !contains(github.event.workflow_run.head_commit.message, '[skip ci]')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Resolve ref and tag
+        id: resolve
+        env:
+          BRANCH: ${{ inputs.ref || github.event.workflow_run.head_branch || github.ref_name }}
+          REF: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          # A dispatch can name its target as a full ref; the tag only needs the branch name.
+          BRANCH="${BRANCH#refs/heads/}"
+
+          # Image tags accept [A-Za-z0-9_][A-Za-z0-9_.-] up to 128 characters, so a branch such
+          # as "agent/fix-login" is published as "agent-fix-login".
+          tag="$(printf '%s' "$BRANCH" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9._-]+/-/g; s/^[^a-z0-9_]+//; s/[-.]+$//' \
+            | cut -c1-128)"
+
+          if [ -z "$tag" ]; then
+            echo "error: branch '$BRANCH' does not produce a valid image tag" >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "Publishing \`ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/arrk:${tag}\` from \`${REF}\`." \
+            >> "$GITHUB_STEP_SUMMARY"
+
   image:
     name: Publish dev image
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && !contains(github.event.workflow_run.head_commit.message, '[skip ci]')) }}
+    needs: prepare
     uses: ./.github/workflows/docker-image.yml
     with:
-      ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      ref: ${{ needs.prepare.outputs.ref }}
       version: 0.0.0-dev.${{ github.run_number }}.${{ github.run_attempt }}
-      tags: dev
+      tags: ${{ needs.prepare.outputs.tag }}
       push: true
       platforms: linux/amd64

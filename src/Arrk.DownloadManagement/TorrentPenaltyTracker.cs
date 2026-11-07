@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
+using Arrk.Notifications;
 
 namespace Arrk.DownloadManagement;
 

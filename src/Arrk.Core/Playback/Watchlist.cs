@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Core.Playback;
 
@@ -92,7 +92,7 @@ public sealed record WatchlistDetail(
 /// </summary>
 public sealed class WatchlistService(
     IDbContextFactory<ArrkDbContext> dbFactory,
-    NotificationSubscriptionService subscriptions,
+    INotificationSubscriptionService subscriptions,
     TimeProvider time)
 {
     /// <summary>Raised after a list or item changes, so shelves can refresh live.</summary>

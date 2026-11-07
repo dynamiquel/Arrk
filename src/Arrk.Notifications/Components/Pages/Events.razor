@@ -2,12 +2,10 @@
 @attribute [Authorize]
 @inject IEventStore EventStore
 @inject NotificationSubscriptionService Subscriptions
-@inject UserNotificationChannelService UserChannels
-@inject IExternalIdentityStore Identities
-@inject DiscordNotificationChannel Discord
 @inject AuthenticationStateProvider AuthProvider
 @inject ISnackbar Snackbar
 @using Arrk.Core.Events
+@using Arrk.Notifications
 @implements IDisposable
 
 <PageTitle>Arrk - Events</PageTitle>
@@ -29,30 +27,7 @@
 }
 
 <SectionContainer Icon="@Icons.Material.Filled.NotificationsActive" Title="Notifications" Class="mb-4">
-    <div class="st-notif-compact">
-        <span class="st-discord-logo st-brand-mask"
-              style="--st-brand-url:url('/img/discord-logo.svg')"></span>
-        <div class="st-notif-compact-text">
-            <div class="st-notif-compact-title">Discord</div>
-            <div class="st-notif-compact-state">@DiscordState</div>
-        </div>
-        <div class="st-notif-compact-actions">
-            @if (_dmConfigured && !_discordLinked)
-            {
-                <MudButton Variant="Variant.Outlined" Size="Size.Small" Href="/account"
-                           StartIcon="@Icons.Material.Filled.Link">
-                    Link Discord
-                </MudButton>
-            }
-            else if (_dmConfigured && _discordLinked)
-            {
-                <MudSwitch T="bool" Value="_dmEnabled" ValueChanged="SetDmEnabledAsync"
-                           Color="Color.Primary" />
-                <StIconButton Icon="@Icons.Material.Filled.Send" Title="Send test message"
-                              OnClick="SendTestAsync" Disabled="@_testing" />
-            }
-        </div>
-    </div>
+    <UiRegion Name="notifications.settings" />
 
     @if (_subscriptions.Count > 0)
     {
@@ -217,23 +192,7 @@
     int _notificationCount;
 
     int _userId;
-    bool _discordLinked;
-    bool _dmConfigured;
-    bool _dmEnabled;
-    bool _testing;
     List<NotificationSubscription> _subscriptions = [];
-
-    string DiscordState
-    {
-        get
-        {
-            if (!_dmConfigured)
-                return "Direct messages are not enabled.";
-            if (!_discordLinked)
-                return "Link Discord to receive direct messages.";
-            return _dmEnabled ? "On." : "Off.";
-        }
-    }
 
     bool HasActiveFilters =>
         _enabledFilters.Count != EventFeedFilter.Filters.Count
@@ -300,54 +259,11 @@
         if (!int.TryParse(state.User.FindFirst(ArrkClaims.UserIdClaim)?.Value, out _userId))
             return;
 
-        _dmConfigured = Discord.SupportsDirectDelivery;
-        IReadOnlyList<Microsoft.AspNetCore.Identity.UserLoginInfo> logins =
-            await Identities.GetExternalLoginsAsync(_userId);
-        _discordLinked = logins.Any(login =>
-            string.Equals(login.LoginProvider, ExternalLoginSchemes.Discord, StringComparison.OrdinalIgnoreCase));
-
         await ReloadSubscriptionsAsync();
-        UserNotificationChannel? binding = await UserChannels.GetAsync(
-            _userId, DiscordNotificationChannel.ChannelName);
-        _dmEnabled = binding is null || binding.Enabled;
     }
 
     async Task ReloadSubscriptionsAsync() =>
         _subscriptions = [.. await Subscriptions.GetForUserAsync(_userId)];
-
-    async Task SetDmEnabledAsync(bool enabled)
-    {
-        _dmEnabled = enabled;
-        try
-        {
-            await UserChannels.SetEnabledAsync(_userId, DiscordNotificationChannel.ChannelName, enabled);
-        }
-        catch (Exception ex)
-        {
-            _dmEnabled = !enabled;
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-    }
-
-    async Task SendTestAsync()
-    {
-        _testing = true;
-        try
-        {
-            NotificationDeliveryResult result = await Discord.SendTestAsync(_userId);
-            Snackbar.Add(
-                result.Success ? "Test message sent. Check your Discord DMs." : result.Error ?? "Could not send the test message.",
-                result.Success ? Severity.Success : Severity.Error);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _testing = false;
-        }
-    }
 
     async Task ToggleAsync(NotificationSubscription subscription, NotificationSubscriptionCategory category)
     {

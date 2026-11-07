@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Requests;
 using Arrk.Core.Services;
 using Arrk.Music.Services;

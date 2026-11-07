@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 #
-# Refuse pushes that would put local history or a stale-main branch on the remote.
+# Refuse direct integration-branch pushes and task branches with stale or local history.
 # Install with: ./scripts/setup-git-hooks.sh
 set -euo pipefail
 
 zero="0000000000000000000000000000000000000000"
 max_ahead="${ARRK_MAX_PUSH_COMMITS:-5}"
 
-if ! git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then
-    git fetch origin main >/dev/null 2>&1 || true
+if ! git rev-parse --verify --quiet refs/remotes/origin/dev >/dev/null; then
+    git fetch origin dev >/dev/null 2>&1 || true
 fi
 
-origin_main="$(git rev-parse --verify --quiet refs/remotes/origin/main || true)"
-if [ -z "$origin_main" ]; then
-    echo "pre-push: origin/main is unavailable. Fetch it before pushing." >&2
+origin_dev="$(git rev-parse --verify --quiet refs/remotes/origin/dev || true)"
+if [ -z "$origin_dev" ]; then
+    echo "pre-push: origin/dev is unavailable. Fetch it before pushing." >&2
     exit 1
 fi
 
@@ -24,7 +24,7 @@ while read -r local_ref local_sha remote_ref _remote_sha; do
     fi
 
     case "$remote_ref" in
-        refs/heads/main|refs/heads/master)
+        refs/heads/dev|refs/heads/main|refs/heads/master)
             echo "pre-push: refusing to push directly to $remote_ref." >&2
             echo "Push a task branch and open a pull request instead." >&2
             exit 1
@@ -37,15 +37,15 @@ while read -r local_ref local_sha remote_ref _remote_sha; do
             ;;
     esac
 
-    if ! git merge-base --is-ancestor "$origin_main" "$local_sha"; then
-        echo "pre-push: $local_ref is not based on origin/main." >&2
-        echo "Fetch origin/main, then rebase or rebuild the branch on it before pushing." >&2
+    if ! git merge-base --is-ancestor "$origin_dev" "$local_sha"; then
+        echo "pre-push: $local_ref is not based on origin/dev." >&2
+        echo "Fetch origin/dev, then rebase or rebuild the branch on it before pushing." >&2
         exit 1
     fi
 
-    ahead="$(git rev-list --count "$origin_main..$local_sha")"
+    ahead="$(git rev-list --count "$origin_dev..$local_sha")"
     if [ "$ahead" -gt "$max_ahead" ]; then
-        echo "pre-push: $local_ref has $ahead commits not in origin/main (maximum $max_ahead)." >&2
+        echo "pre-push: $local_ref has $ahead commits not in origin/dev (maximum $max_ahead)." >&2
         echo "Push a branch containing only your task commits, not local history." >&2
         exit 1
     fi

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -50,6 +50,32 @@ jobs:
 
       - name: Restore, build and test
         run: ./scripts/ci.sh
+
+  docker-build:
+    name: Docker image build
+    if: ${{ github.event_name != 'schedule' && github.event_name != 'workflow_call' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      # The publishing workflows need Buildx for multi-platform tags, cache export and
+      # attestations. This job only has to prove the Dockerfile builds, so it uses the runner's
+      # Docker and never logs in or pushes.
+      - name: Build image
+        env:
+          VERSION: 0.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          docker build \
+            --build-arg VERSION="$VERSION" \
+            --build-arg VCS_REF="$GITHUB_SHA" \
+            --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --build-arg SOURCE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --tag "arrk:ci" \
+            .
 
   docker-tests:
     name: Docker-backed tests

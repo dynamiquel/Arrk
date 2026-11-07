@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.Downloads.Abstractions;
 using Arrk.Media.Abstractions;
@@ -126,7 +126,7 @@ public class DownloadEventMonitor(
     }
 
     /// <summary>
-    /// Resolves media identity for download events that should be targeted at subscribers. A
+    /// Resolves media identity for download events that also notify subscribers. A
     /// torrent that no library owns stays a normal broadcast, so admin visibility is preserved.
     /// </summary>
     async Task AttachEntitiesAsync(List<SystemEventRecord> events, CancellationToken ct)
@@ -184,8 +184,7 @@ public class DownloadEventMonitor(
             Body = body,
             SourceName = entity.Title,
             Url = entity.Url,
-            Entity = entity,
-            Audience = NotificationAudience.Subscribers,
+            Audience = NotificationAudience.Everyone with { FollowersOf = entity },
             Style = message.Style ?? new NotificationStyle
             {
                 ThumbnailUrl = entity.PosterUrl,
@@ -533,4 +532,3 @@ internal static class NotificationTitles
         _ => "Download event"
     };
 }
-

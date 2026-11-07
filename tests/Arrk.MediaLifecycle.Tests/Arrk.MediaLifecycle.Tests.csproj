@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Arrk.Core\Arrk.Core.csproj" />
     <ProjectReference Include="..\..\src\Arrk.MediaLifecycle\Arrk.MediaLifecycle.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Notifications\Arrk.Notifications.csproj" />
     <ProjectReference Include="..\Arrk.TestSupport\Arrk.TestSupport.csproj" />
     <ProjectReference Include="..\..\src\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
   </ItemGroup>

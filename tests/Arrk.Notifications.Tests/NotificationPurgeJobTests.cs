@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core.Configuration;
 using Arrk.Core.Events;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.TestSupport;
 
 namespace Arrk.Notifications.Tests;
@@ -16,6 +16,7 @@ public class NotificationPurgeJobTests
             db.Factory,
             new MutableOptionsMonitor<NotificationConfig>(config),
             TestCatalog.Registry(),
+            new NotificationAudienceResolver(new TestUserDirectory().ScopeFactory(), TestNotifications.Subscriptions(db)),
             TestNotifications.Subscriptions(db),
             [],
             TimeProvider.System,
@@ -46,7 +47,7 @@ public class NotificationPurgeJobTests
 
             await job.Execute(CancellationToken.None);
 
-            IReadOnlyList<Core.Models.Notification> remaining = await service.QueryAsync(new NotificationQuery());
+            IReadOnlyList<Notification> remaining = await service.QueryAsync(new NotificationQuery());
             await Assert.That(remaining.Count).IsEqualTo(1);
             await Assert.That(remaining[0].Title).IsEqualTo("recent");
         }

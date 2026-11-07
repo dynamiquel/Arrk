@@ -1,5 +1,4 @@
-using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.TestSupport;
 
@@ -15,7 +14,7 @@ public sealed class RecordingNotificationService : INotificationService
 
     public Task<Notification?> PublishAsync(NotificationMessage message, CancellationToken ct = default)
     {
-        Published.Add((message, message.AudienceUserId));
+        Published.Add((message, null));
         return Task.FromResult<Notification?>(new Notification { Key = message.Key, Title = message.Title });
     }
 
@@ -28,16 +27,12 @@ public sealed class RecordingNotificationService : INotificationService
     public Task<IReadOnlyList<Notification>> QueryAsync(NotificationQuery query, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<Notification>>([]);
 
-    public Task<Notification?> MarkReadAsync(long id, CancellationToken ct = default) =>
+    public Task<Notification?> MarkReadAsync(long id, int userId, CancellationToken ct = default) =>
         Task.FromResult<Notification?>(null);
 
-    public Task<int> MarkAllReadAsync(CancellationToken ct = default) => Task.FromResult(0);
+    public Task<int> MarkAllReadAsync(int userId, CancellationToken ct = default) => Task.FromResult(0);
 
-    public Task<int> MarkAllReadAsync(int? userId, CancellationToken ct = default) => Task.FromResult(0);
-
-    public Task<int> UnreadCountAsync(CancellationToken ct = default) => Task.FromResult(0);
-
-    public Task<int> UnreadCountAsync(int? userId, CancellationToken ct = default) => Task.FromResult(0);
+    public Task<int> UnreadCountAsync(int userId, CancellationToken ct = default) => Task.FromResult(0);
 
     public Task<int> PurgeOlderThanAsync(DateTime cutoff, CancellationToken ct = default) => Task.FromResult(0);
 }

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Music.Models;
 
 namespace Arrk.Music.Services;

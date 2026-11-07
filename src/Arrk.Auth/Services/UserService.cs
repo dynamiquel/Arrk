@@ -141,7 +141,7 @@ public sealed partial class UserService(
             : await users.CreateAsync(user, password);
         EnsureSuccess(result, "create the account");
 
-        await users.AddToRoleAsync(user, RoleName(role));
+        EnsureSuccess(await users.AddToRolesAsync(user, RoleNames(role)), "assign the roles");
         user.Role = role;
 
         await SyncToProvidersAsync(user, password, ct);
@@ -224,7 +224,7 @@ public sealed partial class UserService(
         if (current.Count > 0)
             EnsureSuccess(await users.RemoveFromRolesAsync(user, current), "remove the existing role");
 
-        EnsureSuccess(await users.AddToRoleAsync(user, RoleName(role)), "assign the role");
+        EnsureSuccess(await users.AddToRolesAsync(user, RoleNames(role)), "assign the roles");
         user.Role = role;
 
         await SyncToProvidersAsync(user, password: null, ct);
@@ -363,7 +363,7 @@ public sealed partial class UserService(
         };
 
         EnsureSuccess(await users.CreateAsync(user), "create the external account");
-        await users.AddToRoleAsync(user, RoleName(newUserRole));
+        EnsureSuccess(await users.AddToRolesAsync(user, RoleNames(newUserRole)), "assign the roles");
         user.Role = newUserRole;
         EnsureSuccess(await users.AddLoginAsync(user, new UserLoginInfo(provider, externalId, provider)), "link the external login");
 
@@ -620,6 +620,9 @@ public sealed partial class UserService(
     // profile data (e.g. an OIDC email) never surfaces in the UI.
     static string NormalizeDisplayName(string? displayName, string username)
         => username.Trim();
+
+    static string[] RoleNames(UserRole role)
+        => role == UserRole.Admin ? [ArrkRoles.Admin, ArrkRoles.User] : [RoleName(role)];
 
     public static string RoleName(UserRole role) =>
         role switch

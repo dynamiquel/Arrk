@@ -25,9 +25,13 @@ The feature lives in `Arrk.Auth`. Cross-module contracts (`ArrkUser`, roles, cla
 ## Accounts and roles
 
 - `ArrkUser : IdentityUser<int>` plus avatar, active flag, created and last-login. Roles are
-  `Admin` and `User`.
+  `Admin`, `User` and `Pending`. Administrators hold both `Admin` and `User` Identity
+  memberships; ordinary approved accounts hold only `User`, and pending accounts hold only
+  `Pending`. The primary `UserRole` remains `Admin` for administrators. Role changes replace
+  memberships, so demotion to pending removes all approved access.
 - The first administrator comes from `auth.adminUsername` / `auth.adminPassword` (default
-  `admin` / `admin`). There is no setup wizard.
+  `admin` / `admin`). There is no setup wizard. Startup bootstrap also idempotently adds missing
+  `User` membership to existing administrators, without changing credentials or security stamps.
 - Usernames are canonical; there is no separate display name. External logins never derive a
   username from an email address.
 - Users manage their own profile at `/account` (username, avatar, password, connections). Admins

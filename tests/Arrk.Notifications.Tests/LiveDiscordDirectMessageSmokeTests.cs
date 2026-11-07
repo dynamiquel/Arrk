@@ -1,9 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Arrk.Core.Configuration;
 using Arrk.Notifications.Discord;
 using Arrk.TestSupport;
-using NotificationDiscordConfig = Arrk.Core.Configuration.DiscordConfig;
 
 namespace Arrk.Notifications.Tests;
 
@@ -29,23 +27,20 @@ public class LiveDiscordDirectMessageSmokeTests
             client.Timeout = TimeSpan.FromSeconds(15));
         ServiceProvider provider = services.BuildServiceProvider();
 
-        NotificationConfig config = new()
+        DiscordNotificationConfig config = new()
         {
-            Discord = new NotificationDiscordConfig
+            Enabled = true,
+            DirectMessages = new DiscordDirectMessageConfig
             {
                 Enabled = true,
-                DirectMessages = new DiscordDirectMessageConfig
-                {
-                    Enabled = true,
-                    BotToken = Token()!,
-                    ApiBaseUrl = "https://discord.com/api/v10"
-                }
+                BotToken = Token()!,
+                ApiBaseUrl = "https://discord.com/api/v10"
             }
         };
 
         return new DiscordBotClient(
             provider.GetRequiredService<IHttpClientFactory>(),
-            new MutableOptionsMonitor<NotificationConfig>(config),
+            new MutableOptionsMonitor<DiscordNotificationConfig>(config),
             NullLogger<DiscordBotClient>.Instance);
     }
 

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Arrk.Core.Enums;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Playback;
 using Arrk.Core.Services;
 using Arrk.Media.Abstractions;
@@ -479,10 +479,7 @@ public partial class SonarrService : ArrService, ISeriesLibrary, ISeriesLibraryW
                         new("Year", year.ToString()),
                         new("Monitored", "true")
                     ],
-                    Entity = entity,
-                    Audience = entity is null
-                        ? NotificationAudience.Broadcast
-                        : NotificationAudience.Subscribers
+                    Audience = NotificationAudience.Everyone with { FollowersOf = entity }
                 }
             }, ct);
         }

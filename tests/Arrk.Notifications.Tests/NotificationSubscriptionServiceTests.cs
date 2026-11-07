@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Media.Abstractions;
 
 namespace Arrk.Notifications.Tests;

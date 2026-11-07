@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core.Events;
+using Arrk.Notifications;
 using Arrk.Core.Models;
 using Arrk.Core.Services;
 using Arrk.TestSupport;

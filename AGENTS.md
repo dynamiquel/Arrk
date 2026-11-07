@@ -40,23 +40,24 @@ variables and return early when they are unset.
 
 ## Git workflow
 
-You are one agent among many. **Never push directly to `main`.** Work on a branch, commit
-there, and open a pull request. A human decides when to merge.
+You are one agent among many. **Never push directly to `dev` or `main`.** Work on a task
+branch and open a pull request into `dev`, the integration branch. Promote `dev` to `main`
+through a separate pull request when ready. A human decides when to merge.
 
 ### Remote or ephemeral checkout (one agent per clone)
 
-Always branch from the **remote** main, not from a local `main` that may carry old history:
+Always branch from the **remote** dev, not from a local branch that may carry old history:
 
 ```bash
-git fetch origin main
-git switch -c agent/<task-slug> origin/main
+git fetch origin dev
+git switch -c agent/<task-slug> origin/dev
 # ...edit, build, test...
 git status --short          # review first; stage only task files
 git add <task files>
 git commit -m "<focused message>"
-git log --oneline origin/main..HEAD   # must show only your task commits
+git log --oneline origin/dev..HEAD   # must show only your task commits
 git push -u origin agent/<task-slug>
-gh pr create --fill --base main
+gh pr create --fill --base dev
 ```
 
 ### Shared checkout (several agents on one host)
@@ -64,8 +65,8 @@ gh pr create --fill --base main
 Do not edit the shared working tree. Create an isolated worktree and do everything there:
 
 ```bash
-git fetch origin main
-git worktree add .worktrees/<task-slug> -b agent/<task-slug> origin/main
+git fetch origin dev
+git worktree add .worktrees/<task-slug> -b agent/<task-slug> origin/dev
 cd .worktrees/<task-slug>
 # ...edit, build, test, commit...
 ```
@@ -75,13 +76,13 @@ touch another agent's worktree, branch, containers or network.
 
 ### Rules
 
-- **Base every task branch on `origin/main`.** Run `git fetch origin main` first; never
-  branch from local `main` or a long-lived local branch.
+- **Base every task branch on `origin/dev`.** Run `git fetch origin dev` first; never
+  branch from local `dev`, local `main` or a long-lived local branch.
 - **A task branch carries only task commits.** Before pushing, `git log --oneline
-  origin/main..HEAD` must show only your focused commits (normally one). If it shows local
-  history, rebuild on `origin/main` and cherry-pick only your commit.
-- **Never push local history.** The versioned pre-push hook blocks `main`, branches whose
-  base is not `origin/main`, and branches with too many commits ahead. Do not bypass it with
+  origin/dev..HEAD` must show only your focused commits (normally one). If it shows local
+  history, rebuild on `origin/dev` and cherry-pick only your commit.
+- **Never push local history.** The versioned pre-push hook blocks `dev` and `main`, branches whose
+  base is not `origin/dev`, and branches with too many commits ahead. Do not bypass it with
   `--no-verify`.
 - Keep commits focused and the message descriptive.
 - Do not rewrite shared history. Force-push only your own branch, preferably with
