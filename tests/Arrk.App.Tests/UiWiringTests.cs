@@ -217,7 +217,7 @@ public class UiWiringTests
         await Assert.That(layout.Sections[0].Tiles.Select(t => t.Id)).IsEquivalentTo(
             ["services.status", "system.updated", "services.unhealthy", "system.host", "system.storage", "system.speedtest"]);
         await Assert.That(layout.Sections[0].Tiles.Select(t => t.Size ?? TileSize.Medium)).IsEquivalentTo(
-            [TileSize.VeryLarge, TileSize.Small, TileSize.Small, TileSize.Small, TileSize.Small, TileSize.Small]);
+            [TileSize.VeryLarge, TileSize.Small, TileSize.Small, TileSize.Small, TileSize.Medium, TileSize.Medium]);
         await Assert.That(layout.Sections[1].Tiles.Select(t => t.Id)).IsEquivalentTo(
             ["requests.pending", "tv.continue-watching", "tv.watchlists", "music.recently-played", "music.playlists"]);
         await Assert.That(layout.Sections[1].Tiles.Select(t => t.Size ?? TileSize.Medium)).IsEquivalentTo(
