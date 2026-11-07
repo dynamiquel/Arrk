@@ -54,6 +54,12 @@ jobs:
           ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
           fetch-depth: 0
 
+      # github.sha is the caller's commit, which is not the built commit when a caller passes
+      # another ref, so read the revision from the checkout instead.
+      - name: Resolve built commit
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         if: ${{ contains(inputs.platforms, ',') || contains(inputs.platforms, 'arm') }}
         uses: docker/setup-qemu-action@v3
@@ -74,6 +80,7 @@ jobs:
         env:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_TAGS: ${{ inputs.tags }}
+          BUILT_SHA: ${{ steps.commit.outputs.sha }}
         run: |
           set -euo pipefail
           IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/arrk"
@@ -83,7 +90,7 @@ jobs:
             exit 1
           fi
 
-          tags=("$INPUT_VERSION" "sha-${GITHUB_SHA::7}")
+          tags=("$INPUT_VERSION" "sha-${BUILT_SHA::7}")
           IFS=',' read -ra extra <<< "${INPUT_TAGS:-}"
           for raw in "${extra[@]}"; do
             tag="$(echo "$raw" | xargs)"
@@ -122,13 +129,13 @@ jobs:
             org.opencontainers.image.title=Arrk
             org.opencontainers.image.description=One web UI and one config for a self-hosted media stack.
             org.opencontainers.image.version=${{ inputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.commit.outputs.sha }}
             org.opencontainers.image.created=${{ steps.meta.outputs.created }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.licenses=MIT
           build-args: |
             VERSION=${{ inputs.version }}
-            VCS_REF=${{ github.sha }}
+            VCS_REF=${{ steps.commit.outputs.sha }}
             BUILD_DATE=${{ steps.meta.outputs.created }}
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
