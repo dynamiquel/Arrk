@@ -63,10 +63,13 @@ snapshot; changed installed assemblies require a restart, just like plugin loadi
 
 Search is local, deterministic and bounded: queries are capped at 200 characters and 12
 distinct terms, results at eight excerpts of 240 characters. It ignores common English
-question words, weights headings above prose, and matches term prefixes at word boundaries
-(short acronyms match whole words). It is lexical retrieval, not semantic search or a promise
-to understand every paraphrase/language. AI should extract useful keywords, retry with more
-specific terms or browse the topic index when necessary, and acknowledge missing information.
+question words, weights headings above prose and rare terms above terms shared by many
+sections. Each term counts once per field rather than gaining weight through repetition.
+Matching uses word-boundary prefixes (whole words for short acronyms), with limited English
+query suffix reduction for `-ed`, `-ing` and plurals. This is not a synonym or translation engine.
+AI should translate/extract keywords in the documentation's language (English for built-ins),
+retain named plugins, retry weak matches or browse the index, and acknowledge missing information.
+Search matches are candidates: read their source before asserting that a feature is supported.
 
 `Read` returns one section at a time, capped at 4,000 characters with continuation offsets.
 `GetDocument` and `ReadSection` retain full original Markdown for deliberate human/MCP
@@ -78,6 +81,14 @@ Do not stuff the corpus into every prompt. Add semantic/hybrid retrieval only wh
 misses justify embedding models, versioned indexes and their operational/privacy costs.
 Documentation describes supported behavior, not current state or permission to act: live
 state and writes must still use authorized service tools.
+
+The reproducible [retrieval evaluation](../../scripts/DocumentationEvaluation/README.md) covers
+88 cases, six query languages, overlapping plugin fixtures and unsupported questions, and records
+baseline/candidate rankings and limitations. Raw multilingual/paraphrase search still has measured
+gaps. Manually translated keyword controls are not evidence of real model adherence. The current
+decision is to use the existing assistant's query planning, not add an embedding service; a local
+multilingual hybrid experiment is warranted if actual assistant queries or required standalone
+multilingual Help fail the documented quality checks.
 
 ## Tests
 

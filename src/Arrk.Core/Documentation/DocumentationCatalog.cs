@@ -57,17 +57,24 @@ public sealed class DocumentationCatalog
         string boundedQuery = (query ?? "").Trim();
         boundedQuery = boundedQuery[..Math.Min(boundedQuery.Length, MaxQueryCharacters)];
         string[] terms = Regex.Split(boundedQuery.ToLowerInvariant(), "[^\\p{L}\\p{N}]+")
-            .Where(t => t.Length > 1 && !StopWords.Contains(t)).Distinct(StringComparer.Ordinal).Take(12).ToArray();
+            .Where(t => t.Length > 1 && !StopWords.Contains(t)).Select(SearchPrefix)
+            .Distinct(StringComparer.Ordinal).Take(12).ToArray();
 
-        return _guides.SelectMany(g => g.Sections.Select(s => new
-            {
-                Guide = g,
-                Section = s,
-                Score = terms.Sum(t =>
+        // Rare terms distinguish the requested task from common words repeated across plugins.
+        // Count a term once per section, so long documents cannot win by repeating it.
+        (Guide Guide, Section Section, int[] Weights)[] candidates = _guides.SelectMany(g => g.Sections.Select(s =>
+            (Guide: g, Section: s, Weights: terms.Select(t =>
                     (ContainsTerm(g.Topic.Title, t) ? 4 : 0)
                     + (ContainsTerm(s.Title, t) ? 8 : 0)
-                    + (ContainsTerm(s.Markdown, t) ? 1 : 0))
-            }))
+                    + (ContainsTerm(s.Markdown, t) ? 1 : 0)).ToArray()))).ToArray();
+        double[] specificity = Enumerable.Range(0, terms.Length).Select(i =>
+            Math.Log(1 + (double)candidates.Length / (1 + candidates.Count(c => c.Weights[i] > 0)))).ToArray();
+
+        return candidates.Select(c => new
+            {
+                c.Guide, c.Section,
+                Score = c.Weights.Select((weight, i) => weight * specificity[i]).Sum()
+            })
             .Where(m => boundedQuery.Length == 0 ? m.Section.Id == "overview" : terms.Length > 0 && m.Score > 0)
             .OrderByDescending(m => m.Score)
             .ThenBy(m => m.Guide.Topic.Id, StringComparer.Ordinal)
@@ -105,6 +112,20 @@ public sealed class DocumentationCatalog
     static bool ContainsTerm(string text, string term) => Regex.IsMatch(text,
         @"(?<![\p{L}\p{N}])" + Regex.Escape(term) + (term.Length < 4 ? @"(?![\p{L}\p{N}])" : ""),
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    // Existing prefix matching handles simple inflections without a synonym dictionary:
+    // "backed" → "back" matches "back up"/"backup", and "deleting" → "delet" matches "deletion".
+    // Keep at least four letters; short terms/acronyms retain exact-word matching.
+    static string SearchPrefix(string term)
+    {
+        if (term.Length >= 7 && term.EndsWith("ing", StringComparison.Ordinal))
+            return term[..^3];
+        if (term.Length >= 6 && term.EndsWith("ed", StringComparison.Ordinal))
+            return term[..^2];
+        if (term.Length >= 5 && term.EndsWith('s') && !term.EndsWith("ss", StringComparison.Ordinal))
+            return term[..^1];
+        return term;
+    }
 
     static bool IsDocumentId(string? id) => id?.Split('/') is [string module, string stem]
         && IsName(module) && IsName(stem);
