@@ -30,10 +30,10 @@ else
                         }
                         @foreach (DocumentationMatch match in _matches)
                         {
-                            <a class="help-result" href="@TopicUrl(match.Topic)">
+                            <a class="help-result" href="@(TopicUrl(match.Topic) + "#guide-" + match.Section)">
                                 <strong>@match.Title</strong>
                                 <span class="help-result-section">@match.SectionTitle</span>
-                                <span class="help-excerpt">@match.Excerpt</span>
+                                <span class="help-excerpt">@DocumentationMarkdown.Preview(Catalog.ReadSection(match.Topic, match.Section) ?? "")</span>
                             </a>
                         }
                     </section>
@@ -63,7 +63,7 @@ else
                     <StChip Variant="neutral">@_document.Id</StChip>
                     <MudLink Href="@TopicUrl(_document.Id)" Typo="Typo.body2">Link to this guide</MudLink>
                 </div>
-                <div class="help-prose" @key="_document.Id">@((MarkupString)_html)</div>
+                <div class="help-prose" id="guide-overview" @key="_document.Id">@((MarkupString)_html)</div>
             }
         </article>
     </div>
@@ -82,7 +82,8 @@ else
     protected override void OnParametersSet()
     {
         _document = Catalog.GetDocument(string.IsNullOrWhiteSpace(Topic) ? Catalog.Topics.FirstOrDefault()?.Id : Topic);
-        _html = _document is null ? "" : DocumentationMarkdown.Render(_document.Markdown);
+        _html = _document is null ? "" : DocumentationMarkdown.Render(_document.Markdown,
+            Catalog.Topics.Single(t => t.Id == _document.Id).Sections);
     }
 
     void Search(string query)
