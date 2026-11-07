@@ -34,7 +34,7 @@ public class GenericWebhookDeliveryTests
 
     static WebhookConfig WebhookConfig(string url, bool enabled = true, string? auth = null) => new()
     {
-        Enabled = enabled, Url = url, AuthHeader = auth
+        Enabled = enabled, Routing = [new() { Url = url }], AuthHeader = auth
     };
 
     [Test]
@@ -44,7 +44,7 @@ public class GenericWebhookDeliveryTests
         if (echo is null) return;
 
         WebhookConfig config = WebhookConfig($"{echo.BaseUrl}/generic-default");
-        config.Routing["test.media"] = $"{echo.BaseUrl}/generic-media";
+        config.Routing = [new() { Topic = "test.media", Url = $"{echo.BaseUrl}/generic-media" }];
 
         NotificationMessage message = Message() with
         {
@@ -53,7 +53,7 @@ public class GenericWebhookDeliveryTests
         };
 
         WebhookNotificationClient channel = Channel(config);
-        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Global);
+        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         string logs = await echo.WaitForLogAsync("generic-media", TimeSpan.FromSeconds(20));
@@ -68,7 +68,7 @@ public class GenericWebhookDeliveryTests
         if (echo is null) return;
 
         WebhookNotificationClient channel = Channel(WebhookConfig($"{echo.BaseUrl}/generic-hook"));
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Global);
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
 
@@ -96,7 +96,7 @@ public class GenericWebhookDeliveryTests
 
         WebhookNotificationClient channel = Channel(
             WebhookConfig($"{echo.BaseUrl}/auth-hook", auth: "Bearer secret-token"));
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Global);
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         string logs = await echo.WaitForLogAsync("auth-hook", TimeSpan.FromSeconds(20));
@@ -107,7 +107,7 @@ public class GenericWebhookDeliveryTests
     public async Task SendAsync_WithoutUrl_SkipsGlobalDelivery()
     {
         NotificationDeliveryResult result = await Channel(WebhookConfig(""))
-            .SendAsync(Message(), NotificationRecipient.Global);
+            .SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
@@ -118,7 +118,7 @@ public class GenericWebhookDeliveryTests
     {
         WebhookNotificationClient channel = Channel(WebhookConfig("http://localhost:1/hook", enabled: false));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Global);
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
@@ -129,7 +129,7 @@ public class GenericWebhookDeliveryTests
     {
         WebhookNotificationClient channel = Channel(WebhookConfig("http://localhost:1/hook"));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
@@ -143,7 +143,7 @@ public class GenericWebhookDeliveryTests
         config.Exclude.Add("test.*");
 
         WebhookNotificationClient channel = Channel(config);
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Global);
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
@@ -155,7 +155,7 @@ public class GenericWebhookDeliveryTests
         int deadPort = Arrk.TestSupport.DockerTestContainer.GetAvailablePort();
         WebhookNotificationClient channel = Channel(WebhookConfig($"http://localhost:{deadPort}/hook"));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Global);
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Error).Contains("request failed");

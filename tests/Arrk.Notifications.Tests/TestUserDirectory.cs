@@ -27,7 +27,9 @@ public sealed class TestUserDirectory : IUserDirectory
         Task.FromResult<IReadOnlyList<string>>([.. Roles.Where(r => r.Value.Contains(user.Id)).Select(r => r.Key)]);
     public Task<IReadOnlyList<ArrkUser>> GetUsersInRoleAsync(string role, CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<ArrkUser>>(Roles.TryGetValue(role, out int[]? ids)
-            ? [.. Accounts.Where(u => ids.Contains(u.Id))] : []);
+            ? [.. Accounts.Where(u => ids.Contains(u.Id))]
+            : string.Equals(role, ArrkRoles.User, StringComparison.OrdinalIgnoreCase)
+                ? [.. Accounts.Where(u => u.Role != UserRole.Pending)] : []);
     public Task<bool> IsInRoleAsync(ArrkUser user, string role) =>
         Task.FromResult(Roles.TryGetValue(role, out int[]? ids) && ids.Contains(user.Id));
 }

@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Arrk.Auth.Abstractions/Arrk.Auth.Abstractions.csproj" />
     <ProjectReference Include="../Arrk.Media.Abstractions/Arrk.Media.Abstractions.csproj" />
     <Using Include="Arrk.Media.Abstractions" />
   </ItemGroup>

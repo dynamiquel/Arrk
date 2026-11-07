@@ -11,21 +11,14 @@ public class DiscordNotificationConfig
     [Description("Enable Discord notifications")]
     public bool Enabled { get; set; } = true;
 
-    [Description("Discord webhook URL for sending notifications")]
-    [DataType(DataType.Password)]
-    public string WebhookUrl { get; set; } = "";
-
     [Description("Display name shown on Discord messages")]
     public string Username { get; set; } = "Arrk";
 
     [Description("Optional avatar URL for the webhook messages")]
     public string AvatarUrl { get; set; } = "";
 
-    [Description("Per-topic webhook URLs. '#'/'*' match any depth and '+' matches one level; the most specific match wins. Blank values fall back to the default URL.")]
-    public Dictionary<string, string> Routing { get; set; } = new();
-
-    [Description("Named role to Discord webhook URL, e.g. Admin. Role alerts also reach these endpoints; unmapped roles are not sent to the global webhook. Configure channel permissions yourself if privacy is required.")]
-    public Dictionary<string, string> RoleRouting { get; set; } = new();
+    [Description("Shared webhook routes by topic and source roles. Every matching route receives the alert. Configure Discord channel permissions yourself if privacy is required.")]
+    public List<NotificationRoute> Routing { get; set; } = [];
 
     [Description("Topic patterns never delivered to Discord. Matching alerts still appear in the in-app inbox.")]
     public List<string> Exclude { get; set; } = [];
@@ -54,12 +47,7 @@ public sealed class DiscordNotificationConfigValidator : AbstractValidator<Disco
 {
     public DiscordNotificationConfigValidator()
     {
-        RuleFor(x => x.WebhookUrl).Must(IsBlankOrHttpUrl)
-            .WithMessage("Discord webhook URL must be an absolute http(s) URL.");
-        RuleForEach(x => x.Routing).Must(entry => IsBlankOrHttpUrl(entry.Value))
-            .WithMessage("Discord per-topic webhook URLs must be absolute http(s) URLs.");
-        RuleForEach(x => x.RoleRouting).Must(entry => IsBlankOrHttpUrl(entry.Value))
-            .WithMessage("Discord role webhook URLs must be absolute http(s) URLs.");
+        RuleForEach(x => x.Routing).SetValidator(new NotificationRouteValidator());
         When(x => x.DirectMessages.Enabled, () =>
         {
             RuleFor(x => x.DirectMessages.BotToken).NotEmpty()

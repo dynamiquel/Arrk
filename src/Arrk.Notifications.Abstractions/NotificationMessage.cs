@@ -35,8 +35,8 @@ public sealed record NotificationMessage
     /// <summary>Optional structured payload (JSON) carried through to channels.</summary>
     public string? Data { get; init; }
 
-    /// <summary>Who receives the notification. Defaults to global delivery.</summary>
-    public NotificationAudience Audience { get; init; } = new() { Global = true };
+    /// <summary>Who receives the notification. Defaults to the public User-role audience.</summary>
+    public NotificationAudience Audience { get; init; } = NotificationAudience.Everyone;
 
     /// <summary>Extra structured rows shown in rich channels.</summary>
     public IReadOnlyList<NotificationField> Fields { get; init; } = [];

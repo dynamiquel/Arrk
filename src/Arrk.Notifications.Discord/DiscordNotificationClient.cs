@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -37,32 +38,46 @@ public sealed class DiscordNotificationClient(
 
     public bool CanSendDirectMessages => config.CurrentValue.Enabled && bot.IsConfigured;
 
-    public Task<NotificationDeliveryResult> SendAsync(
+    public async IAsyncEnumerable<NotificationDeliveryResult> SendAsync(
         NotificationMessage message,
         NotificationRecipient recipient,
-        CancellationToken ct = default) => recipient.UserId is { } userId
-            ? SendDirectAsync(userId, message, ct)
-            : SendSharedAsync(message, recipient, ct);
-
-    Task<NotificationDeliveryResult> SendSharedAsync(NotificationMessage message, NotificationRecipient recipient, CancellationToken ct)
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+        if (recipient.UserId is { } userId)
+        {
+            yield return await SendDirectAsync(userId, message, ct);
+            yield break;
+        }
+
         DiscordNotificationConfig discord = config.CurrentValue;
         if (!discord.Enabled)
-            return Task.FromResult(NotificationDeliveryResult.Skip());
+        {
+            yield return NotificationDeliveryResult.Skip();
+            yield break;
+        }
 
         if (NotificationFilter.IsExcluded(discord.Exclude, message.Key))
         {
             logger.LogDebug("Discord delivery skipped for {Topic} by exclude filter", message.Key);
-            return Task.FromResult(NotificationDeliveryResult.Skip());
+            yield return NotificationDeliveryResult.Skip();
+            yield break;
         }
 
-        string? webhookUrl = WebhookRouting.Resolve(recipient, discord.RoleRouting, discord.Routing, discord.WebhookUrl, message.Key);
-        if (webhookUrl is null)
-            return Task.FromResult(NotificationDeliveryResult.Skip());
+        IReadOnlyList<string> webhookUrls = WebhookRouting.Resolve(discord.Routing, recipient, message.Key);
+        if (webhookUrls.Count == 0)
+        {
+            yield return NotificationDeliveryResult.Skip();
+            yield break;
+        }
 
         DiscordWebhookPayload payload = BuildWebhookPayload(discord, message);
-        logger.LogDebug("Sending Discord notification {Topic} to webhook", message.Key);
-        return client.SendAsync(webhookUrl, payload, ct);
+        foreach (string webhookUrl in webhookUrls)
+        {
+            ct.ThrowIfCancellationRequested();
+            logger.LogDebug("Sending Discord notification {Topic} to webhook", message.Key);
+            yield return await client.SendAsync(webhookUrl, payload, ct);
+        }
     }
 
     async Task<NotificationDeliveryResult> SendDirectAsync(

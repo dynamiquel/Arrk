@@ -74,14 +74,16 @@ public class NotificationModuleTests
     {
         Dictionary<string, string?> values = new()
         {
-            ["notifications:discord:webhookUrl"] = "https://discord.example/hook",
+            ["notifications:discord:routing:0:url"] = "https://discord.example/hook",
             ["notifications:discord:enabled"] = "true",
-            ["notifications:discord:routing:media"] = "https://discord.example/media",
+            ["notifications:discord:routing:1:topic"] = "media",
+            ["notifications:discord:routing:1:url"] = "https://discord.example/media",
             ["notifications:discord:exclude:0"] = "system.health.network.speedtest.completed",
             ["notifications:discord:exclude:1"] = "downloads.progress",
             ["notifications:webhook:enabled"] = "true",
-            ["notifications:webhook:url"] = "https://example.com/hook",
-            ["notifications:webhook:routing:system"] = "https://example.com/system",
+            ["notifications:webhook:routing:0:url"] = "https://example.com/hook",
+            ["notifications:webhook:routing:1:topic"] = "system",
+            ["notifications:webhook:routing:1:url"] = "https://example.com/system",
             ["notifications:webhook:exclude:0"] = "media.*",
             ["notifications:retentionDays"] = "30",
             ["notifications:topics:system.health"] = "false",
@@ -95,13 +97,15 @@ public class NotificationModuleTests
         DiscordNotificationConfig discord = provider.GetRequiredService<IOptionsMonitor<DiscordNotificationConfig>>().CurrentValue;
         WebhookConfig webhook = provider.GetRequiredService<IOptionsMonitor<WebhookConfig>>().CurrentValue;
 
-        await Assert.That(discord.WebhookUrl).IsEqualTo("https://discord.example/hook");
-        await Assert.That(discord.Routing["media"]).IsEqualTo("https://discord.example/media");
+        await Assert.That(discord.Routing[0].Url).IsEqualTo("https://discord.example/hook");
+        await Assert.That(discord.Routing[1].Topic).IsEqualTo("media");
+        await Assert.That(discord.Routing[1].Url).IsEqualTo("https://discord.example/media");
         await Assert.That(discord.Exclude).Contains("system.health.network.speedtest.completed");
         await Assert.That(discord.Exclude).Contains("downloads.progress");
         await Assert.That(webhook.Enabled).IsTrue();
-        await Assert.That(webhook.Url).IsEqualTo("https://example.com/hook");
-        await Assert.That(webhook.Routing["system"]).IsEqualTo("https://example.com/system");
+        await Assert.That(webhook.Routing[0].Url).IsEqualTo("https://example.com/hook");
+        await Assert.That(webhook.Routing[1].Topic).IsEqualTo("system");
+        await Assert.That(webhook.Routing[1].Url).IsEqualTo("https://example.com/system");
         await Assert.That(webhook.Exclude).Contains("media.*");
         await Assert.That(config.RetentionDays).IsEqualTo(30);
         await Assert.That(config.Topics["system.health"]).IsFalse();

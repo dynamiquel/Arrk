@@ -168,8 +168,8 @@ public class DiscordDirectMessageTests
         await Assert.That(client.CanSendDirectMessages).IsTrue();
         options.Update(new DiscordNotificationConfig { Enabled = false });
 
-        NotificationDeliveryResult direct = await client.SendAsync(Message(), new NotificationRecipient(7));
-        NotificationDeliveryResult global = await client.SendAsync(Message(), NotificationRecipient.Global);
+        NotificationDeliveryResult direct = await client.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
+        NotificationDeliveryResult global = await client.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(client.CanSendDirectMessages).IsFalse();
         await Assert.That(direct.Skipped).IsTrue();
@@ -187,7 +187,7 @@ public class DiscordDirectMessageTests
         DiscordNotificationClient client = BuildChannel(handler, TestNotifications.UserChannels(db),
             new StubIdentityStore("42"), new MutableOptionsMonitor<DiscordNotificationConfig>(config));
 
-        NotificationDeliveryResult result = await client.SendAsync(Message(), new NotificationRecipient(7));
+        NotificationDeliveryResult result = await client.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Skipped).IsTrue();
         await Assert.That(handler.Requests).IsEmpty();
@@ -205,7 +205,7 @@ public class DiscordDirectMessageTests
         await userChannels.SetEnabledAsync(7, DiscordNotificationClient.ChannelName, true);
         DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         UserNotificationChannel? binding = await userChannels.GetAsync(7, DiscordNotificationClient.ChannelName);
@@ -227,7 +227,7 @@ public class DiscordDirectMessageTests
         await userChannels.SetDestinationAsync(7, DiscordNotificationClient.ChannelName, "99:dm-old");
         DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(handler.Requests[0].Uri.AbsolutePath).EndsWith("/users/@me/channels");
@@ -244,7 +244,7 @@ public class DiscordDirectMessageTests
         UserNotificationChannelService userChannels = TestNotifications.UserChannels(db);
         DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsFalse();
@@ -264,7 +264,7 @@ public class DiscordDirectMessageTests
         await userChannels.SetEnabledAsync(7, DiscordNotificationClient.ChannelName, false);
         DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore("42"));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
@@ -280,7 +280,7 @@ public class DiscordDirectMessageTests
         await userChannels.SetEnabledAsync(7, DiscordNotificationClient.ChannelName, true);
         DiscordNotificationClient channel = BuildChannel(handler, userChannels, new StubIdentityStore(null));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), new NotificationRecipient(7)).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();

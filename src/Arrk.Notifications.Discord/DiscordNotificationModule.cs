@@ -23,7 +23,7 @@ public sealed class DiscordNotificationModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<DiscordNotificationConfig>(configuration.GetSection(DiscordNotificationConfig.SectionName));
+        services.ConfigureConfig<DiscordNotificationConfig>(configuration.GetSection(DiscordNotificationConfig.SectionName));
         services.AddSingleton<IValidator<DiscordNotificationConfig>, DiscordNotificationConfigValidator>();
         services.AddHttpClient(DiscordWebhookClient.ClientName);
         services.AddHttpClient(DiscordBotClient.ClientName);

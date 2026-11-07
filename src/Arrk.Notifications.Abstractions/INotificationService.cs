@@ -3,7 +3,7 @@ namespace Arrk.Notifications;
 /// <summary>
 /// The notification inbox and delivery service. It is the boundary between the event log
 /// (audit) and user-facing alerts: it applies the configured policy, persists one inbox entry per
-/// recipient, and delivers to additive global, role, and account destinations.
+/// recipient, and delivers to additive role and account destinations.
 /// </summary>
 public interface INotificationService
 {
@@ -17,7 +17,7 @@ public interface INotificationService
 
     /// <summary>
     /// Replaces all audience selectors with one account, using only its inbox and direct clients.
-    /// Never sends to global or role endpoints, even when the supplied message selects them.
+    /// Never sends to role endpoints, even when the supplied message selects them.
     /// </summary>
     Task<Notification?> PublishToUserAsync(int userId, NotificationMessage message, CancellationToken ct = default);
 

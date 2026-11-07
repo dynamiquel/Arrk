@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -32,24 +33,32 @@ public sealed class WebhookNotificationClient(
 
     public string Name => ChannelName;
 
-    public async Task<NotificationDeliveryResult> SendAsync(
+    public async IAsyncEnumerable<NotificationDeliveryResult> SendAsync(
         NotificationMessage message,
         NotificationRecipient recipient,
-        CancellationToken ct = default)
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         WebhookConfig webhook = config.CurrentValue;
         if (recipient.UserId is not null || !webhook.Enabled)
-            return NotificationDeliveryResult.Skip();
+        {
+            yield return NotificationDeliveryResult.Skip();
+            yield break;
+        }
 
         if (NotificationFilter.IsExcluded(webhook.Exclude, message.Key))
         {
             logger.LogDebug("Webhook delivery skipped for {Topic} by exclude filter", message.Key);
-            return NotificationDeliveryResult.Skip();
+            yield return NotificationDeliveryResult.Skip();
+            yield break;
         }
 
-        string? webhookUrl = WebhookRouting.Resolve(recipient, webhook.RoleRouting, webhook.Routing, webhook.Url, message.Key);
-        if (webhookUrl is null)
-            return NotificationDeliveryResult.Skip();
+        IReadOnlyList<string> webhookUrls = WebhookRouting.Resolve(webhook.Routing, recipient, message.Key);
+        if (webhookUrls.Count == 0)
+        {
+            yield return NotificationDeliveryResult.Skip();
+            yield break;
+        }
 
         NotificationStyle style = registry.StyleFor(message.Key).Merge(message.Style);
 
@@ -79,6 +88,16 @@ public sealed class WebhookNotificationClient(
         HttpClient client = httpClientFactory.CreateClient(ClientName);
         string json = JsonSerializer.Serialize(payload, JsonOptions);
 
+        foreach (string webhookUrl in webhookUrls)
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return await SendToAsync(client, webhookUrl, webhook.AuthHeader, json, message.Key, ct);
+        }
+    }
+
+    async Task<NotificationDeliveryResult> SendToAsync(
+        HttpClient client, string webhookUrl, string? authHeader, string json, string topic, CancellationToken ct)
+    {
         try
         {
             using HttpRequestMessage request = new(HttpMethod.Post, webhookUrl)
@@ -86,8 +105,8 @@ public sealed class WebhookNotificationClient(
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             };
 
-            if (!string.IsNullOrWhiteSpace(webhook.AuthHeader))
-                request.Headers.TryAddWithoutValidation("Authorization", webhook.AuthHeader);
+            if (!string.IsNullOrWhiteSpace(authHeader))
+                request.Headers.TryAddWithoutValidation("Authorization", authHeader);
 
             using HttpResponseMessage response = await client.SendAsync(request, ct);
             if (response.IsSuccessStatusCode)
@@ -103,7 +122,7 @@ public sealed class WebhookNotificationClient(
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            logger.LogWarning(ex, "Webhook delivery failed for {Key}", message.Key);
+            logger.LogWarning(ex, "Webhook delivery failed for {Key}", topic);
             return NotificationDeliveryResult.Fail($"Webhook request failed: {ex.Message}");
         }
     }

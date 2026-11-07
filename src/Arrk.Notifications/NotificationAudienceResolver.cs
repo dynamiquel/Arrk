@@ -21,7 +21,9 @@ public sealed class NotificationAudienceResolver(
         {
             IReadOnlyList<ArrkUser> members = await users.GetUsersInRoleAsync(role, ct);
             roleUsers[role] = [.. members.Select(u => u.Id).Where(active.Contains).Distinct()];
-            direct.UnionWith(roleUsers[role]);
+            // The broad User audience adds inbox/shared delivery, not unsolicited DMs.
+            if (!string.Equals(role, ArrkRoles.User, StringComparison.OrdinalIgnoreCase))
+                direct.UnionWith(roleUsers[role]);
         }
 
         NotificationSubscriptionAudience followers = NotificationSubscriptionAudience.Empty;
@@ -32,14 +34,12 @@ public sealed class NotificationAudienceResolver(
         }
 
         direct.IntersectWith(active);
-        HashSet<int> inbox = message.Audience.Global ? active : [.. direct];
-        inbox.UnionWith(direct);
-        return new(message.Audience.Global, [.. inbox.Order()], [.. direct.Order()], roleUsers, followers.SubscriptionIds);
+        HashSet<int> inbox = [.. direct, .. roleUsers.Values.SelectMany(ids => ids)];
+        return new([.. inbox.Order()], [.. direct.Order()], roleUsers, followers.SubscriptionIds);
     }
 }
 
 public sealed record ResolvedNotificationAudience(
-    bool Global,
     IReadOnlyList<int> InboxUserIds,
     IReadOnlyList<int> DirectUserIds,
     IReadOnlyDictionary<string, IReadOnlyList<int>> RoleUserIds,

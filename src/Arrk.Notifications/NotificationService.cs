@@ -49,25 +49,35 @@ public sealed class NotificationService(
             await db.SaveChangesAsync(ct);
         }
 
-        List<NotificationRecipient> recipients = [];
-        if (audience.Global)
-            recipients.Add(NotificationRecipient.Global);
-        recipients.AddRange(audience.RoleUserIds.Keys.Select(role => new NotificationRecipient(null, role)));
+        List<NotificationRecipient> recipients = [.. audience.RoleUserIds.Keys.Select(role => new NotificationRecipient(null, role))];
         recipients.AddRange(audience.DirectUserIds.Select(id => new NotificationRecipient(id)));
 
         try
         {
             foreach (NotificationRecipient recipient in recipients)
             {
-                Notification[] relevant = entries.Where(n => recipient.IsGlobal || n.UserId == recipient.UserId
+                Notification[] relevant = entries.Where(n => n.UserId == recipient.UserId
                     || (recipient.Role is { } role && audience.RoleUserIds[role].Contains(n.UserId!.Value))).ToArray();
                 foreach (INotificationClient client in _clients)
                 {
                     ct.ThrowIfCancellationRequested();
-                    NotificationDeliveryResult result;
                     try
                     {
-                        result = await client.SendAsync(message, recipient, ct);
+                        await foreach (NotificationDeliveryResult result in client.SendAsync(message, recipient, ct))
+                        {
+                            foreach (Notification entry in relevant)
+                            {
+                                if (!result.Success)
+                                    entry.Error = string.Join("; ", new[] { entry.Error, $"{client.Name}: {result.Error}" }.Where(e => e is not null));
+                                else if (!result.Skipped)
+                                {
+                                    entry.Delivered = true;
+                                    entry.Channels = string.Join(",", (entry.Channels?.Split(',') ?? []).Append(client.Name).Distinct());
+                                }
+                            }
+                            logger.LogInformation("Notification {Topic} to {Recipient} via {Client}: {Outcome}",
+                                message.Key, recipient, client.Name, result);
+                        }
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested)
                     {
@@ -76,21 +86,9 @@ public sealed class NotificationService(
                     catch (Exception ex)
                     {
                         logger.LogWarning(ex, "Notification client {Client} failed for {Topic}", client.Name, message.Key);
-                        result = NotificationDeliveryResult.Fail(ex.Message);
+                        foreach (Notification entry in relevant)
+                            entry.Error = string.Join("; ", new[] { entry.Error, $"{client.Name}: {ex.Message}" }.Where(e => e is not null));
                     }
-
-                    foreach (Notification entry in relevant)
-                    {
-                        if (!result.Success)
-                            entry.Error = string.Join("; ", new[] { entry.Error, $"{client.Name}: {result.Error}" }.Where(e => e is not null));
-                        else if (!result.Skipped)
-                        {
-                            entry.Delivered = true;
-                            entry.Channels = string.Join(",", (entry.Channels?.Split(',') ?? []).Append(client.Name).Distinct());
-                        }
-                    }
-                    logger.LogInformation("Notification {Topic} to {Recipient} via {Client}: {Outcome}",
-                        message.Key, recipient, client.Name, result);
                 }
             }
         }

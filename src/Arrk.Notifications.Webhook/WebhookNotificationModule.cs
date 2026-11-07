@@ -23,7 +23,7 @@ public sealed class WebhookNotificationModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<WebhookConfig>(configuration.GetSection(WebhookConfig.SectionName));
+        services.ConfigureConfig<WebhookConfig>(configuration.GetSection(WebhookConfig.SectionName));
         services.AddSingleton<IValidator<WebhookConfig>, WebhookConfigValidator>();
         services.AddHttpClient(WebhookNotificationClient.ClientName);
         services.AddSingleton<INotificationClient, WebhookNotificationClient>();

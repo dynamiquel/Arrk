@@ -184,7 +184,7 @@ public class DownloadEventMonitor(
             Body = body,
             SourceName = entity.Title,
             Url = entity.Url,
-            Audience = new() { Global = true, FollowersOf = entity },
+            Audience = NotificationAudience.Everyone with { FollowersOf = entity },
             Style = message.Style ?? new NotificationStyle
             {
                 ThumbnailUrl = entity.PosterUrl,

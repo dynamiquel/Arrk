@@ -31,7 +31,7 @@ public class StaleCleanupJobTests
         await job.Execute(CancellationToken.None);
         await Assert.That(events.Records.Count).IsEqualTo(1);
         await Assert.That(events.Records[0].Topic).IsEqualTo(MediaLifecycleTopics.AboutToBeStale);
-        await Assert.That(events.Records[0].Notification!.Audience.Global).IsFalse();
+        await Assert.That(events.Records[0].Notification!.Audience.Roles).IsEmpty();
         await Assert.That(events.Records[0].Notification!.Audience.FollowersOf!.ItemKey).IsEqualTo("movie-1");
 
         // Same level again: no duplicate alert.

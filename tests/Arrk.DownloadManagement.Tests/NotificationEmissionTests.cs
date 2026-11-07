@@ -132,7 +132,7 @@ public class NotificationEmissionTests
         await monitor.PollAsync();
 
         NotificationMessage notification = store.Notifications.Single();
-        await Assert.That(notification.Audience.Global).IsTrue();
+        await Assert.That(notification.Audience.Roles).IsEquivalentTo(new[] { "User" });
         await Assert.That(notification.Audience.FollowersOf).IsNotNull();
         await Assert.That(notification.Audience.FollowersOf!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
         await Assert.That(notification.Title).IsEqualTo("Download started");
@@ -143,7 +143,7 @@ public class NotificationEmissionTests
         await monitor.PollAsync();
 
         NotificationMessage completed = store.Notifications.Single(n => n.Key == DownloadNotificationTopics.DownloadCompleted);
-        await Assert.That(completed.Audience.Global).IsTrue();
+        await Assert.That(completed.Audience.Roles).IsEquivalentTo(new[] { "User" });
         await Assert.That(completed.Audience.FollowersOf!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
     }
 
@@ -156,7 +156,7 @@ public class NotificationEmissionTests
         await monitor.PollAsync();
 
         NotificationMessage notification = store.Notifications.Single();
-        await Assert.That(notification.Audience.Global).IsTrue();
+        await Assert.That(notification.Audience.Roles).IsEquivalentTo(new[] { "User" });
         await Assert.That(notification.Audience.FollowersOf).IsNull();
     }
 

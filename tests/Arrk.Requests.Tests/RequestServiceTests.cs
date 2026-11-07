@@ -58,7 +58,6 @@ public class RequestServiceTests
 
         await Assert.That(notifications.Published.Count).IsEqualTo(1);
         NotificationAudience audience = notifications.Published[0].Message.Audience;
-        await Assert.That(audience.Global).IsFalse();
         await Assert.That(audience.Roles.SequenceEqual([ArrkRoles.Admin])).IsTrue();
         await Assert.That(audience.UserIds).IsEmpty();
         await Assert.That(audience.FollowersOf).IsNull();

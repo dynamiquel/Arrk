@@ -12,6 +12,21 @@ using Arrk.TestSupport;
 
 namespace Arrk.Notifications.Tests;
 
+public static class DeliveryResults
+{
+    public static async Task<List<NotificationDeliveryResult>> CollectAsync(
+        this IAsyncEnumerable<NotificationDeliveryResult> results)
+    {
+        List<NotificationDeliveryResult> collected = [];
+        await foreach (NotificationDeliveryResult result in results)
+            collected.Add(result);
+        return collected;
+    }
+
+    public static async Task<NotificationDeliveryResult> SingleResultAsync(
+        this IAsyncEnumerable<NotificationDeliveryResult> results) => (await results.CollectAsync()).Single();
+}
+
 /// <summary>Simple <see cref="IOptionsMonitor{T}"/> backed by a mutable value.</summary>
 /// <summary>Builds <see cref="ArrkDbContext"/> instances against a fixed set of options.</summary>
 public sealed class TestDbContextFactory(DbContextOptions<ArrkDbContext> options) : IDbContextFactory<ArrkDbContext>

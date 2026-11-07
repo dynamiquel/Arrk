@@ -203,7 +203,7 @@ public class MediaImportMonitor(
                     Timestamp = DateTime.UtcNow,
                     Style = ArtStyle(poster, fanart),
                     Fields = [new("Type", type)],
-                    Audience = new() { Global = true, FollowersOf = entity }
+                    Audience = NotificationAudience.Everyone with { FollowersOf = entity }
                 }
             }, ct);
 

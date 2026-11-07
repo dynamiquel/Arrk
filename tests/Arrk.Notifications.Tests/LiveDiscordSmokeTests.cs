@@ -29,7 +29,7 @@ public class LiveDiscordSmokeTests
         DiscordNotificationConfig config = new()
         {
             Enabled = true,
-            WebhookUrl = WebhookUrl()!,
+            Routing = [new() { Url = WebhookUrl()! }],
             Username = "Arrk"
         };
 
@@ -52,7 +52,7 @@ public class LiveDiscordSmokeTests
             ]
         };
 
-        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Global);
+        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Everyone).SingleResultAsync();
 
         // Offline / DNS failure: skip rather than fail the suite.
         if (!result.Success && result.Error is not null && result.Error.Contains("request failed"))

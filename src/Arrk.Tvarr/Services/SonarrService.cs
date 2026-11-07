@@ -479,7 +479,7 @@ public partial class SonarrService : ArrService, ISeriesLibrary, ISeriesLibraryW
                         new("Year", year.ToString()),
                         new("Monitored", "true")
                     ],
-                    Audience = new() { Global = true, FollowersOf = entity }
+                    Audience = NotificationAudience.Everyone with { FollowersOf = entity }
                 }
             }, ct);
         }

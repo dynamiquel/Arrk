@@ -27,11 +27,12 @@ public interface INotificationClient
     string Name { get; }
 
     /// <summary>
-    /// Deliver to one resolved destination. Return Skip when disabled, filtered, unsupported,
+    /// Deliver to one resolved audience, yielding an outcome as each endpoint completes. Yield Skip when disabled, filtered, unsupported,
     /// or when a user has not linked or enabled this transport. The client owns configuration,
     /// consent, external identities and protocol-specific retries; it never expands audiences.
+    /// Multiple matching routes yield multiple outcomes, preserving partial success and cancellation.
     /// </summary>
-    Task<NotificationDeliveryResult> SendAsync(
+    IAsyncEnumerable<NotificationDeliveryResult> SendAsync(
         NotificationMessage message,
         NotificationRecipient recipient,
         CancellationToken ct = default);

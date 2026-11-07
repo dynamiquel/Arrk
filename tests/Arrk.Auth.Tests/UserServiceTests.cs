@@ -20,8 +20,45 @@ public class UserServiceTests
         await Assert.That(created.DisplayName).IsEqualTo("alice"); // display name tracks the username
         await Assert.That(created.PasswordHash).IsNotNull();
         await Assert.That(created.PasswordHash!).DoesNotContain("hunter2pass");
-        await Assert.That(await host.Users.GetRolesAsync(created)).Contains("User");
+        await Assert.That(await host.Users.GetRolesAsync(created)).IsEquivalentTo(new[] { ArrkRoles.User });
         await Assert.That(await host.Users.AuthenticateAsync("alice", "hunter2pass")).IsNotNull();
+    }
+
+    [Test]
+    public async Task CreateAdmin_AssignsBothIdentityRolesAndIncludesAdminInUserQueries()
+    {
+        await using AuthTestHost host = await AuthTestHost.CreateAsync();
+        ArrkUser admin = await host.Users.CreateAsync("boss", "hunter2pass", UserRole.Admin);
+
+        await Assert.That(await host.Users.GetRolesAsync(admin))
+            .IsEquivalentTo(new[] { ArrkRoles.Admin, ArrkRoles.User });
+        await Assert.That(await host.Users.IsInRoleAsync(admin, ArrkRoles.User)).IsTrue();
+        await Assert.That((await host.Users.GetUsersInRoleAsync(ArrkRoles.User)).Any(u => u.Id == admin.Id)).IsTrue();
+        await Assert.That((await host.Users.GetByIdAsync(admin.Id))!.Role).IsEqualTo(UserRole.Admin);
+        await Assert.That((await host.Users.GetSessionStateAsync(admin.Id))!.Role).IsEqualTo(UserRole.Admin);
+    }
+
+    [Test]
+    public async Task SetRole_PromotionsAndDemotionsReplaceAllMemberships()
+    {
+        await using AuthTestHost host = await AuthTestHost.CreateAsync();
+        ArrkUser user = await host.Users.CreateAsync("alice", "hunter2pass", UserRole.Pending);
+        await Assert.That(await host.Users.GetRolesAsync(user)).IsEquivalentTo(new[] { ArrkRoles.Pending });
+
+        user = await host.Users.SetRoleAsync(user.Id, UserRole.Admin);
+        await Assert.That(user.Role).IsEqualTo(UserRole.Admin);
+        await Assert.That(await host.Users.GetRolesAsync(user))
+            .IsEquivalentTo(new[] { ArrkRoles.Admin, ArrkRoles.User });
+
+        user = await host.Users.SetRoleAsync(user.Id, UserRole.User);
+        await Assert.That(user.Role).IsEqualTo(UserRole.User);
+        await Assert.That(await host.Users.GetRolesAsync(user)).IsEquivalentTo(new[] { ArrkRoles.User });
+
+        await host.Users.SetRoleAsync(user.Id, UserRole.Admin);
+        user = await host.Users.SetRoleAsync(user.Id, UserRole.Pending);
+        await Assert.That(user.Role).IsEqualTo(UserRole.Pending);
+        await Assert.That(await host.Users.GetRolesAsync(user)).IsEquivalentTo(new[] { ArrkRoles.Pending });
+        await Assert.That((await host.Users.GetUsersInRoleAsync(ArrkRoles.User)).Any(u => u.Id == user.Id)).IsFalse();
     }
 
     [Test]
@@ -166,17 +203,25 @@ public class UserServiceTests
     }
 
     [Test]
-    public async Task GetOrCreateExternalUser_CreatesOnceAndLinksLogin()
+    [Arguments(UserRole.User)]
+    [Arguments(UserRole.Admin)]
+    [Arguments(UserRole.Pending)]
+    public async Task GetOrCreateExternalUser_CreatesOnceAndLinksLogin(UserRole role)
     {
         await using AuthTestHost host = await AuthTestHost.CreateAsync();
 
         ArrkUser? first = await host.Users.GetOrCreateExternalUserAsync(
-            "discord", "sub-1", "alice", "Alice", avatarUrl: null, createIfMissing: true);
+            "discord", "sub-1", "alice", "Alice", avatarUrl: null, newUserRole: role, createIfMissing: true);
         ArrkUser? second = await host.Users.GetOrCreateExternalUserAsync(
             "discord", "sub-1", "alice", "Alice", avatarUrl: null, createIfMissing: true);
 
         await Assert.That(first).IsNotNull();
         await Assert.That(second!.Id).IsEqualTo(first!.Id);
+        await Assert.That(second.Role).IsEqualTo(role);
+        string[] expectedRoles = role == UserRole.Admin
+            ? [ArrkRoles.Admin, ArrkRoles.User]
+            : [Services.UserService.RoleName(role)];
+        await Assert.That(await host.Users.GetRolesAsync(second)).IsEquivalentTo(expectedRoles);
         await Assert.That((await host.Users.GetExternalLoginsAsync(first.Id)).Any(l => l.LoginProvider == "discord")).IsTrue();
     }
 
