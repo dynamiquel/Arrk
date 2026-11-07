@@ -1117,6 +1117,23 @@ a.st-info-row-title:hover { color: var(--st-pink); }
     display: block;
     flex-shrink: 0;
 }
+/* Leading icon tile in dialog headers. Kept separate from .st-appbar-logo, which is the app
+   bar's logo image. */
+.st-dialog-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background-color: var(--st-pink);
+    background-image: var(--st-gradient);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--st-purple) 22%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.st-dialog-icon .mud-icon-root {
+    color: var(--st-on-accent) !important;
+}
 .st-appbar-title {
     font-weight: 700;
     font-size: 1.1rem !important;
