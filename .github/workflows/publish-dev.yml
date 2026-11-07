@@ -6,6 +6,11 @@ on:
     types: [completed]
     branches: [main, dev]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch to build; its name becomes the image tag. Defaults to the branch selected above.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -14,7 +19,7 @@ permissions:
 # One build per branch: a newer run on a branch replaces that branch's image, while a build for
 # another branch — a pull request under test, for example — keeps running.
 concurrency:
-  group: publish-dev-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  group: publish-dev-${{ inputs.ref || github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -30,10 +35,13 @@ jobs:
       - name: Resolve ref and tag
         id: resolve
         env:
-          BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
-          REF: ${{ github.event.workflow_run.head_sha || github.sha }}
+          BRANCH: ${{ inputs.ref || github.event.workflow_run.head_branch || github.ref_name }}
+          REF: ${{ inputs.ref || github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
+
+          # A dispatch can name its target as a full ref; the tag only needs the branch name.
+          BRANCH="${BRANCH#refs/heads/}"
 
           # Image tags accept [A-Za-z0-9_][A-Za-z0-9_.-] up to 128 characters, so a branch such
           # as "agent/fix-login" is published as "agent-fix-login".
