@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Arrk.Core.Documentation;
 using Arrk.Core.Modules;
 using Arrk.Core.Notifications;
 using Arrk.Core.Services;
@@ -24,6 +25,7 @@ public class NotificationDeliveryModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("notifications", typeof(NotificationDeliveryModule).Assembly);
         services.AddHttpClient();
         services.AddHttpClient(DiscordWebhookClient.ClientName);
         services.AddHttpClient(DiscordBotClient.ClientName);

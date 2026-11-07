@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Arrk.Ai;
 using Arrk.Core;
+using Arrk.Core.Documentation;
 using Arrk.Core.Modules;
 using Arrk.Core.Playback;
 
@@ -41,7 +42,7 @@ public class AiModuleWiringTests
         await Assert.That(services.Count(d => d.ServiceType == typeof(IAssistantMediaSource))).IsEqualTo(2);
         await Assert.That(services.Count(d => d.ServiceType == typeof(IAssistantMediaActionSource))).IsEqualTo(2);
         await Assert.That(services.Count(d => d.ServiceType == typeof(IAssistantRecommendationSource))).IsEqualTo(2);
-        await Assert.That(services.Count(d => d.ServiceType == typeof(IAssistantTool))).IsEqualTo(10);
+        await Assert.That(services.Count(d => d.ServiceType == typeof(IAssistantTool))).IsEqualTo(11);
 
         await using ServiceProvider provider = services.BuildServiceProvider();
 
@@ -50,6 +51,9 @@ public class AiModuleWiringTests
         await Assert.That(ai).IsNotNull();
         await Assert.That(ai.Enabled).IsFalse();
         await Assert.That(provider.GetServices<IAiFeatureDescriptor>().Count()).IsEqualTo(6);
+        DocumentationCatalog documents = provider.GetRequiredService<DocumentationCatalog>();
+        await Assert.That(documents.Topics.Count).IsEqualTo(9);
+        await Assert.That(documents.GetDocument("ai/assistant")!.Markdown).Contains("Medium");
 
         // The real module graph must construct every pack, action runner and domain source; a missing
         // dependency here would only surface when a user opens the popup.
@@ -67,5 +71,23 @@ public class AiModuleWiringTests
         foreach (IAssistantRecommendationSource source in provider.GetServices<IAssistantRecommendationSource>())
             await Assert.That(source.Key).IsNotEmpty();
 
+    }
+
+    [Test]
+    public async Task ModuleDocumentation_ComposesWithTheAiModuleAbsent()
+    {
+        ModuleLoader loader = new(Microsoft.Extensions.Logging.Abstractions.NullLogger<ModuleLoader>.Instance);
+        foreach (IArrkModule module in ServiceRegistryFactory.CreateModuleLoader().Modules.Where(m => m is not AiModule))
+            loader.RegisterModule(module);
+        ServiceCollection services = new();
+        services.AddArrkCore();
+        loader.ConfigureAllServices(services, Config());
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        await Assert.That(provider.GetService<AiService>()).IsNull();
+        DocumentationCatalog documents = provider.GetRequiredService<DocumentationCatalog>();
+        await Assert.That(documents.Topics.Count).IsEqualTo(8);
+        await Assert.That(documents.GetDocument("tvarr/video")!.Markdown).Contains("Upload");
+        await Assert.That(documents.GetDocument("ai/assistant")).IsNull();
+        await Assert.That(documents.Search("subtitles").Count).IsGreaterThan(0);
     }
 }

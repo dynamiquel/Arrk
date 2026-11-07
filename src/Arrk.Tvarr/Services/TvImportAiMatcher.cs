@@ -78,7 +78,7 @@ public sealed class TvImportAiMatcher(
         {
             answer = await ai.AskJsonAsync<TvImportMatchAnswer>(
                 prompt,
-                AiModelRole.Fast,
+                AiModelRole.Low,
                 AiFeatureKeys.ImportMatching,
                 DecisionOperation,
                 userId: null,

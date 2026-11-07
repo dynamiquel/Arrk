@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Arrk.Ai.Data;
 using Arrk.Core;
+using Arrk.Core.Documentation;
 using Arrk.Ui;
 
 namespace Arrk.Ai;
@@ -21,6 +22,7 @@ public static class AiServiceCollectionExtensions
     {
         services.Configure<AiConfig>(configuration.GetSection(AiConfig.SectionName));
         services.TryAddSingleton(TimeProvider.System);
+        services.AddArrkMcp();
 
         // Constructed explicitly so the optional test/proxy transport parameter never has to be
         // resolved from the container.
@@ -44,6 +46,8 @@ public static class AiServiceCollectionExtensions
         // recommendation packs in their ConfigureServices, exactly like media sources.
         services.AddSingleton<IAssistantTool, Tools.MetaAssistantTool>();
         services.AddSingleton<IAssistantTool, Tools.LibraryAssistantTool>();
+        services.AddModuleDocumentation("ai", typeof(AiModule).Assembly);
+        services.AddSingleton<IAssistantTool, Tools.DocumentationAssistantTool>();
         services.AddSingleton<IHeadAssetProvider, AiHeadAssets>();
         services.AddSingleton<ITileProvider, AiTileProvider>();
 

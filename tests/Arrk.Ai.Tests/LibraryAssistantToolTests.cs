@@ -137,6 +137,34 @@ public class LibraryAssistantToolTests
     }
 
     [Test]
+    public async Task GetMedia_PagesLargeRelatedLists_WithoutSendingArtwork()
+    {
+        AssistantMediaSummary summary = new("tv", "tv:series:1", AssistantMediaKind.Series, "Long series",
+            ArtUrl: "https://art.example/" + new string('x', 500));
+        FakeSource source = new("tv")
+        {
+            Detail = new(summary, new string('o', 5000), ["Downloaded"],
+                Enumerable.Range(1, 103).Select(i => summary with { Id = $"tv:episode:{i}", Title = $"Episode {i}" }).ToList())
+        };
+        LibraryAssistantTool pack = new([source], new WatchStateService([]));
+        AIFunction tool = Tool(pack, "get_media");
+        JsonElement first = (JsonElement)(await tool.InvokeAsync(new AIFunctionArguments { ["id"] = summary.Id }))!;
+        await Assert.That(first.GetProperty("related").GetArrayLength()).IsEqualTo(8);
+        await Assert.That(first.GetProperty("relatedCount").GetInt32()).IsEqualTo(103);
+        await Assert.That(first.GetProperty("nextRelatedOffset").GetInt32()).IsEqualTo(8);
+        await Assert.That(first.GetProperty("overview").GetString()!.Length).IsEqualTo(1501);
+        await Assert.That(first.GetRawText()).DoesNotContain("https://art.example");
+
+        JsonElement tail = (JsonElement)(await tool.InvokeAsync(new AIFunctionArguments
+        {
+            ["id"] = summary.Id, ["relatedOffset"] = 100, ["relatedLimit"] = 20
+        }))!;
+        await Assert.That(tail.GetProperty("related").GetArrayLength()).IsEqualTo(3);
+        await Assert.That(tail.GetProperty("related")[0].GetProperty("id").GetString()).IsEqualTo("tv:episode:101");
+        await Assert.That(tail.GetProperty("nextRelatedOffset").ValueKind).IsEqualTo(JsonValueKind.Null);
+    }
+
+    [Test]
     public async Task ContinueWatching_ExplainsWhenNoPlayerIsConfigured()
     {
         LibraryAssistantTool pack = new([new FakeSource("tv")], new WatchStateService([]));

@@ -184,8 +184,9 @@ public sealed class AssistantService
     public IAsyncEnumerable<AssistantUpdate> StreamAsync(
         AssistantUser user,
         string message,
-        CancellationToken ct = default) =>
-        StreamAsync(user, message, AssistantConversation.Empty, ct);
+        CancellationToken ct = default,
+        AiModelRole role = AiModelRole.Medium) =>
+        StreamAsync(user, message, AssistantConversation.Empty, ct, role);
 
     /// <summary>
     /// Answers one question in the popup's short thread. The conversation is optional and in-memory
@@ -196,7 +197,8 @@ public sealed class AssistantService
         AssistantUser user,
         string message,
         AssistantConversation conversation,
-        [EnumeratorCancellation] CancellationToken ct = default)
+        [EnumeratorCancellation] CancellationToken ct = default,
+        AiModelRole role = AiModelRole.Medium)
     {
         if (!Enabled)
         {
@@ -247,7 +249,8 @@ public sealed class AssistantService
             yield break;
         }
 
-        IChatClient? client = testClient ?? ai.ChatClient;
+        role = role is AiModelRole.Low or AiModelRole.High ? role : AiModelRole.Medium;
+        IChatClient? client = testClient ?? ai.ClientFor(role);
         if (client is null)
         {
             yield return new AssistantFailed(DisabledReason ?? "The assistant is unavailable.");
@@ -255,9 +258,9 @@ public sealed class AssistantService
         }
 
         // A provider can rate-limit one model while another configured model still answers. Retry
-        // once on the fast profile rather than failing the whole question.
-        IChatClient? fallback = testClient is null && !ReferenceEquals(ai.FastClient, client)
-            ? ai.FastClient
+        // once on the low profile rather than failing the whole question.
+        IChatClient? fallback = testClient is null && !ReferenceEquals(ai.LowClient, client)
+            ? ai.LowClient
             : null;
         bool usingFallback = false;
 
@@ -266,7 +269,7 @@ public sealed class AssistantService
         List<AssistantMediaSummary> recentItems = [.. conversation.RecentItems];
         AssistantToolContext toolContext = new(
             user.Id, user.Username, user.IsAdmin, toolScope.ServiceProvider, ct, uiActions, recentItems);
-        AssistantToolSet toolSet = registry.Build(toolContext, prompt);
+        AssistantToolSet toolSet = registry.Build(toolContext, prompt, discovery: true);
 
         AssistantPersona persona = await GetPersonaAsync(user, ct);
         ChatMessage system = new(ChatRole.System,
@@ -293,7 +296,8 @@ public sealed class AssistantService
             ChatOptions options = new()
             {
                 Tools = offerTools ? [.. toolSet.Tools] : null,
-                ToolMode = offerTools ? ChatToolMode.Auto : ChatToolMode.None
+                ToolMode = offerTools ? ChatToolMode.Auto : ChatToolMode.None,
+                MaxOutputTokens = Math.Clamp(ai.Config.Features.Assistant.MaxOutputTokens, 128, 8192)
             };
 
             List<ChatMessage> messages = [system, .. history, question];
@@ -369,7 +373,7 @@ public sealed class AssistantService
 
             // One tool round: emit each start, execute, then emit the finish with its trace. A model
             // may repeat a call it already made; reuse the result instead of running it twice.
-            foreach (FunctionCallContent call in calls)
+            foreach (FunctionCallContent call in calls.Take(8))
             {
                 string key = ToolKey(call);
                 if (!executed.TryGetValue(key, out ToolExecution execution))
@@ -406,7 +410,7 @@ public sealed class AssistantService
 
         long durationMs = (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         await RecordAsync(user, prompt, text, cancelled, failure, promptTokens, completionTokens, durationMs,
-            usingFallback ? AiModelRole.Fast : AiModelRole.Chat);
+            usingFallback ? AiModelRole.Low : role);
 
         if (failure is not null)
         {
@@ -518,18 +522,20 @@ public sealed class AssistantService
         text.AppendLine("Use only these results to answer the question. If a result is empty or has an error, say so.");
         text.AppendLine();
 
+        // Keep each result intact. A large earlier lookup must not hide a later write outcome,
+        // and slicing JSON could turn a partial response into apparently complete evidence.
         int remaining = MaxToolResultCharacters;
-        foreach (ToolResult result in results)
+        List<string> bodies = [];
+        foreach (ToolResult result in results.AsEnumerable().Reverse())
         {
-            string body = result.Result.Length <= remaining ? result.Result : result.Result[..remaining] + "…";
-            text.AppendLine($"{result.Name}: {body}");
-            remaining -= Math.Min(body.Length, remaining);
-            if (remaining <= 0)
-            {
-                text.AppendLine("(more tool output omitted)");
-                break;
-            }
+            string body = result.Result.Length <= remaining ? result.Result
+                : "{\"omitted\":true,\"reason\":\"Result exceeded context budget. Retry with a smaller limit or a specific item. Do not infer success or completeness.\"}";
+            bodies.Add($"{result.Name}: {body}");
+            remaining = Math.Max(0, remaining - body.Length);
         }
+        bodies.Reverse();
+        foreach (string body in bodies)
+            text.AppendLine(body);
 
         return text.ToString().Trim();
     }
@@ -599,7 +605,7 @@ public sealed class AssistantService
                 429 => "The AI provider is rate-limiting this key (429 Too Many Requests). Wait a minute, " +
                        "or check the provider's quota and plan for the configured model.",
                 401 or 403 => $"The provider rejected the API key ({result.Status}). Check ai.apiKey in Configuration → AI.",
-                404 => "The configured model was not found (404). Check ai.models.chat in Configuration → AI.",
+                404 => "The configured model was not found (404). Check ai.models in Configuration → AI.",
                 400 => "The provider rejected the request (400). Check the model name and the endpoint in Configuration → AI.",
                 _ => $"The AI provider returned an error ({(result.Status > 0 ? result.Status : "unknown")}). " +
                      "Check the provider and model in Configuration → AI."

@@ -13,7 +13,7 @@
 
 <StCardSheetDialog Icon="@Icons.Material.Filled.AutoAwesome"
                    Title="Ask Arrk"
-                   Subtitle="Answers and actions from your library"
+                   Subtitle="Your library, downloads and Arrk guides"
                    Class="st-assistant-sheet"
                    BodyClass="st-assistant-sheet-body">
     <ChildContent>
@@ -37,7 +37,7 @@
                 <input @ref="_inputElement" class="st-assistant-input"
                        @bind="_input" @bind:event="oninput"
                        @onkeydown="OnKeyDown" @onkeydown:stopPropagation
-                       placeholder="@(_conversation.Turns.Count > 0 ? "Ask a follow-up…" : "Ask about your library…")"
+                       placeholder="@(_conversation.Turns.Count > 0 ? "Ask a follow-up…" : "Ask about Arrk or your library…")"
                        aria-label="Ask the assistant" />
                 @if (_sending)
                 {
@@ -59,7 +59,7 @@
 
             @* A normal outlined select, like the app's other dropdowns; the persona is a mode,
                not a header action, so it sits with the composer instead of squeezing the title. *@
-            <div class="st-assistant-persona-row">
+            <div class="st-assistant-persona-row" style="flex-wrap:wrap;gap:12px;">
                 <MudSelect T="string" Value="@_personaKey" ValueChanged="OnPersonaChangedAsync"
                            Label="Persona" Variant="Variant.Outlined" Dense="true"
                            Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Face"
@@ -68,6 +68,13 @@
                     {
                         <MudSelectItem T="string" Value="@persona.Key">@persona.Name</MudSelectItem>
                     }
+                </MudSelect>
+                <MudSelect T="AiModelRole" @bind-Value="_modelRole"
+                           Label="Model tier" Variant="Variant.Outlined" Dense="true"
+                           Disabled="@_sending" Class="st-assistant-persona-select">
+                    <MudSelectItem T="AiModelRole" Value="AiModelRole.Low">Low</MudSelectItem>
+                    <MudSelectItem T="AiModelRole" Value="AiModelRole.Medium">Medium</MudSelectItem>
+                    <MudSelectItem T="AiModelRole" Value="AiModelRole.High">High</MudSelectItem>
                 </MudSelect>
             </div>
 
@@ -176,9 +183,9 @@
     static readonly string[] Suggestions =
     [
         "What anime do I have?",
-        "Recommend a top tier anime this season",
-        "What do I have with Tom Cruise?",
-        "Play The Last of Us"
+        "Why is my download stuck?",
+        "How do I upload a movie?",
+        "Recommend something to watch"
     ];
 
     readonly StringBuilder _answer = new();
@@ -190,6 +197,7 @@
     AssistantUser _user = new(0, "", false);
     IReadOnlyList<AssistantPersona> _personas = [];
     string _personaKey = AiPersonas.Plain;
+    AiModelRole _modelRole = AiModelRole.Medium;
     AssistantLimitStatus? _limit;
     CancellationTokenSource? _cts;
     string _input = "";
@@ -332,7 +340,7 @@
         try
         {
             await foreach (AssistantUpdate update in Assistant
-                               .StreamAsync(_user, question, _conversation, _cts.Token)
+                               .StreamAsync(_user, question, _conversation, _cts.Token, _modelRole)
                                .WithCancellation(_cts.Token))
             {
                 switch (update)

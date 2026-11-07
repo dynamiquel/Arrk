@@ -12,6 +12,7 @@
                 <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
             }
             <MudTextField @bind-Value="_username" Label="Username" Variant="Variant.Outlined" MaxLength="64" />
+            <MudText Typo="Typo.caption" Style="color:var(--st-text-muted);">User ID: @User.Id</MudText>
             <MudSelect T="UserRole" @bind-Value="_role" Label="Role" Variant="Variant.Outlined" Disabled="@_isSelf">
                 <MudSelectItem Value="UserRole.User">User</MudSelectItem>
                 <MudSelectItem Value="UserRole.Admin">Administrator</MudSelectItem>
