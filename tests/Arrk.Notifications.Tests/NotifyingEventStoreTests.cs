@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core.Configuration;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.TestSupport;
 
 namespace Arrk.Notifications.Tests;
@@ -34,6 +34,7 @@ public class NotifyingEventStoreTests
         db.Factory,
         new MutableOptionsMonitor<NotificationConfig>(new NotificationConfig()),
         TestCatalog.Registry(),
+        new NotificationAudienceResolver(new TestUserDirectory().ScopeFactory(), TestNotifications.Subscriptions(db)),
         TestNotifications.Subscriptions(db),
         [],
         TimeProvider.System,

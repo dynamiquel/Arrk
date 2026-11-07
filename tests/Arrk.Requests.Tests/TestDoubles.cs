@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.TestSupport;
 
 namespace Arrk.Requests.Tests;

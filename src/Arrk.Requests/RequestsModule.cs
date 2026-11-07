@@ -4,7 +4,7 @@ using Arrk.Core;
 using Arrk.Core.Configuration;
 using Arrk.Ai;
 using Arrk.Core.Modules;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Requests;
 using Arrk.Core.Services;
 using Arrk.Requests.Configurations;

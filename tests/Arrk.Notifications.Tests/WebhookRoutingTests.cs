@@ -1,4 +1,4 @@
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Notifications.Tests;
 
@@ -132,14 +132,5 @@ public class WebhookRoutingTests
 
         await Assert.That(WebhookRouting.Resolve(routing, "https://default", "media.added"))
             .IsEqualTo("https://default");
-    }
-
-    [Test]
-    public async Task HasAnyTarget_TrueForDefaultOrOverride()
-    {
-        await Assert.That(WebhookRouting.HasAnyTarget(routing: null, defaultUrl: "https://default")).IsTrue();
-        await Assert.That(WebhookRouting.HasAnyTarget(Routing(("media", "https://media")), defaultUrl: "")).IsTrue();
-        await Assert.That(WebhookRouting.HasAnyTarget(Routing(("media", "  ")), defaultUrl: "")).IsFalse();
-        await Assert.That(WebhookRouting.HasAnyTarget(routing: null, defaultUrl: "")).IsFalse();
     }
 }

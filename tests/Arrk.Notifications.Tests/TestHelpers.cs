@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Arrk.Core;
 using Arrk.Core.Configuration;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Notifications.Discord;
 using Arrk.TestSupport;
 
@@ -72,9 +72,9 @@ public static class TestNotifications
     public static UserNotificationChannelService UserChannels(TestDatabase db) =>
         new(db.Factory, TimeProvider.System);
 
-    public static DiscordBotClient Bot(NotificationConfig config) =>
+    public static DiscordBotClient Bot(DiscordNotificationConfig config) =>
         new(TestHttp.CreateFactory(),
-            new MutableOptionsMonitor<NotificationConfig>(config),
+            new MutableOptionsMonitor<DiscordNotificationConfig>(config),
             NullLogger<DiscordBotClient>.Instance);
 
     public static NotificationStackInfo StackInfo(
@@ -86,15 +86,15 @@ public static class TestNotifications
                 .Build(),
             new MutableOptionsMonitor<RoutesConfig>(new RoutesConfig { PublicUrl = url }));
 
-    public static DiscordNotificationChannel DiscordChannel(TestDatabase db, NotificationConfig config) =>
+    public static DiscordNotificationClient DiscordChannel(TestDatabase db, DiscordNotificationConfig config) =>
         new(new DiscordWebhookClient(TestHttp.CreateFactory(), NullLogger<DiscordWebhookClient>.Instance),
             Bot(config),
             UserChannels(db),
             StackInfo(),
             EmptyScopeFactory(),
-            new MutableOptionsMonitor<NotificationConfig>(config),
+            new MutableOptionsMonitor<DiscordNotificationConfig>(config),
             TestCatalog.Registry(),
-            NullLogger<DiscordNotificationChannel>.Instance);
+            NullLogger<DiscordNotificationClient>.Instance);
 
     static IServiceScopeFactory EmptyScopeFactory()
     {

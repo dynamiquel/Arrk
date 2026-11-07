@@ -1,4 +1,4 @@
-@using Arrk.Core.Notifications
+@using Arrk.Notifications
 @inject INotificationService Notifications
 @inject ActivityService Activity
 @inject NavigationManager Nav
@@ -194,14 +194,19 @@
         {
             _loading = true;
             _userId ??= await ResolveUserIdAsync();
+            if (_userId is not { } userId)
+            {
+                _items = [];
+                _unreadCount = 0;
+                return;
+            }
             _items = (await Notifications.QueryAsync(new NotificationQuery
             {
                 UnreadOnly = true,
-                UserId = _userId,
-                IncludeBroadcast = true,
+                UserId = userId,
                 Limit = PreviewCount
             })).ToList();
-            _unreadCount = await Notifications.UnreadCountAsync(_userId);
+            _unreadCount = await Notifications.UnreadCountAsync(userId);
         }
         catch
         {
@@ -215,21 +220,27 @@
 
     async Task DismissAsync(long id)
     {
-        await Notifications.MarkReadAsync(id);
+        if (_userId is not { } userId)
+            return;
+        await Notifications.MarkReadAsync(id, userId);
         await RefreshAsync();
         StateHasChanged();
     }
 
     async Task MarkAllReadAsync()
     {
-        await Notifications.MarkAllReadAsync(_userId);
+        if (_userId is not { } userId)
+            return;
+        await Notifications.MarkAllReadAsync(userId);
         await RefreshAsync();
         StateHasChanged();
     }
 
     async Task OpenAsync(Notification item)
     {
-        await Notifications.MarkReadAsync(item.Id);
+        if (_userId is not { } userId)
+            return;
+        await Notifications.MarkReadAsync(item.Id, userId);
         await RefreshAsync();
 
         if (!string.IsNullOrWhiteSpace(item.Url))

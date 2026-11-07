@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Arrk.Core;
 using Arrk.Core.Configuration;
 using Arrk.Core.Events;
+using Arrk.Notifications;
 using Arrk.Core.Models;
 using Arrk.Core.Services;
 using Arrk.Speedtest.Jobs;

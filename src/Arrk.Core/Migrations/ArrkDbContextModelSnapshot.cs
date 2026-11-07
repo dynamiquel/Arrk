@@ -797,7 +797,7 @@ namespace Arrk.Core.Migrations
                     b.ToTable("DownloadStates");
                 });
 
-            modelBuilder.Entity("Arrk.Core.Models.Notification", b =>
+            modelBuilder.Entity("Arrk.Notifications.Notification", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -1006,7 +1006,7 @@ namespace Arrk.Core.Migrations
                     b.ToTable("SystemEvents");
                 });
 
-            modelBuilder.Entity("Arrk.Core.Notifications.NotificationSubscription", b =>
+            modelBuilder.Entity("Arrk.Notifications.NotificationSubscription", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -1088,7 +1088,7 @@ namespace Arrk.Core.Migrations
                     b.ToTable("NotificationSubscriptions");
                 });
 
-            modelBuilder.Entity("Arrk.Core.Notifications.UserNotificationChannel", b =>
+            modelBuilder.Entity("Arrk.Notifications.UserNotificationChannel", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.DownloadManagement.Jobs;
 
@@ -132,9 +132,9 @@ public class NotificationEmissionTests
         await monitor.PollAsync();
 
         NotificationMessage notification = store.Notifications.Single();
-        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
-        await Assert.That(notification.Entity).IsNotNull();
-        await Assert.That(notification.Entity!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
+        await Assert.That(notification.Audience.Global).IsTrue();
+        await Assert.That(notification.Audience.FollowersOf).IsNotNull();
+        await Assert.That(notification.Audience.FollowersOf!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
         await Assert.That(notification.Title).IsEqualTo("Download started");
         await Assert.That(notification.Body).Contains("The Matrix");
         await Assert.That(notification.SourceName).IsEqualTo("The Matrix");
@@ -143,8 +143,8 @@ public class NotificationEmissionTests
         await monitor.PollAsync();
 
         NotificationMessage completed = store.Notifications.Single(n => n.Key == DownloadNotificationTopics.DownloadCompleted);
-        await Assert.That(completed.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
-        await Assert.That(completed.Entity!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
+        await Assert.That(completed.Audience.Global).IsTrue();
+        await Assert.That(completed.Audience.FollowersOf!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
     }
 
     [Test]
@@ -156,8 +156,8 @@ public class NotificationEmissionTests
         await monitor.PollAsync();
 
         NotificationMessage notification = store.Notifications.Single();
-        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.Broadcast);
-        await Assert.That(notification.Entity).IsNull();
+        await Assert.That(notification.Audience.Global).IsTrue();
+        await Assert.That(notification.Audience.FollowersOf).IsNull();
     }
 
     sealed class FixedEntityResolver(MediaEntityRef entity) : IMediaDownloadEntityResolver

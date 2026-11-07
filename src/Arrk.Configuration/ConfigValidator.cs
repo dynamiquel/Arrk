@@ -28,32 +28,8 @@ public class ArrkConfigValidator : AbstractValidator<ArrkConfig>
         });
 
         RuleFor(x => x.Notifications).NotEmpty();
-        When(x => x.Notifications is not null, () =>
-        {
-            RuleForEach(x => x.Notifications.Discord.Routing)
-                .Must(entry => IsBlankOrAbsoluteHttpUrl(entry.Value))
-                .WithMessage("Discord per-category webhook URLs must be absolute http(s) URLs.");
-            RuleForEach(x => x.Notifications.Webhook.Routing)
-                .Must(entry => IsBlankOrAbsoluteHttpUrl(entry.Value))
-                .WithMessage("Webhook per-category URLs must be absolute http(s) URLs.");
-
-            When(x => x.Notifications.Discord.DirectMessages.Enabled, () =>
-            {
-                RuleFor(x => x.Notifications.Discord.DirectMessages.BotToken)
-                    .NotEmpty()
-                    .WithMessage("A Discord bot token is required when direct messages are enabled.");
-                RuleFor(x => x.Notifications.Discord.DirectMessages.ApiBaseUrl)
-                    .Must(IsBlankOrAbsoluteHttpUrl)
-                    .WithMessage("The Discord API base URL must be an absolute http(s) URL.");
-            });
-        });
         RuleFor(x => x.Monitoring).NotEmpty();
     }
-
-    static bool IsBlankOrAbsoluteHttpUrl(string? value) =>
-        string.IsNullOrWhiteSpace(value) ||
-        (Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) &&
-         (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps));
 }
 
 public class StorageConfigValidator : AbstractValidator<StorageConfig>

@@ -1,19 +1,7 @@
 using System.ComponentModel;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Core.Events;
-
-/// <summary>
-/// Severity of a system event. Drives the colour coding in the UI.
-/// </summary>
-public enum EventSeverity
-{
-    Trace = 0,
-    Info = 1,
-    Success = 2,
-    Warning = 3,
-    Error = 4
-}
 
 /// <summary>
 /// Categories of system events. Values are stable strings so they can be persisted

@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.Downloads.Abstractions;
 using Arrk.Media.Abstractions;
@@ -184,8 +184,7 @@ public class DownloadEventMonitor(
             Body = body,
             SourceName = entity.Title,
             Url = entity.Url,
-            Entity = entity,
-            Audience = NotificationAudience.BroadcastAndSubscribers,
+            Audience = new() { Global = true, FollowersOf = entity },
             Style = message.Style ?? new NotificationStyle
             {
                 ThumbnailUrl = entity.PosterUrl,

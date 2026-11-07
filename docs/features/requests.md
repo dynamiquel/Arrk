@@ -139,9 +139,11 @@ Admin flows add media directly instead of creating a request.
 
 ## Notifications
 
-`media.requests.*` topics cover new, approved, denied and blacklisted. Decision notifications go
-to the requester's inbox; external channels still receive every accepted message.
-`media.requests.available` is registered but never emitted. Routing is in
+`media.requests.*` topics cover new, approved, denied, blacklisted and available. New-request
+alerts target `Roles = [ArrkRoles.Admin]`, not the global audience. Decision and availability
+notifications target the requester explicitly and respect their subscription's status toggle.
+Request follows use `INotificationSubscriptionService` from `Arrk.Notifications`; the Requests
+module does not reference the notification implementation. Routing is in
 [`notifications.md`](notifications.md).
 
 ## Configuration

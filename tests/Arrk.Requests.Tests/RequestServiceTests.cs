@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Arrk.Auth.Abstractions;
 using Arrk.Core.Enums;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Requests;
 using Arrk.Requests.Models;
 using Arrk.TestSupport;
@@ -56,6 +57,11 @@ public class RequestServiceTests
         await Assert.That(result.Request.PosterUrl).IsEqualTo("/p.jpg");
 
         await Assert.That(notifications.Published.Count).IsEqualTo(1);
+        NotificationAudience audience = notifications.Published[0].Message.Audience;
+        await Assert.That(audience.Global).IsFalse();
+        await Assert.That(audience.Roles.SequenceEqual([ArrkRoles.Admin])).IsTrue();
+        await Assert.That(audience.UserIds).IsEmpty();
+        await Assert.That(audience.FollowersOf).IsNull();
         await Assert.That(events.Records.Count).IsEqualTo(1);
         await Assert.That(handler.Fulfilled.Count).IsEqualTo(0);
     }

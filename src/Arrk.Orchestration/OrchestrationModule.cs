@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Arrk.Ai;
 using Arrk.Core.Modules;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.Orchestration.Jobs;
 using Arrk.Orchestration.Tools;

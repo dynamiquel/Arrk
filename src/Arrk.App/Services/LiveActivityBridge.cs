@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MudBlazor;
 using Arrk.Core.Configuration;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.Ui;
 

@@ -2,7 +2,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core.Configuration;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Auth.Abstractions;
+using Arrk.Notifications;
 using Arrk.TestSupport;
 
 namespace Arrk.Notifications.Tests;
@@ -28,14 +29,17 @@ public class NotificationServiceTests
 
     static (NotificationService Service, TestDatabase Db) Create(
         NotificationConfig? config = null,
-        IEnumerable<INotificationChannel>? channels = null)
+        IEnumerable<INotificationClient>? channels = null,
+        TestUserDirectory? users = null)
     {
         TestDatabase db = new();
+        NotificationSubscriptionService subscriptions = TestNotifications.Subscriptions(db);
         NotificationService service = new(
             db.Factory,
             new MutableOptionsMonitor<NotificationConfig>(config ?? new NotificationConfig()),
             TestCatalog.Registry(),
-            TestNotifications.Subscriptions(db),
+            new NotificationAudienceResolver((users ?? new TestUserDirectory()).ScopeFactory(), subscriptions),
+            subscriptions,
             channels ?? [],
             TimeProvider.System,
             NullLogger<NotificationService>.Instance);
@@ -141,11 +145,11 @@ public class NotificationServiceTests
             Notification first = (await service.PublishAsync(Message()))!;
             await service.PublishAsync(Message(topic: TestNotificationTopics.Info, title: "Info"));
 
-            await Assert.That(await service.UnreadCountAsync()).IsEqualTo(2);
+            await Assert.That(await service.UnreadCountAsync(7)).IsEqualTo(2);
 
-            Notification? read = await service.MarkReadAsync(first.Id);
+            Notification? read = await service.MarkReadAsync(first.Id, 7);
             await Assert.That(read!.ReadAt).IsNotNull();
-            await Assert.That(await service.UnreadCountAsync()).IsEqualTo(1);
+            await Assert.That(await service.UnreadCountAsync(7)).IsEqualTo(1);
         }
     }
 
@@ -155,7 +159,7 @@ public class NotificationServiceTests
         (NotificationService service, TestDatabase db) = Create();
         await using (db)
         {
-            await Assert.That(await service.MarkReadAsync(9999)).IsNull();
+            await Assert.That(await service.MarkReadAsync(9999, 7)).IsNull();
         }
     }
 
@@ -168,10 +172,10 @@ public class NotificationServiceTests
             await service.PublishAsync(Message());
             await service.PublishAsync(Message(topic: TestNotificationTopics.Info, title: "Info"));
 
-            int updated = await service.MarkAllReadAsync();
+            int updated = await service.MarkAllReadAsync(7);
 
             await Assert.That(updated).IsEqualTo(2);
-            await Assert.That(await service.UnreadCountAsync()).IsEqualTo(0);
+            await Assert.That(await service.UnreadCountAsync(7)).IsEqualTo(0);
         }
     }
 
@@ -221,7 +225,7 @@ public class NotificationServiceTests
         {
             Notification first = (await service.PublishAsync(Message()))!;
             await service.PublishAsync(Message(topic: TestNotificationTopics.Info, title: "Info"));
-            await service.MarkReadAsync(first.Id);
+            await service.MarkReadAsync(first.Id, 7);
 
             IReadOnlyList<Notification> unread = await service.QueryAsync(new NotificationQuery { UnreadOnly = true });
 
@@ -317,39 +321,44 @@ public class NotificationServiceTests
         }
     }
 
-    sealed class SkippingChannel : INotificationChannel
+    sealed class SkippingChannel : INotificationClient
     {
         public string Name => "skipping";
 
-        public bool IsConfigured => true;
-
         public Task<NotificationDeliveryResult> SendAsync(
-            NotificationMessage message, CancellationToken ct = default) =>
+            NotificationMessage message, NotificationRecipient recipient, CancellationToken ct = default) =>
             Task.FromResult(NotificationDeliveryResult.Skip());
     }
 
-    sealed class RecordingChannel : INotificationChannel
+    sealed class RecordingChannel : INotificationClient
     {
         public string Name => "recording";
-        public bool IsConfigured => true;
-        public bool SupportsDirectDelivery => true;
 
         public NotificationDeliveryResult DirectResult { get; init; } = NotificationDeliveryResult.Ok();
+        public NotificationDeliveryResult GlobalResult { get; init; } = NotificationDeliveryResult.Ok();
+        public NotificationDeliveryResult RoleResult { get; init; } = NotificationDeliveryResult.Ok();
+        public Func<Task>? DuringSend { get; set; }
         public List<NotificationMessage> Broadcast { get; } = [];
+        public List<string> Roles { get; } = [];
         public List<(int UserId, NotificationMessage Message)> Direct { get; } = [];
 
-        public Task<NotificationDeliveryResult> SendAsync(
-            NotificationMessage message, CancellationToken ct = default)
+        public async Task<NotificationDeliveryResult> SendAsync(
+            NotificationMessage message, NotificationRecipient recipient, CancellationToken ct = default)
         {
-            Broadcast.Add(message);
-            return Task.FromResult(NotificationDeliveryResult.Ok());
-        }
-
-        public Task<NotificationDeliveryResult> SendToUserAsync(
-            int userId, NotificationMessage message, CancellationToken ct = default)
-        {
-            Direct.Add((userId, message));
-            return Task.FromResult(DirectResult);
+            if (DuringSend is not null)
+                await DuringSend();
+            if (recipient.IsGlobal)
+            {
+                Broadcast.Add(message);
+                return GlobalResult;
+            }
+            if (recipient.Role is { } role)
+            {
+                Roles.Add(role);
+                return RoleResult;
+            }
+            Direct.Add((recipient.UserId!.Value, message));
+            return DirectResult;
         }
     }
 
@@ -369,7 +378,8 @@ public class NotificationServiceTests
                 ? NotificationDeliveryResult.Fail("DMs are blocked")
                 : NotificationDeliveryResult.Ok()
         };
-        (NotificationService service, TestDatabase db) = Create(channels: [channel]);
+        TestUserDirectory users = new() { Accounts = [new() { Id = 7 }, new() { Id = 8 }, new() { Id = 9 }] };
+        (NotificationService service, TestDatabase db) = Create(channels: [channel], users: users);
         await using (db)
         {
             NotificationSubscriptionService subscriptions = TestNotifications.Subscriptions(db);
@@ -388,19 +398,23 @@ public class NotificationServiceTests
             {
                 Key = DownloadNotificationTopics.DownloadImported,
                 Title = "Movie imported",
-                Entity = MovieEntity(),
-                Audience = NotificationAudience.BroadcastAndSubscribers
+                Audience = new() { Global = true, FollowersOf = MovieEntity() }
             });
 
             await Assert.That(result).IsNotNull();
-            await Assert.That(result!.UserId).IsNull();
+            await Assert.That(result!.UserId).IsEqualTo(7);
             await Assert.That(result.Delivered).IsTrue();
             await Assert.That(channel.Broadcast.Count).IsEqualTo(1);
             await Assert.That(channel.Direct.Count).IsEqualTo(hasFollowers ? 1 : 0);
             IReadOnlyList<Notification> inbox = await service.QueryAsync(new NotificationQuery());
-            await Assert.That(inbox.Count).IsEqualTo(1);
-            await Assert.That(inbox[0].Delivered).IsTrue();
-            await Assert.That(inbox[0].Error).IsNull();
+            await Assert.That(inbox.Count).IsEqualTo(3);
+            Notification follower = inbox.Single(n => n.UserId == 7);
+            await Assert.That(follower.Delivered).IsTrue();
+            if (hasFollowers && directFails)
+                await Assert.That(follower.Error).Contains("DMs are blocked");
+            else
+                await Assert.That(follower.Error).IsNull();
+            await Assert.That(inbox.Where(n => n.UserId != 7).All(n => n.Delivered && n.Error is null)).IsTrue();
             await Assert.That(await service.UnreadCountAsync(7)).IsEqualTo(1);
             if (hasFollowers)
                 await Assert.That(channel.Direct[0].UserId).IsEqualTo(7);
@@ -421,8 +435,7 @@ public class NotificationServiceTests
             {
                 Key = DownloadNotificationTopics.DownloadImported,
                 Title = "Your movie is available",
-                Entity = MovieEntity(),
-                Audience = NotificationAudience.BroadcastAndSubscribers
+                Audience = new() { Global = true, FollowersOf = MovieEntity() }
             });
 
             await Assert.That(result!.UserId).IsEqualTo(7);
@@ -449,8 +462,7 @@ public class NotificationServiceTests
                 Key = DownloadNotificationTopics.DownloadImported,
                 Title = "Movie imported",
                 Body = "The Matrix is now available",
-                Entity = MovieEntity(),
-                Audience = NotificationAudience.Subscribers
+                Audience = new() { FollowersOf = MovieEntity() }
             });
 
             await Assert.That(result).IsNotNull();
@@ -473,8 +485,7 @@ public class NotificationServiceTests
             {
                 Key = DownloadNotificationTopics.DownloadImported,
                 Title = "Movie imported",
-                Entity = MovieEntity(),
-                Audience = NotificationAudience.Subscribers
+                Audience = new() { FollowersOf = MovieEntity() }
             });
 
             await Assert.That(result).IsNull();
@@ -494,7 +505,7 @@ public class NotificationServiceTests
             Notification? result = await service.PublishAsync(Message(topic: TestNotificationTopics.Success));
 
             await Assert.That(result).IsNotNull();
-            await Assert.That(result!.UserId).IsNull();
+            await Assert.That(result!.UserId).IsEqualTo(7);
             await Assert.That(channel.Broadcast.Count).IsEqualTo(1);
             await Assert.That(channel.Direct).IsEmpty();
         }
@@ -514,5 +525,206 @@ public class NotificationServiceTests
             await Assert.That(result).IsNotNull();
             await Assert.That(result!.Category).IsEqualTo("test");
         }
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task Audiences_union_global_roles_users_and_followers_without_duplicate_direct_delivery(bool global)
+    {
+        TestUserDirectory users = new()
+        {
+            Accounts = [new() { Id = 7 }, new() { Id = 8 }, new() { Id = 9 },
+                new() { Id = 10, IsActive = false }, new() { Id = 11, Role = UserRole.Pending }]
+        };
+        users.Roles["Admin"] = [7, 10];
+        users.Roles["Curator"] = [7, 8];
+        RecordingChannel client = new() { RoleResult = NotificationDeliveryResult.Fail("role endpoint failed") };
+        (NotificationService service, TestDatabase db) = Create(channels: [client], users: users);
+        await using (db)
+        {
+            await TestNotifications.Subscriptions(db).SubscribeAsync(8, MovieEntity(), new());
+            await service.PublishAsync(Message(DownloadNotificationTopics.DownloadImported) with
+            {
+                Audience = new() { Global = global, Roles = ["Admin", "admin", "Curator"], UserIds = [7, 10, 11, 999], FollowersOf = MovieEntity() }
+            });
+
+            await Assert.That(client.Broadcast.Count).IsEqualTo(global ? 1 : 0);
+            await Assert.That(client.Roles).IsEquivalentTo(new[] { "Admin", "Curator" });
+            await Assert.That(client.Direct.Select(d => d.UserId).ToArray()).IsEquivalentTo(new[] { 7, 8 });
+            IReadOnlyList<Notification> inbox = await service.QueryAsync(new());
+            await Assert.That(inbox.Select(n => n.UserId).ToArray())
+                .IsEquivalentTo(global ? new int?[] { 7, 8, 9 } : new int?[] { 7, 8 });
+            await Assert.That(inbox.Where(n => n.UserId is 7 or 8).All(n => n.Delivered && n.Error!.Contains("role endpoint failed"))).IsTrue();
+            await Assert.That(await service.UnreadCountAsync(9)).IsEqualTo(global ? 1 : 0);
+            if (global)
+                await Assert.That(inbox.Single(n => n.UserId == 9).Error).IsNull();
+        }
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task Role_endpoint_outcomes_only_apply_to_members_not_unrelated_direct_recipients(bool fails)
+    {
+        TestUserDirectory users = new() { Accounts = [new() { Id = 7 }, new() { Id = 8 }] };
+        users.Roles["Admin"] = [7];
+        RecordingChannel client = new()
+        {
+            RoleResult = fails ? NotificationDeliveryResult.Fail("role endpoint failed") : NotificationDeliveryResult.Ok(),
+            DirectResult = NotificationDeliveryResult.Skip()
+        };
+        (NotificationService service, TestDatabase db) = Create(channels: [client], users: users);
+        await using (db)
+        {
+            await service.PublishAsync(Message() with { Audience = new() { Roles = ["Admin"], UserIds = [8] } });
+            Notification admin = (await service.QueryAsync(new() { UserId = 7 })).Single();
+            Notification other = (await service.QueryAsync(new() { UserId = 8 })).Single();
+            await Assert.That(admin.Delivered).IsEqualTo(!fails);
+            if (fails)
+                await Assert.That(admin.Error).Contains("role endpoint failed");
+            else
+                await Assert.That(admin.Error).IsNull();
+            await Assert.That(other.Delivered).IsFalse();
+            await Assert.That(other.Error).IsNull();
+            await Assert.That(client.Broadcast).IsEmpty();
+            await Assert.That(client.Roles).IsEquivalentTo(new[] { "Admin" });
+            await Assert.That(client.Direct.Select(d => d.UserId).ToArray()).IsEquivalentTo(new[] { 7, 8 });
+        }
+    }
+
+    [Test]
+    public async Task Role_endpoint_delivery_does_not_depend_on_local_members()
+    {
+        RecordingChannel client = new();
+        (NotificationService service, TestDatabase db) = Create(channels: [client], users: new() { Accounts = [] });
+        await using (db)
+        {
+            await service.PublishAsync(Message() with { Audience = new() { Roles = ["Admin", "admin"] } });
+            await Assert.That(client.Roles).IsEquivalentTo(new[] { "Admin" });
+            await Assert.That(client.Broadcast).IsEmpty();
+            await Assert.That(client.Direct).IsEmpty();
+            await Assert.That(await service.QueryAsync(new())).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task Global_inbox_read_state_is_independent_and_requires_ownership()
+    {
+        TestUserDirectory users = new() { Accounts = [new() { Id = 7 }, new() { Id = 8 }] };
+        (NotificationService service, TestDatabase db) = Create(users: users);
+        await using (db)
+        {
+            await service.PublishAsync(Message());
+            await service.PublishToUserAsync(7, Message());
+            Notification other = (await service.QueryAsync(new() { UserId = 8 })).Single();
+            await Assert.That(await service.MarkReadAsync(other.Id, 7)).IsNull();
+            await Assert.That(await service.MarkAllReadAsync(7)).IsEqualTo(2);
+            await Assert.That(await service.UnreadCountAsync(7)).IsEqualTo(0);
+            await Assert.That(await service.UnreadCountAsync(8)).IsEqualTo(1);
+            await Assert.That(await service.MarkReadAsync(other.Id, 8)).IsNotNull();
+        }
+    }
+
+    [Test]
+    public async Task Global_delivery_does_not_need_local_accounts_and_empty_audience_does_not_deliver()
+    {
+        RecordingChannel client = new();
+        (NotificationService service, TestDatabase db) = Create(channels: [client], users: new() { Accounts = [] });
+        await using (db)
+        {
+            await service.PublishAsync(Message());
+            await service.PublishAsync(Message() with { Audience = new() });
+            await Assert.That(client.Broadcast.Count).IsEqualTo(1);
+            await Assert.That(client.Direct).IsEmpty();
+            await Assert.That(await service.QueryAsync(new())).IsEmpty();
+        }
+    }
+
+    [Test]
+    public async Task Failing_clients_do_not_block_other_clients_or_direct_destinations()
+    {
+        RecordingChannel client = new() { GlobalResult = NotificationDeliveryResult.Fail("server unavailable") };
+        TestUserDirectory users = new() { Accounts = [new() { Id = 7 }, new() { Id = 8 }] };
+        (NotificationService service, TestDatabase db) = Create(channels: [new ThrowingClient(), client], users: users);
+        await using (db)
+        {
+            await service.PublishAsync(Message() with { Audience = new() { Global = true, UserIds = [7, 7] } });
+            Notification entry = (await service.QueryAsync(new() { UserId = 7 })).Single();
+            Notification other = (await service.QueryAsync(new() { UserId = 8 })).Single();
+            await Assert.That(client.Broadcast.Count).IsEqualTo(1);
+            await Assert.That(client.Direct.Count).IsEqualTo(1);
+            await Assert.That(entry.Delivered).IsTrue();
+            await Assert.That(entry.Channels).IsEqualTo("recording");
+            await Assert.That(entry.Error).Contains("server unavailable");
+            await Assert.That(entry.Error).Contains("broken client");
+            await Assert.That(other.Delivered).IsFalse();
+            await Assert.That(other.Error).Contains("server unavailable");
+        }
+    }
+
+    [Test]
+    public async Task Reading_an_inbox_entry_during_delivery_is_not_overwritten_by_delivery_status()
+    {
+        RecordingChannel client = new();
+        (NotificationService service, TestDatabase db) = Create(channels: [client]);
+        await using (db)
+        {
+            client.DuringSend = async () =>
+            {
+                Notification entry = (await service.QueryAsync(new() { UserId = 7 })).Single();
+                await service.MarkReadAsync(entry.Id, 7);
+            };
+            await service.PublishAsync(Message());
+            Notification stored = (await service.QueryAsync(new() { UserId = 7 })).Single();
+            await Assert.That(stored.ReadAt).IsNotNull();
+            await Assert.That(stored.Delivered).IsTrue();
+            await Assert.That(await service.UnreadCountAsync(7)).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task Cancellation_propagates_but_preserves_completed_client_and_destination_outcomes(bool duringDirect)
+    {
+        using CancellationTokenSource cancellation = new();
+        RecordingChannel client = new();
+        TestUserDirectory users = new() { Accounts = [new() { Id = 7 }, new() { Id = 8 }] };
+        (NotificationService service, TestDatabase db) = Create(
+            channels: [new ThrowingClient(), client, new CancellingClient(cancellation, duringDirect)], users: users);
+        await using (db)
+        {
+            await Assert.ThrowsAsync<OperationCanceledException>(() => service.PublishAsync(
+                Message() with { Audience = new() { Global = true, UserIds = [7] } }, cancellation.Token));
+
+            IReadOnlyList<Notification> inbox = await service.QueryAsync(new());
+            await Assert.That(inbox.Count).IsEqualTo(2);
+            await Assert.That(inbox.All(n => n.Delivered && n.Channels == "recording" && n.Error!.Contains("broken client"))).IsTrue();
+            await Assert.That(client.Broadcast.Count).IsEqualTo(1);
+            await Assert.That(client.Direct.Count).IsEqualTo(duringDirect ? 1 : 0);
+        }
+    }
+
+    sealed class CancellingClient(CancellationTokenSource cancellation, bool duringDirect) : INotificationClient
+    {
+        public string Name => "cancelling";
+
+        public Task<NotificationDeliveryResult> SendAsync(NotificationMessage message, NotificationRecipient recipient,
+            CancellationToken ct = default)
+        {
+            if (duringDirect && recipient.IsGlobal)
+                return Task.FromResult(NotificationDeliveryResult.Skip());
+            cancellation.Cancel();
+            ct.ThrowIfCancellationRequested();
+            return Task.FromResult(NotificationDeliveryResult.Skip());
+        }
+    }
+
+    sealed class ThrowingClient : INotificationClient
+    {
+        public string Name => "throwing";
+        public Task<NotificationDeliveryResult> SendAsync(NotificationMessage message, NotificationRecipient recipient,
+            CancellationToken ct = default) => throw new InvalidOperationException("broken client");
     }
 }

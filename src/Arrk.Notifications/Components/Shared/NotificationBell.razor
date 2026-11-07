@@ -1,4 +1,4 @@
-@using Arrk.Core.Notifications
+@using Arrk.Notifications
 @inject INotificationService Notifications
 @inject ActivityService Activity
 @inject IDialogService DialogService
@@ -67,7 +67,7 @@
                     _userId = id;
             }
 
-            _unreadCount = await Notifications.UnreadCountAsync(_userId);
+            _unreadCount = _userId is { } userId ? await Notifications.UnreadCountAsync(userId) : 0;
         }
         catch
         {

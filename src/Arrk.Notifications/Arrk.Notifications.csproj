@@ -3,8 +3,7 @@
   <!--
     The notifications module owns its own UI (Razor class library): the app-bar bell, the unified
     inbox card sheet, the shared event feed and the All Events page, contributed to the shell
-    through the Arrk.Ui contracts. Delivery transports and the UI live together so the whole
-    notification surface can be added or omitted as one unit.
+    through the Arrk.Ui contracts. Delivery clients are independent modules referencing this one.
   -->
   <ItemGroup>
     <ProjectReference Include="..\Arrk.Auth.Abstractions\Arrk.Auth.Abstractions.csproj" />
@@ -13,8 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
     <PackageReference Include="MudBlazor" Version="9.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Arrk.Media.Abstractions" />
   </ItemGroup>
 
   <PropertyGroup>

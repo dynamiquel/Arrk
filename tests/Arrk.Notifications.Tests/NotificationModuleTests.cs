@@ -5,15 +5,16 @@ using Microsoft.Extensions.Options;
 using Arrk.Core;
 using Arrk.Core.Configuration;
 using Arrk.Core.Events;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Notifications.Discord;
+using Arrk.Notifications.Webhook;
 using Arrk.DownloadManagement;
 
 namespace Arrk.Notifications.Tests;
 
 public class NotificationModuleTests
 {
-    static ServiceProvider Build(IConfiguration? configuration = null)
+    static ServiceProvider Build(IConfiguration? configuration = null, bool clients = true)
     {
         ServiceCollection services = new();
         services.AddLogging();
@@ -26,18 +27,23 @@ public class NotificationModuleTests
         services.AddArrkCore();
         services.AddSingleton<INotificationEventProvider, DownloadNotificationEvents>();
         new NotificationModule().ConfigureServices(services, config);
-        new NotificationDeliveryModule().ConfigureServices(services, config);
-        return services.BuildServiceProvider();
+        if (clients)
+        {
+            new DiscordNotificationModule().ConfigureServices(services, config);
+            new WebhookNotificationModule().ConfigureServices(services, config);
+        }
+        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
     }
 
     [Test]
     public async Task CoreModule_RegistersInboxService()
     {
-        using ServiceProvider provider = Build();
+        using ServiceProvider provider = Build(clients: false);
 
         INotificationService service = provider.GetRequiredService<INotificationService>();
 
         await Assert.That(service).IsTypeOf<NotificationService>();
+        await Assert.That(provider.GetServices<INotificationClient>()).IsEmpty();
     }
 
     [Test]
@@ -56,11 +62,11 @@ public class NotificationModuleTests
     {
         using ServiceProvider provider = Build();
 
-        List<INotificationChannel> channels = provider.GetServices<INotificationChannel>().ToList();
+        List<INotificationClient> channels = provider.GetServices<INotificationClient>().ToList();
 
         await Assert.That(channels.Count).IsEqualTo(2);
-        await Assert.That(channels.Select(c => c.Name)).Contains(DiscordNotificationChannel.ChannelName);
-        await Assert.That(channels.Select(c => c.Name)).Contains(GenericWebhookNotificationChannel.ChannelName);
+        await Assert.That(channels.Select(c => c.Name)).Contains(DiscordNotificationClient.ChannelName);
+        await Assert.That(channels.Select(c => c.Name)).Contains(WebhookNotificationClient.ChannelName);
     }
 
     [Test]
@@ -86,15 +92,17 @@ public class NotificationModuleTests
         using ServiceProvider provider = Build(configuration);
 
         NotificationConfig config = provider.GetRequiredService<IOptionsMonitor<NotificationConfig>>().CurrentValue;
+        DiscordNotificationConfig discord = provider.GetRequiredService<IOptionsMonitor<DiscordNotificationConfig>>().CurrentValue;
+        WebhookConfig webhook = provider.GetRequiredService<IOptionsMonitor<WebhookConfig>>().CurrentValue;
 
-        await Assert.That(config.Discord.WebhookUrl).IsEqualTo("https://discord.example/hook");
-        await Assert.That(config.Discord.Routing["media"]).IsEqualTo("https://discord.example/media");
-        await Assert.That(config.Discord.Exclude).Contains("system.health.network.speedtest.completed");
-        await Assert.That(config.Discord.Exclude).Contains("downloads.progress");
-        await Assert.That(config.Webhook.Enabled).IsTrue();
-        await Assert.That(config.Webhook.Url).IsEqualTo("https://example.com/hook");
-        await Assert.That(config.Webhook.Routing["system"]).IsEqualTo("https://example.com/system");
-        await Assert.That(config.Webhook.Exclude).Contains("media.*");
+        await Assert.That(discord.WebhookUrl).IsEqualTo("https://discord.example/hook");
+        await Assert.That(discord.Routing["media"]).IsEqualTo("https://discord.example/media");
+        await Assert.That(discord.Exclude).Contains("system.health.network.speedtest.completed");
+        await Assert.That(discord.Exclude).Contains("downloads.progress");
+        await Assert.That(webhook.Enabled).IsTrue();
+        await Assert.That(webhook.Url).IsEqualTo("https://example.com/hook");
+        await Assert.That(webhook.Routing["system"]).IsEqualTo("https://example.com/system");
+        await Assert.That(webhook.Exclude).Contains("media.*");
         await Assert.That(config.RetentionDays).IsEqualTo(30);
         await Assert.That(config.Topics["system.health"]).IsFalse();
         await Assert.That(config.Topics["downloads.progress"]).IsTrue();
@@ -117,7 +125,7 @@ public class NotificationModuleTests
     {
         using ServiceProvider provider = Build();
 
-        foreach (INotificationChannel channel in provider.GetServices<INotificationChannel>())
+        foreach (INotificationClient channel in provider.GetServices<INotificationClient>())
         {
             await Assert.That(channel).IsNotNull();
         }

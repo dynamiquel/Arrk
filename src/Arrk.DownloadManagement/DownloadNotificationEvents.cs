@@ -1,4 +1,4 @@
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Downloads.Abstractions;
 
 namespace Arrk.DownloadManagement;

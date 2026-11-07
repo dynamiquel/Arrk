@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Arrk.Core.Configuration;
 using Arrk.Core.Modules;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.Subtitles.Jobs;
 using Arrk.Ui;

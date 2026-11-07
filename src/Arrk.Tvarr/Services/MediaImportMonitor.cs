@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Playback;
 using Arrk.Media.Abstractions;
 using Arrk.Tvarr.Models;
@@ -203,10 +203,7 @@ public class MediaImportMonitor(
                     Timestamp = DateTime.UtcNow,
                     Style = ArtStyle(poster, fanart),
                     Fields = [new("Type", type)],
-                    Entity = entity,
-                    Audience = entity is null
-                        ? NotificationAudience.Broadcast
-                        : NotificationAudience.BroadcastAndSubscribers
+                    Audience = new() { Global = true, FollowersOf = entity }
                 }
             }, ct);
 

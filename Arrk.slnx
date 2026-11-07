@@ -23,6 +23,9 @@
     <Project Path="src/Arrk.Slskd/Arrk.Slskd.csproj" />
     <Project Path="src/Arrk.Navidrome/Arrk.Navidrome.csproj" />
     <Project Path="src/Arrk.Notifications/Arrk.Notifications.csproj" />
+    <Project Path="src/Arrk.Notifications.Abstractions/Arrk.Notifications.Abstractions.csproj" />
+    <Project Path="src/Arrk.Notifications.Discord/Arrk.Notifications.Discord.csproj" />
+    <Project Path="src/Arrk.Notifications.Webhook/Arrk.Notifications.Webhook.csproj" />
     <Project Path="src/Arrk.Orchestration/Arrk.Orchestration.csproj" />
     <Project Path="src/Arrk.Prowlarr/Arrk.Prowlarr.csproj" />
     <Project Path="src/Arrk.Requests/Arrk.Requests.csproj" />

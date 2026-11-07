@@ -5,7 +5,7 @@ using Arrk.Core;
 using Arrk.Auth.Abstractions;
 using Arrk.Core.Enums;
 using Arrk.Core.Events;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Requests;
 using Arrk.Media.Abstractions;
 using Arrk.Requests.Models;
@@ -40,7 +40,7 @@ public sealed class RequestService(
     IDbContextFactory<ArrkDbContext> dbContextFactory,
     IMediaRequestRegistry registry,
     INotificationService notifications,
-    NotificationSubscriptionService subscriptions,
+    INotificationSubscriptionService subscriptions,
     IEventStore events,
     IUserDirectory users,
     IOptionsMonitor<RequestsConfig> config,
@@ -614,13 +614,12 @@ public sealed class RequestService(
 
     async Task NotifyAdminsOfNewRequestAsync(MediaRequest request, CancellationToken ct)
     {
-        // Broadcast so admins receive it once (and external channels post once). Users may also
-        // see it, which is consistent with the Requests page being visible to everyone.
         NotificationMessage message = new()
         {
             Key = RequestsNotificationTopics.New,
             Title = "New media request",
             Body = $"{request.RequestedByUsername} requested \"{request.Title}\" ({request.ScopeLabel}).",
+            Audience = new() { Roles = [ArrkRoles.Admin] },
             Severity = EventSeverity.Info,
             Source = request.Id.ToString(),
             SourceName = request.Title,

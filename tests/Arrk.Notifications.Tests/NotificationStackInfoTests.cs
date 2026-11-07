@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Arrk.Core.Configuration;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.TestSupport;
 
 namespace Arrk.Notifications.Tests;

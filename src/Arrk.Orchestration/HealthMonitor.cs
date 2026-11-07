@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Arrk.Core;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Docker;
 using ContainerState = Arrk.Core.Enums.ContainerState;
 

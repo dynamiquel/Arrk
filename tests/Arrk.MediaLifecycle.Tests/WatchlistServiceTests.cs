@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.Core.Enums;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Playback;
 
 namespace Arrk.MediaLifecycle.Tests;

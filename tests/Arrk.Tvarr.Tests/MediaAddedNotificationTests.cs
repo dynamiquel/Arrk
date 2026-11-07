@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.TestSupport;
 using Arrk.Tvarr.Clients;
 using Arrk.Tvarr.Services;
@@ -49,7 +49,8 @@ public class MediaAddedNotificationTests
         NotificationMessage notification = store.Notifications.Single();
         await Assert.That(notification.Key).IsEqualTo(MediaNotificationTopics.MediaAdded);
         await Assert.That(notification.SourceName).IsEqualTo("The Matrix");
-        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
+        await Assert.That(notification.Audience.Global).IsTrue();
+        await Assert.That(notification.Audience.FollowersOf!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
         await Assert.That(notification.Fields.Any(f => f.Name == "Type" && f.Value == "Movie")).IsTrue();
     }
 
@@ -75,7 +76,8 @@ public class MediaAddedNotificationTests
         NotificationMessage notification = store.Notifications.Single();
         await Assert.That(notification.Key).IsEqualTo(MediaNotificationTopics.MediaAdded);
         await Assert.That(notification.SourceName).IsEqualTo("Breaking Bad");
-        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
+        await Assert.That(notification.Audience.Global).IsTrue();
+        await Assert.That(notification.Audience.FollowersOf!.ItemKey).IsEqualTo("tv:series:tvdb:81189");
     }
 
     [Test]

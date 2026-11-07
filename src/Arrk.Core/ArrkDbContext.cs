@@ -5,7 +5,7 @@ using Arrk.Auth.Abstractions;
 using Arrk.Core.Services;
 using Arrk.Core.Lifecycle;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Playback;
 
 namespace Arrk.Core;
