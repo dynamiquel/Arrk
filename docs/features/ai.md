@@ -16,9 +16,9 @@ deterministic features rather than replacing them.
    and action facts must come from a tool. Subjective judgements and general knowledge are
    framed as opinion. Untrusted input such as release names and titles is data, never
    instructions.
-4. **Cheap first, cached and bounded.** Small candidate sets, Low for ranking, Medium for
-   everyday assistance and High for demanding questions, token/request budgets and a SQLite
-   decision-response cache. Live library facts and writes are not cached across turns.
+4. **Cheap first, cached and bounded.** Small candidate sets, Low for ranking and background
+   work, Medium for the assistant, token/request budgets and a SQLite decision-response cache.
+   Live library facts and writes are not cached across turns.
 5. **Automatic and on-demand features are separate.** Automatic features are explicit opt-ins
    because they spend tokens without the user asking.
 6. **No AI in the event pipeline.** Failures and lifecycle events never call a model. Diagnosis
@@ -101,11 +101,10 @@ Any OpenAI-compatible host works; `baseUrl` overrides the provider preset. Modul
 toggles live in that module's section and appear on the admin page through
 `IAiFeatureDescriptor`.
 
-`models.chat` remains a legacy fallback when `models.medium` is blank; `models.fast` likewise
-supplies Low when `models.low` is blank. Existing numeric usage roles remain compatible
-(Medium=0, Low=1, High=2). The assistant's tier choice lasts for the
-popup session; background features still explicitly use Low. Matching resolved model ids reuse
-the same client instead of retrying a rate limit against an identical model.
+Model use is fixed: background ranking, matching and summaries use Low, and the assistant
+always uses Medium. High remains available to explicit callers and falls back to Medium when
+blank. Numeric usage roles stay stable (Medium=0, Low=1, High=2). Matching resolved model ids
+reuse the same client instead of retrying a rate limit against an identical model.
 
 ## Features
 

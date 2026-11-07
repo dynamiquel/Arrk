@@ -31,7 +31,7 @@ public class AiClientFactoryTests
     [Test]
     public async Task Create_ReturnsNull_WhenDisabled()
     {
-        IChatClient? client = Factory().Create(new AiConfig { Enabled = false, Models = new AiModelsConfig { Chat = "m" }, Provider = AiProviders.Gemini, ApiKey = "k" });
+        IChatClient? client = Factory().Create(new AiConfig { Enabled = false, Models = new AiModelsConfig { Medium = "m" }, Provider = AiProviders.Gemini, ApiKey = "k" });
 
         await Assert.That(client).IsNull();
     }
@@ -39,7 +39,7 @@ public class AiClientFactoryTests
     [Test]
     public async Task Create_ReturnsNull_WhenModelMissing()
     {
-        IChatClient? client = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.Gemini, Models = new AiModelsConfig { Chat = "" }, ApiKey = "k" });
+        IChatClient? client = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.Gemini, Models = new AiModelsConfig { Medium = "" }, ApiKey = "k" });
 
         await Assert.That(client).IsNull();
     }
@@ -47,7 +47,7 @@ public class AiClientFactoryTests
     [Test]
     public async Task Create_ReturnsNull_ForUnknownProvider()
     {
-        IChatClient? client = Factory().Create(new AiConfig { Enabled = true, Provider = "not-a-provider", Models = new AiModelsConfig { Chat = "m" }, ApiKey = "k" });
+        IChatClient? client = Factory().Create(new AiConfig { Enabled = true, Provider = "not-a-provider", Models = new AiModelsConfig { Medium = "m" }, ApiKey = "k" });
 
         await Assert.That(client).IsNull();
     }
@@ -55,8 +55,8 @@ public class AiClientFactoryTests
     [Test]
     public async Task Create_ReturnsNull_WhenHostedProviderHasNoKey()
     {
-        IChatClient? openai = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.OpenAi, Models = new AiModelsConfig { Chat = "gpt-4o-mini" }, ApiKey = "" });
-        IChatClient? anthropic = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.Anthropic, Models = new AiModelsConfig { Chat = "claude-sonnet-4-6" } });
+        IChatClient? openai = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.OpenAi, Models = new AiModelsConfig { Medium = "gpt-4o-mini" }, ApiKey = "" });
+        IChatClient? anthropic = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.Anthropic, Models = new AiModelsConfig { Medium = "claude-sonnet-4-6" } });
 
         await Assert.That(openai).IsNull();
         await Assert.That(anthropic).IsNull();
@@ -65,8 +65,8 @@ public class AiClientFactoryTests
     [Test]
     public async Task Create_ReturnsClient_ForLocalProviderWithoutKey()
     {
-        IChatClient? ollama = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.Ollama, Models = new AiModelsConfig { Chat = "llama3.1:8b" }, ApiKey = "" });
-        IChatClient? lmStudio = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.LmStudio, Models = new AiModelsConfig { Chat = "local-model" } });
+        IChatClient? ollama = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.Ollama, Models = new AiModelsConfig { Medium = "llama3.1:8b" }, ApiKey = "" });
+        IChatClient? lmStudio = Factory().Create(new AiConfig { Enabled = true, Provider = AiProviders.LmStudio, Models = new AiModelsConfig { Medium = "local-model" } });
 
         await Assert.That(ollama).IsNotNull();
         await Assert.That(lmStudio).IsNotNull();
@@ -142,7 +142,7 @@ public class AiClientFactoryTests
         {
             Enabled = true,
             Provider = AiProviders.Gemini,
-            Models = new AiModelsConfig { Chat = "gemini-2.5-flash" },
+            Models = new AiModelsConfig { Medium = "gemini-2.5-flash" },
             ApiKey = "secret-key"
         };
 

@@ -41,29 +41,29 @@
 <h2>AI and the assistant</h2>
 <nav aria-label="Sections in this topic"><ul>
 <li><a href="#ai-assistant-enable-only-what-you-want">Enable only what you want</a></li>
-<li><a href="#ai-assistant-choose-low-medium-or-high">Choose Low, Medium or High</a></li>
+<li><a href="#ai-assistant-which-model-the-assistant-uses">Which model the assistant uses</a></li>
 <li><a href="#ai-assistant-ask-for-facts-or-instructions">Ask for facts or instructions</a></li>
 <li><a href="#ai-assistant-search-before-acting">Search before acting</a></li>
 <li><a href="#ai-assistant-ranking-matching-and-privacy">Ranking, matching and privacy</a></li>
 <li><a href="#ai-assistant-connect-an-external-assistant-with-mcp">Connect an external assistant with MCP</a></li>
 <li><a href="#ai-assistant-when-the-assistant-cannot-help">When the assistant cannot help</a></li>
 </ul></nav>
-<p>Set up AI, choose a model tier, ask for help and connect an external assistant securely.</p>
+<p>Set up AI, ask for help and connect an external assistant securely.</p>
 <h3 id="ai-assistant-enable-only-what-you-want">Enable only what you want</h3>
 <p>AI is off by default. An administrator needs an account with an AI provider, or a running local model service, before enabling it. A provider is the service that runs the model and receives your AI requests.</p>
 <ol><li>Open Configuration → AI and enable AI.</li>
 <li>Choose your provider. Enter its API key if required. For a custom service, enter its base URL and check that it supports the OpenAI-compatible API, the request format Arrk uses. A local service must be reachable from Arrk, not just from your browser.</li>
-<li>Enter a Medium model supported by your provider. Choose Low and High models if you want different options for cost and capability.</li>
+<li>Enter a Medium model supported by your provider. The assistant always uses Medium; Low and High are optional for background and explicit work.</li>
 <li>Review the individual feature switches. Enable the assistant for chat; review automatic features before allowing background usage.</li>
 <li>Open AI Usage at <code>/ai</code> and select Test AI. Read the result before trying the assistant.</li></ol>
 <p>Test AI makes a real request with your Medium model and saved settings. A successful test does not guarantee every model or feature works; try your intended task too. If it fails, check the provider, exact model name, endpoint, key and account limits.</p>
 <p>For manual setup, the main keys are <code>ai.enabled</code>, <code>ai.provider</code>, <code>ai.apiKey</code>, <code>ai.baseUrl</code> and <code>ai.models.medium</code>.</p>
-<h3 id="ai-assistant-choose-low-medium-or-high">Choose Low, Medium or High</h3>
-<p>Use Model tier in the assistant to choose the trade-off for a question. All tiers use the configured provider.</p>
-<ul><li>Low is intended for cheaper, simpler work and background ranking or matching.</li>
-<li>Medium is the default for everyday assistance.</li>
-<li>High is intended for demanding questions and may cost more or take longer, depending on the chosen model.</li></ul>
-<p>The names describe how you intend to use the models; they are not a guarantee of quality or price. Configure them with <code>ai.models.low</code>, <code>ai.models.medium</code> and <code>ai.models.high</code>. Blank Low or High settings use Medium. When migrating an older configuration, <code>ai.models.chat</code> still supplies Medium if it is blank, and <code>ai.models.fast</code> similarly supplies Low.</p>
+<h3 id="ai-assistant-which-model-the-assistant-uses">Which model the assistant uses</h3>
+<p>The assistant always uses the Medium model. There is no per-question tier selector.</p>
+<ul><li>Medium answers assistant questions.</li>
+<li>Low is used for background ranking, matching and summaries, and as a rate-limit fallback.</li>
+<li>High is optional for explicitly demanding requests and falls back to Medium when blank.</li></ul>
+<p>Configure them with <code>ai.models.low</code>, <code>ai.models.medium</code> and <code>ai.models.high</code>. The Medium model is required when AI is enabled; blank Low or High settings use Medium.</p>
 <h3 id="ai-assistant-ask-for-facts-or-instructions">Ask for facts or instructions</h3>
 <p>Open the assistant from the app bar. Ask a specific question, such as &quot;How do I upload episodes?&quot;, &quot;What anime do I have?&quot; or &quot;Why is this download paused?&quot;. The assistant can search these guides for instructions and check available Arrk services for current information.</p>
 <p>Follow-up questions can refer to recent results. Closing the popup clears the conversation. A persona changes the assistant&#x27;s tone, not your permissions or the information available to it.</p>

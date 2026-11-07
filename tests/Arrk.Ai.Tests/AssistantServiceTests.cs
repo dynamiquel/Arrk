@@ -42,7 +42,7 @@ public class AssistantServiceTests
         {
             Enabled = true,
             Provider = AiProviders.Ollama,
-            Models = new AiModelsConfig { Chat = "m" },
+            Models = new AiModelsConfig { Medium = "m" },
             Features = new AiFeaturesConfig
             {
                 Assistant = new AiAssistantFeature { MaxMessagesPerHour = 1 }
@@ -50,7 +50,7 @@ public class AssistantServiceTests
         };
         using AssistantTestHost host = new(config);
         await host.Usage.RecordAsync(host.Usage.CreateRecord(config, AiFeatureKeys.Assistant, "ask",
-            AiModelRole.Chat, 5, 5, 10, success: true, cacheHit: false, userId: 1,
+            AiModelRole.Medium, 5, 5, 10, success: true, cacheHit: false, userId: 1,
             error: null, promptText: null, responseText: null));
 
         ScriptedChatClient client = new ScriptedChatClient().ThenAnswer("should not be used");

@@ -20,7 +20,7 @@ public sealed partial class AiStyleAssistant(AiService ai) : IUserCssAssistant
         string prompt = BuildPrompt(request);
         string? answer = await ai.AskAsync(
             prompt,
-            AiModelRole.Chat,
+            AiModelRole.Medium,
             AiFeatureKeys.Style,
             "css",
             request.UserId,

@@ -16,84 +16,42 @@ public class AiModelTierTests
     {
         Enabled = true,
         Provider = AiProviders.Ollama,
-        Models = new AiModelsConfig { Low = "fast-model", Medium = "medium-model", High = "high-model" }
+        Models = new AiModelsConfig { Low = "low-model", Medium = "medium-model", High = "high-model" }
     };
 
     [Test]
     [Arguments("Medium", 0)]
-    [Arguments("Chat", 0)]
     [Arguments("Low", 1)]
-    [Arguments("Fast", 1)]
     [Arguments("High", 2)]
-    public async Task NumericRoles_PreserveLegacyMeaning(string name, int expected)
+    public async Task NumericRoles_AreStable(string name, int expected)
     {
         AiModelRole role = Enum.Parse<AiModelRole>(name);
         await Assert.That((int)role).IsEqualTo(expected);
     }
 
     [Test]
-    public async Task LegacyYaml_StillValid_AndSuppliesAllUnsetTiers()
+    public async Task RemovedModelKeys_AreIgnored()
     {
         AiConfig config = YamlConfigSerializer.Deserialize<AiConfig>("""
             enabled: true
             provider: ollama
             models:
               chat: ' legacy-model '
+              fast: ' legacy-fast '
             """)!;
 
-        await Assert.That(new AiConfigValidator().Validate(config).IsValid).IsTrue();
-        await Assert.That(config.ResolveMediumModel()).IsEqualTo("legacy-model");
-        await Assert.That(config.ResolveFastModel()).IsEqualTo("legacy-model");
-        await Assert.That(config.ResolveHighModel()).IsEqualTo("legacy-model");
+        await Assert.That(config.ResolveMediumModel()).IsEqualTo("");
+        await Assert.That(config.ResolveLowModel()).IsEqualTo("");
+        await Assert.That(new AiConfigValidator().Validate(config).IsValid).IsFalse();
     }
 
     [Test]
-    [Arguments(true)]
-    [Arguments(false)]
-    public async Task Medium_TakesPrecedenceOverLegacyChat_RegardlessOfYamlOrder(bool mediumFirst)
-    {
-        string models = mediumFirst
-            ? "medium: ' balanced '\n  chat: legacy"
-            : "chat: legacy\n  medium: ' balanced '";
-        AiConfig config = YamlConfigSerializer.Deserialize<AiConfig>($"models:\n  {models}")!;
-
-        await Assert.That(config.ResolveMediumModel()).IsEqualTo("balanced");
-        await Assert.That(config.ResolveChatModel()).IsEqualTo("balanced");
-        await Assert.That(config.ResolveFastModel()).IsEqualTo("balanced");
-        await Assert.That(config.ResolveHighModel()).IsEqualTo("balanced");
-    }
-
-    [Test]
-    [Arguments(true)]
-    [Arguments(false)]
-    public async Task Low_TakesPrecedenceOverLegacyFast_RegardlessOfYamlOrder(bool lowFirst)
-    {
-        string models = lowFirst
-            ? "low: ' economical '\n  fast: legacy"
-            : "fast: legacy\n  low: ' economical '";
-        AiConfig config = YamlConfigSerializer.Deserialize<AiConfig>($"models:\n  {models}")!;
-
-        await Assert.That(config.ResolveModel(AiModelRole.Low)).IsEqualTo("economical");
-        await Assert.That(config.ResolveFastModel()).IsEqualTo("economical");
-
-        config.Models.Low = " ";
-        await Assert.That(config.ResolveLowModel()).IsEqualTo("legacy");
-
-        config.Models.Fast = " ";
-        config.Models.Medium = "balanced";
-        await Assert.That(config.ResolveLowModel()).IsEqualTo("balanced");
-    }
-
-    [Test]
-    public async Task BlankMedium_UsesLegacyChat_AndExplicitOtherTiersRemainIndependent()
+    public async Task Low_FallsBackToMedium()
     {
         AiConfig config = Config();
-        config.Models.Medium = "  ";
-        config.Models.Chat = " legacy ";
+        config.Models.Low = " ";
 
-        await Assert.That(config.ResolveMediumModel()).IsEqualTo("legacy");
-        await Assert.That(config.ResolveFastModel()).IsEqualTo("fast-model");
-        await Assert.That(config.ResolveHighModel()).IsEqualTo("high-model");
+        await Assert.That(config.ResolveLowModel()).IsEqualTo("medium-model");
     }
 
     [Test]
@@ -109,7 +67,7 @@ public class AiModelTierTests
     }
 
     [Test]
-    [Arguments(AiModelRole.Fast, "fast-model")]
+    [Arguments(AiModelRole.Low, "low-model")]
     [Arguments(AiModelRole.Medium, "medium-model")]
     [Arguments(AiModelRole.High, "high-model")]
     public async Task RequestsAndUsage_SelectTheSameTier(AiModelRole role, string expectedModel)
@@ -145,41 +103,23 @@ public class AiModelTierTests
         using AiService ai = new(new AiClientFactory(NullLogger<AiClientFactory>.Instance),
             monitor, NullLogger<AiService>.Instance);
 
-        await Assert.That(ReferenceEquals(ai.MediumClient, ai.FastClient)).IsTrue();
+        await Assert.That(ReferenceEquals(ai.MediumClient, ai.LowClient)).IsTrue();
         await Assert.That(ReferenceEquals(ai.MediumClient, ai.HighClient)).IsTrue();
-        await Assert.That(ReferenceEquals(ai.MediumClient, ai.ChatClient)).IsTrue();
+        await Assert.That(ReferenceEquals(ai.MediumClient, ai.MediumClient)).IsTrue();
 
         IChatClient? previous = ai.MediumClient;
         monitor.Update(Config());
 
         await Assert.That(ReferenceEquals(ai.MediumClient, previous)).IsFalse();
-        await Assert.That(ReferenceEquals(ai.MediumClient, ai.FastClient)).IsFalse();
+        await Assert.That(ReferenceEquals(ai.MediumClient, ai.LowClient)).IsFalse();
         await Assert.That(ReferenceEquals(ai.MediumClient, ai.HighClient)).IsFalse();
         await Assert.That(ReferenceEquals(ai.ClientFor(AiModelRole.High), ai.HighClient)).IsTrue();
 
         monitor.Update(new AiConfig());
         await Assert.That(ai.Enabled).IsFalse();
         await Assert.That(ai.MediumClient).IsNull();
-        await Assert.That(ai.FastClient).IsNull();
+        await Assert.That(ai.LowClient).IsNull();
         await Assert.That(ai.HighClient).IsNull();
-    }
-
-    [Test]
-    [Arguments(AiModelRole.Fast, "fast-model")]
-    [Arguments(AiModelRole.Medium, "medium-model")]
-    [Arguments(AiModelRole.High, "high-model")]
-    public async Task Assistant_RecordsTheChosenTier(AiModelRole role, string expectedModel)
-    {
-        using AssistantTestHost host = new(Config());
-        AssistantService service = host.CreateService(new ScriptedChatClient().ThenAnswer("hello"));
-
-        await foreach (AssistantUpdate update in service.StreamAsync(AssistantTestHost.User(), "hi", role: role))
-        {
-            await Assert.That(update is AssistantFailed).IsFalse();
-        }
-
-        IReadOnlyList<AiUsageRecord> records = await host.Usage.GetRecentAsync();
-        await Assert.That(records.Single().Model).IsEqualTo(expectedModel);
     }
 
     [Test]
@@ -198,12 +138,9 @@ public class AiModelTierTests
     }
 
     [Test]
-    [Arguments(AiModelRole.Fast, false)]
-    [Arguments(AiModelRole.Medium, false)]
-    [Arguments(AiModelRole.High, false)]
-    [Arguments(AiModelRole.Medium, true)]
-    [Arguments(AiModelRole.High, true)]
-    public async Task Assistant_StreamsOnChosenTier_AndRateLimitsFallBackToFast(AiModelRole role, bool rateLimit)
+    [Arguments(false)]
+    [Arguments(true)]
+    public async Task Assistant_UsesMedium_AndRateLimitsFallBackToLow(bool rateLimit)
     {
         using AssistantTestHost host = new(Config());
         FakeHttpMessageHandler transport = new();
@@ -211,7 +148,7 @@ public class AiModelTierTests
         {
             using JsonDocument body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
             string? model = body.RootElement.GetProperty("model").GetString();
-            if (rateLimit && model != "fast-model")
+            if (rateLimit && model != "low-model")
                 return FakeHttpMessageHandler.JsonResponse(
                     """{"error":{"message":"rate limited","type":"rate_limit_error"}}""",
                     HttpStatusCode.TooManyRequests);
@@ -236,16 +173,16 @@ public class AiModelTierTests
             services.GetRequiredService<IServiceScopeFactory>(), NullLogger<AssistantService>.Instance, host.Time);
         List<AssistantUpdate> updates = [];
 
-        await foreach (AssistantUpdate update in service.StreamAsync(AssistantTestHost.User(), "hi", role: role))
+        await foreach (AssistantUpdate update in service.StreamAsync(AssistantTestHost.User(), "hi"))
             updates.Add(update);
 
         await Assert.That(updates.OfType<AssistantFailed>().Any()).IsFalse();
         await Assert.That(string.Concat(updates.OfType<AssistantTextDelta>().Select(delta => delta.Text)))
             .IsEqualTo("hello");
         using JsonDocument first = JsonDocument.Parse(transport.Requests[0].Body);
-        await Assert.That(first.RootElement.GetProperty("model").GetString()).IsEqualTo(host.Config.ResolveModel(role));
+        await Assert.That(first.RootElement.GetProperty("model").GetString()).IsEqualTo("medium-model");
         using JsonDocument last = JsonDocument.Parse(transport.Requests[^1].Body);
-        string expected = rateLimit ? "fast-model" : host.Config.ResolveModel(role);
+        string expected = rateLimit ? "low-model" : "medium-model";
         await Assert.That(last.RootElement.GetProperty("model").GetString()).IsEqualTo(expected);
         IReadOnlyList<AiUsageRecord> records = await host.Usage.GetRecentAsync();
         await Assert.That(records.Single().Model).IsEqualTo(expected);

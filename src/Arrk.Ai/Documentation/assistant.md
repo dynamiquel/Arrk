@@ -1,6 +1,6 @@
 # AI and the assistant
 
-Set up AI, choose a model tier, ask for help and connect an external assistant securely.
+Set up AI, ask for help and connect an external assistant securely.
 
 ## Enable only what you want
 
@@ -8,7 +8,7 @@ AI is off by default. An administrator needs an account with an AI provider, or 
 
 1. Open Configuration → AI and enable AI.
 2. Choose your provider. Enter its API key if required. For a custom service, enter its base URL and check that it supports the OpenAI-compatible API, the request format Arrk uses. A local service must be reachable from Arrk, not just from your browser.
-3. Enter a Medium model supported by your provider. Choose Low and High models if you want different options for cost and capability.
+3. Enter a Medium model supported by your provider. The assistant always uses Medium; Low and High are optional for background and explicit work.
 4. Review the individual feature switches. Enable the assistant for chat; review automatic features before allowing background usage.
 5. Open AI Usage at `/ai` and select Test AI. Read the result before trying the assistant.
 
@@ -16,15 +16,15 @@ Test AI makes a real request with your Medium model and saved settings. A succes
 
 For manual setup, the main keys are `ai.enabled`, `ai.provider`, `ai.apiKey`, `ai.baseUrl` and `ai.models.medium`.
 
-## Choose Low, Medium or High
+## Which model the assistant uses
 
-Use Model tier in the assistant to choose the trade-off for a question. All tiers use the configured provider.
+The assistant always uses the Medium model. There is no per-question tier selector.
 
-- Low is intended for cheaper, simpler work and background ranking or matching.
-- Medium is the default for everyday assistance.
-- High is intended for demanding questions and may cost more or take longer, depending on the chosen model.
+- Medium answers assistant questions.
+- Low is used for background ranking, matching and summaries, and as a rate-limit fallback.
+- High is optional for explicitly demanding requests and falls back to Medium when blank.
 
-The names describe how you intend to use the models; they are not a guarantee of quality or price. Configure them with `ai.models.low`, `ai.models.medium` and `ai.models.high`. Blank Low or High settings use Medium. When migrating an older configuration, `ai.models.chat` still supplies Medium if it is blank, and `ai.models.fast` similarly supplies Low.
+Configure them with `ai.models.low`, `ai.models.medium` and `ai.models.high`. The Medium model is required when AI is enabled; blank Low or High settings use Medium.
 
 ## Ask for facts or instructions
 

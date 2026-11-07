@@ -18,7 +18,7 @@ public class MusicReleaseRankerTests
     {
         Enabled = true,
         Provider = AiProviders.Ollama,
-        Models = new AiModelsConfig { Chat = "test-model" },
+        Models = new AiModelsConfig { Medium = "test-model" },
         Features = new AiFeaturesConfig
         {
             ReleaseRanking = new AiReleaseRankingFeature

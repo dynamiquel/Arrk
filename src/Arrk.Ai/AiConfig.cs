@@ -59,20 +59,12 @@ public class AiConfig
 
     public McpConfig Mcp { get; set; } = new();
 
-    /// <summary>The balanced model, accepting models.chat from older configurations.</summary>
-    public string ResolveMediumModel() =>
-        !string.IsNullOrWhiteSpace(Models.Medium) ? Models.Medium.Trim() : (Models.Chat ?? "").Trim();
-
-    /// <summary>Compatibility accessor for the former conversation profile.</summary>
-    public string ResolveChatModel() => ResolveMediumModel();
+    /// <summary>The balanced model used by the assistant.</summary>
+    public string ResolveMediumModel() => Models.Medium.Trim();
 
     /// <summary>The cheaper model used for ranking/parsing. Falls back to Medium.</summary>
     public string ResolveLowModel() =>
-        !string.IsNullOrWhiteSpace(Models.Low) ? Models.Low.Trim()
-        : !string.IsNullOrWhiteSpace(Models.Fast) ? Models.Fast.Trim() : ResolveMediumModel();
-
-    /// <summary>Compatibility accessor for the former Fast profile.</summary>
-    public string ResolveFastModel() => ResolveLowModel();
+        !string.IsNullOrWhiteSpace(Models.Low) ? Models.Low.Trim() : ResolveMediumModel();
 
     /// <summary>The most capable model. Falls back to Medium when unset.</summary>
     public string ResolveHighModel() =>
@@ -89,7 +81,7 @@ public class AiConfig
 /// <summary>Low, Medium and High model tiers sharing the configured provider.</summary>
 public class AiModelsConfig
 {
-    [Description("Balanced model used by default for the assistant. Required when AI is enabled unless legacy models.chat is set.")]
+    [Description("Balanced model used by the assistant. Required when AI is enabled.")]
     [Display(Name = "Medium model")]
     public string Medium { get; set; } = "";
 
@@ -97,17 +89,9 @@ public class AiModelsConfig
     [Display(Name = "Low model")]
     public string Low { get; set; } = "";
 
-    [Description("More capable model for demanding assistant requests. Falls back to Medium when blank.")]
+    [Description("More capable model for demanding requests. Falls back to Medium when blank.")]
     [Display(Name = "High model")]
     public string High { get; set; } = "";
-
-    [Description("Legacy alias for Medium. Used only when models.medium is blank; existing configurations remain valid.")]
-    [Display(Name = "Legacy conversation model")]
-    public string Chat { get; set; } = "";
-
-    [Description("Legacy alias for Low. Used only when models.low is blank; existing configurations remain valid.")]
-    [Display(Name = "Legacy low model")]
-    public string Fast { get; set; } = "";
 }
 
 /// <summary>Per-feature opt-ins. Every automatic AI behaviour has its own toggle.</summary>

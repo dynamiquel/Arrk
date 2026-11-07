@@ -19,7 +19,7 @@ public class AssistantLiveSmokeTests
             ApiKey = key,
             Models = new AiModelsConfig
             {
-                Chat = Environment.GetEnvironmentVariable("ARRK_LIVE_AI_MODEL") ?? "gemini-3.6-flash"
+                Medium = Environment.GetEnvironmentVariable("ARRK_LIVE_AI_MODEL") ?? "gemini-3.6-flash"
             },
             TimeoutSeconds = 60,
             Features = new AiFeaturesConfig

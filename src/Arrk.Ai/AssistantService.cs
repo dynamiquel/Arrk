@@ -184,9 +184,8 @@ public sealed class AssistantService
     public IAsyncEnumerable<AssistantUpdate> StreamAsync(
         AssistantUser user,
         string message,
-        CancellationToken ct = default,
-        AiModelRole role = AiModelRole.Medium) =>
-        StreamAsync(user, message, AssistantConversation.Empty, ct, role);
+        CancellationToken ct = default) =>
+        StreamAsync(user, message, AssistantConversation.Empty, ct);
 
     /// <summary>
     /// Answers one question in the popup's short thread. The conversation is optional and in-memory
@@ -197,8 +196,7 @@ public sealed class AssistantService
         AssistantUser user,
         string message,
         AssistantConversation conversation,
-        [EnumeratorCancellation] CancellationToken ct = default,
-        AiModelRole role = AiModelRole.Medium)
+        [EnumeratorCancellation] CancellationToken ct = default)
     {
         if (!Enabled)
         {
@@ -249,7 +247,7 @@ public sealed class AssistantService
             yield break;
         }
 
-        role = role is AiModelRole.Low or AiModelRole.High ? role : AiModelRole.Medium;
+        AiModelRole role = AiModelRole.Medium;
         IChatClient? client = testClient ?? ai.ClientFor(role);
         if (client is null)
         {

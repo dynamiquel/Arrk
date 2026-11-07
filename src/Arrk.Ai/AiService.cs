@@ -25,8 +25,8 @@ public sealed class AiService : IDisposable
     readonly object _gate = new();
 
     AiConfig _config;
-    IChatClient? _chat;
-    IChatClient? _fast;
+    IChatClient? _medium;
+    IChatClient? _low;
     IChatClient? _high;
 
     public AiService(
@@ -56,7 +56,7 @@ public sealed class AiService : IDisposable
         get
         {
             lock (_gate)
-                return _chat is not null;
+                return _medium is not null;
         }
     }
 
@@ -69,12 +69,9 @@ public sealed class AiService : IDisposable
         get
         {
             lock (_gate)
-                return _chat;
+                return _medium;
         }
     }
-
-    /// <summary>Compatibility accessor for the former conversation profile.</summary>
-    public IChatClient? ChatClient => MediumClient;
 
     /// <summary>The cheaper client for ranking/parsing, or Medium when no low model is set.</summary>
     public IChatClient? LowClient
@@ -82,12 +79,9 @@ public sealed class AiService : IDisposable
         get
         {
             lock (_gate)
-                return _fast;
+                return _low;
         }
     }
-
-    /// <summary>Compatibility accessor for the former Fast profile.</summary>
-    public IChatClient? FastClient => LowClient;
 
     /// <summary>The more capable client, or Medium when no high model is set.</summary>
     public IChatClient? HighClient
@@ -192,42 +186,42 @@ public sealed class AiService : IDisposable
         lock (_gate)
             return role switch
             {
-                AiModelRole.Low => _fast ?? _chat,
-                AiModelRole.High => _high ?? _chat,
-                _ => _chat
+                AiModelRole.Low => _low ?? _medium,
+                AiModelRole.High => _high ?? _medium,
+                _ => _medium
             };
     }
 
     void Rebuild()
     {
-        IChatClient? chat;
-        IChatClient? fast;
+        IChatClient? medium;
+        IChatClient? low;
         IChatClient? high;
         try
         {
-            chat = _factory.Create(_config, AiModelRole.Medium);
-            fast = chat is null || _config.ResolveLowModel() == _config.ResolveMediumModel()
-                ? chat : _factory.Create(_config, AiModelRole.Low);
-            high = chat is null || _config.ResolveHighModel() == _config.ResolveMediumModel()
-                ? chat : _config.ResolveHighModel() == _config.ResolveLowModel()
-                    ? fast : _factory.Create(_config, AiModelRole.High);
+            medium = _factory.Create(_config, AiModelRole.Medium);
+            low = medium is null || _config.ResolveLowModel() == _config.ResolveMediumModel()
+                ? medium : _factory.Create(_config, AiModelRole.Low);
+            high = medium is null || _config.ResolveHighModel() == _config.ResolveMediumModel()
+                ? medium : _config.ResolveHighModel() == _config.ResolveLowModel()
+                    ? low : _factory.Create(_config, AiModelRole.High);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not create the AI client; AI features stay off");
-            chat = null;
-            fast = null;
+            medium = null;
+            low = null;
             high = null;
         }
 
         lock (_gate)
         {
-            _chat = chat;
-            _fast = fast;
+            _medium = medium;
+            _low = low;
             _high = high;
         }
 
-        if (chat is null)
+        if (medium is null)
             _logger.LogDebug("AI features are disabled");
         else
             _logger.LogInformation("AI features enabled (provider: {Provider}, medium: {Medium}, low: {Low}, high: {High})",

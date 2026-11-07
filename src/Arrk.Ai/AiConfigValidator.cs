@@ -49,7 +49,7 @@ public class AiConfigValidator : AbstractValidator<AiConfig>
                 .WithMessage($"Provider must be one of: {string.Join(", ", AiProviders.All)}");
 
             RuleFor(x => x).Must(x => !string.IsNullOrWhiteSpace(x.ResolveMediumModel()))
-                .WithMessage("A Medium model is required when AI is enabled (models.medium; legacy models.chat is also accepted)");
+                .WithMessage("A Medium model is required when AI is enabled (models.medium)");
 
             RuleFor(x => x.BaseUrl).Must(BeBlankOrAbsoluteHttpUrl)
                 .WithMessage("Base URL must be an absolute http(s) URL");

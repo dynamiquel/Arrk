@@ -69,13 +69,6 @@
                         <MudSelectItem T="string" Value="@persona.Key">@persona.Name</MudSelectItem>
                     }
                 </MudSelect>
-                <MudSelect T="AiModelRole" @bind-Value="_modelRole"
-                           Label="Model tier" Variant="Variant.Outlined" Dense="true"
-                           Disabled="@_sending" Class="st-assistant-persona-select">
-                    <MudSelectItem T="AiModelRole" Value="AiModelRole.Low">Low</MudSelectItem>
-                    <MudSelectItem T="AiModelRole" Value="AiModelRole.Medium">Medium</MudSelectItem>
-                    <MudSelectItem T="AiModelRole" Value="AiModelRole.High">High</MudSelectItem>
-                </MudSelect>
             </div>
 
             @if (_conversation.Turns.Count == 0 && _question.Length == 0)
@@ -197,7 +190,6 @@
     AssistantUser _user = new(0, "", false);
     IReadOnlyList<AssistantPersona> _personas = [];
     string _personaKey = AiPersonas.Plain;
-    AiModelRole _modelRole = AiModelRole.Medium;
     AssistantLimitStatus? _limit;
     CancellationTokenSource? _cts;
     string _input = "";
@@ -340,7 +332,7 @@
         try
         {
             await foreach (AssistantUpdate update in Assistant
-                               .StreamAsync(_user, question, _conversation, _cts.Token, _modelRole)
+                               .StreamAsync(_user, question, _conversation, _cts.Token)
                                .WithCancellation(_cts.Token))
             {
                 switch (update)

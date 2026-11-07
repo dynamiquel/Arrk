@@ -13,7 +13,7 @@ public class AssistantRateLimiterTests
     {
         Enabled = true,
         Provider = AiProviders.Ollama,
-        Models = new AiModelsConfig { Chat = "m" },
+        Models = new AiModelsConfig { Medium = "m" },
         Features = new AiFeaturesConfig
         {
             Assistant = new AiAssistantFeature
@@ -96,7 +96,7 @@ public class AssistantRateLimiterTests
     }
 
     static AiUsageRecord Row(AssistantTestHost host, AiConfig config, int userId, long tokens) =>
-        host.Usage.CreateRecord(config, AiFeatureKeys.Assistant, "chat", AiModelRole.Chat,
+        host.Usage.CreateRecord(config, AiFeatureKeys.Assistant, "chat", AiModelRole.Medium,
             tokens, 0, 10, success: true, cacheHit: false, userId: userId,
             error: null, promptText: null, responseText: null);
 }
