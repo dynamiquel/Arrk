@@ -40,6 +40,20 @@ public sealed class UserBootstrapService(
 
         try
         {
+            // Older installations assigned only Admin. Persist User membership too, so Identity
+            // role queries and new principals consistently include administrators as users.
+            UserManager<ArrkUser> users = scope.ServiceProvider.GetRequiredService<UserManager<ArrkUser>>();
+            foreach (ArrkUser existingAdmin in await users.GetUsersInRoleAsync(ArrkRoles.Admin))
+            {
+                if (await users.IsInRoleAsync(existingAdmin, ArrkRoles.User))
+                    continue;
+
+                IdentityResult result = await users.AddToRoleAsync(existingAdmin, ArrkRoles.User);
+                if (!result.Succeeded)
+                    throw new InvalidOperationException($"Could not assign User membership to administrator '{existingAdmin.Username}': " +
+                        string.Join("; ", result.Errors.Select(e => e.Description)));
+            }
+
             if (await userService.AnyAsync(cancellationToken))
                 return;
 
@@ -57,7 +71,7 @@ public sealed class UserBootstrapService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create the initial administrator account.");
+            logger.LogError(ex, "Failed to bootstrap administrator accounts.");
         }
     }
 

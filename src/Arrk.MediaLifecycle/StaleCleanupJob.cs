@@ -5,7 +5,7 @@ using Arrk.Core;
 using Arrk.Core.Events;
 using Arrk.Core.Lifecycle;
 using Arrk.Core.Modules;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Media.Abstractions;
 
 namespace Arrk.MediaLifecycle;
@@ -140,8 +140,7 @@ public class StaleCleanupJob(
                 Source = item.ProviderKey,
                 SourceName = item.Item.Title,
                 Timestamp = time.GetUtcNow().UtcDateTime,
-                Entity = entity,
-                Audience = NotificationAudience.Subscribers,
+                Audience = new() { FollowersOf = entity },
                 Fields =
                 [
                     new("Service", service),
@@ -181,8 +180,7 @@ public class StaleCleanupJob(
                 Source = item.ProviderKey,
                 SourceName = item.Item.Title,
                 Timestamp = time.GetUtcNow().UtcDateTime,
-                Entity = entity,
-                Audience = NotificationAudience.Subscribers,
+                Audience = new() { FollowersOf = entity },
                 Fields =
                 [
                     new("Service", service),

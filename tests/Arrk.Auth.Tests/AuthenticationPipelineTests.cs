@@ -165,15 +165,19 @@ public class AuthenticationPipelineTests
     }
 
     [Test]
-    public async Task DemotingToPending_RevokesTheSession()
+    [Arguments(UserRole.User)]
+    [Arguments(UserRole.Admin)]
+    public async Task DemotingToPending_RevokesTheSession(UserRole initialRole)
     {
         await using AuthTestHost host = await AuthTestHost.CreateAsync();
-        ArrkUser user = await host.Users.CreateAsync("gina", "gina-pass", UserRole.User);
+        ArrkUser user = await host.Users.CreateAsync("gina", "gina-pass", initialRole);
         await host.LoginAsync("gina", "gina-pass");
 
         await host.Users.SetRoleAsync(user.Id, UserRole.Pending);
 
         await Assert.That(await BodyAsync(await host.Client.GetAsync("/whoami"))).DoesNotContain("gina");
+        await Assert.That(await host.Users.IsInRoleAsync(user, ArrkRoles.User)).IsFalse();
+        await Assert.That(await host.Users.IsInRoleAsync(user, ArrkRoles.Admin)).IsFalse();
     }
 
     [Test]
@@ -187,6 +191,11 @@ public class AuthenticationPipelineTests
         await host.Users.SetRoleAsync(user.Id, UserRole.Admin);
 
         await Assert.That(await BodyAsync(await host.Client.GetAsync("/admin"))).IsEqualTo("admin-ok");
+
+        await host.Users.SetRoleAsync(user.Id, UserRole.User);
+
+        await Assert.That(await BodyAsync(await host.Client.GetAsync("/admin"))).DoesNotContain("admin-ok");
+        await Assert.That(await BodyAsync(await host.Client.GetAsync("/whoami"))).IsEqualTo("hank");
     }
 
     [Test]

@@ -32,6 +32,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../Arrk.Notifications.Abstractions/Arrk.Notifications.Abstractions.csproj" />
     <ProjectReference Include="..\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
     <ProjectReference Include="..\Arrk.Auth.Abstractions\Arrk.Auth.Abstractions.csproj" />
   </ItemGroup>

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using Arrk.Core;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 
 namespace Arrk.DownloadManagement.Jobs;

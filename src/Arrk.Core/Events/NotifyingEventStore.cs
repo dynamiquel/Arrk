@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Core.Events;
 

@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
+using Arrk.Auth.Abstractions;
 using Arrk.Core.Configuration;
 using Arrk.Core.Events;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Notifications.Discord;
 using Arrk.TestSupport;
 
@@ -40,12 +42,12 @@ public class DiscordDeliveryTests
     static DiscordWebhookClient Client() =>
         new(TestHttp.CreateFactory(), NullLogger<DiscordWebhookClient>.Instance);
 
-    static DiscordNotificationChannel Channel(NotificationConfig config) =>
+    static DiscordNotificationClient Channel(DiscordNotificationConfig config) =>
         TestNotifications.DiscordChannel(Db, config);
 
-    static NotificationConfig DiscordConfig(string url, bool enabled = true, string username = "Arrk") => new()
+    static DiscordNotificationConfig DiscordConfig(string url, bool enabled = true, string username = "Arrk") => new()
     {
-        Discord = new DiscordConfig { Enabled = enabled, WebhookUrl = url, Username = username }
+        Enabled = enabled, Routing = [new() { Url = url }], Username = username
     };
 
     [Test]
@@ -54,8 +56,8 @@ public class DiscordDeliveryTests
         EchoServer? echo = await NotificationServers.GetEchoAsync();
         if (echo is null) return;
 
-        DiscordNotificationChannel channel = Channel(DiscordConfig($"{echo.BaseUrl}/discord-hook"));
-        NotificationDeliveryResult result = await channel.SendAsync(Message());
+        DiscordNotificationClient channel = Channel(DiscordConfig($"{echo.BaseUrl}/discord-hook"));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
 
@@ -93,8 +95,8 @@ public class DiscordDeliveryTests
             }
         };
 
-        DiscordNotificationChannel channel = Channel(DiscordConfig($"{echo.BaseUrl}/styled-hook"));
-        NotificationDeliveryResult result = await channel.SendAsync(message);
+        DiscordNotificationClient channel = Channel(DiscordConfig($"{echo.BaseUrl}/styled-hook"));
+        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
 
@@ -115,8 +117,8 @@ public class DiscordDeliveryTests
         EchoServer? echo = await NotificationServers.GetEchoAsync();
         if (echo is null) return;
 
-        NotificationConfig config = DiscordConfig($"{echo.BaseUrl}/default-hook");
-        config.Discord.Routing["test.media"] = $"{echo.BaseUrl}/routed-media-hook";
+        DiscordNotificationConfig config = DiscordConfig($"{echo.BaseUrl}/default-hook");
+        config.Routing = [new() { Topic = "test.media", Url = $"{echo.BaseUrl}/routed-media-hook" }];
 
         NotificationMessage message = Message() with
         {
@@ -125,8 +127,8 @@ public class DiscordDeliveryTests
             Body = "Dune: Part Two was grabbed"
         };
 
-        DiscordNotificationChannel channel = Channel(config);
-        NotificationDeliveryResult result = await channel.SendAsync(message);
+        DiscordNotificationClient channel = Channel(config);
+        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         // The only request that reaches this path is the routed one; a missed route would time out.
@@ -151,8 +153,8 @@ public class DiscordDeliveryTests
             }
         };
 
-        DiscordNotificationChannel channel = Channel(DiscordConfig($"{echo.BaseUrl}/relative-hook"));
-        NotificationDeliveryResult result = await channel.SendAsync(message);
+        DiscordNotificationClient channel = Channel(DiscordConfig($"{echo.BaseUrl}/relative-hook"));
+        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         string logs = await echo.WaitForLogAsync("Relative art alert", TimeSpan.FromSeconds(20));
@@ -175,8 +177,8 @@ public class DiscordDeliveryTests
             Severity = EventSeverity.Info
         };
 
-        DiscordNotificationChannel channel = Channel(DiscordConfig($"{echo.BaseUrl}/media-hook"));
-        NotificationDeliveryResult result = await channel.SendAsync(message);
+        DiscordNotificationClient channel = Channel(DiscordConfig($"{echo.BaseUrl}/media-hook"));
+        NotificationDeliveryResult result = await channel.SendAsync(message, NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         string logs = await echo.WaitForLogAsync("media-hook", TimeSpan.FromSeconds(20));
@@ -190,8 +192,8 @@ public class DiscordDeliveryTests
         EchoServer? echo = await NotificationServers.GetEchoAsync();
         if (echo is null) return;
 
-        DiscordNotificationChannel channel = Channel(DiscordConfig($"{echo.BaseUrl}/custom-user", username: "MediaBot"));
-        NotificationDeliveryResult result = await channel.SendAsync(Message());
+        DiscordNotificationClient channel = Channel(DiscordConfig($"{echo.BaseUrl}/custom-user", username: "MediaBot"));
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         string logs = await echo.WaitForLogAsync("custom-user", TimeSpan.FromSeconds(20));
@@ -204,11 +206,11 @@ public class DiscordDeliveryTests
         EchoServer? echo = await NotificationServers.GetEchoAsync();
         if (echo is null) return;
 
-        NotificationConfig config = DiscordConfig($"{echo.BaseUrl}/avatar-hook");
-        config.Discord.AvatarUrl = "https://example.com/avatar.png";
-        DiscordNotificationChannel channel = Channel(config);
+        DiscordNotificationConfig config = DiscordConfig($"{echo.BaseUrl}/avatar-hook");
+        config.AvatarUrl = "https://example.com/avatar.png";
+        DiscordNotificationClient channel = Channel(config);
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message());
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         string logs = await echo.WaitForLogAsync("avatar-hook", TimeSpan.FromSeconds(20));
@@ -219,33 +221,35 @@ public class DiscordDeliveryTests
     }
 
     [Test]
-    public async Task IsConfigured_RequiresEnabledAndUrl()
+    public async Task SendAsync_WithoutWebhook_SkipsGlobalDelivery()
     {
-        await Assert.That(Channel(DiscordConfig("http://localhost:1/hook")).IsConfigured).IsTrue();
-        await Assert.That(Channel(DiscordConfig("http://localhost:1/hook", enabled: false)).IsConfigured).IsFalse();
-        await Assert.That(Channel(DiscordConfig("")).IsConfigured).IsFalse();
+        NotificationDeliveryResult result = await Channel(DiscordConfig(""))
+            .SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
+
+        await Assert.That(result.Skipped).IsTrue();
+        await Assert.That(result.Success).IsTrue();
     }
 
     [Test]
-    public async Task SendAsync_WhenDisabled_ReturnsFailureWithoutHttp()
+    public async Task SendAsync_WhenDisabled_SkipsWithoutHttp()
     {
-        DiscordNotificationChannel channel = Channel(DiscordConfig("", enabled: false));
+        DiscordNotificationClient channel = Channel(DiscordConfig("http://localhost:1/hook", enabled: false));
 
-        NotificationDeliveryResult result = await channel.SendAsync(Message());
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Error).Contains("not configured");
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Skipped).IsTrue();
     }
 
     [Test]
     public async Task SendAsync_ExcludedTopic_SkipsWithoutHttp()
     {
         int deadPort = Arrk.TestSupport.DockerTestContainer.GetAvailablePort();
-        NotificationConfig config = DiscordConfig($"http://localhost:{deadPort}/hook");
-        config.Discord.Exclude.Add("downloads.completed");
+        DiscordNotificationConfig config = DiscordConfig($"http://localhost:{deadPort}/hook");
+        config.Exclude.Add("downloads.completed");
 
-        DiscordNotificationChannel channel = Channel(config);
-        NotificationDeliveryResult result = await channel.SendAsync(Message());
+        DiscordNotificationClient channel = Channel(config);
+        NotificationDeliveryResult result = await channel.SendAsync(Message(), NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Skipped).IsTrue();
@@ -254,18 +258,18 @@ public class DiscordDeliveryTests
     [Test]
     public async Task SendAsync_ExcludeWildcard_SkipsMatchingTopicsOnly()
     {
-        NotificationConfig config = DiscordConfig("http://localhost:1/hook");
-        config.Discord.Exclude.Add("system.health.network.speedtest.+.completed");
+        DiscordNotificationConfig config = DiscordConfig("http://localhost:1/hook");
+        config.Exclude.Add("system.health.network.speedtest.+.completed");
 
-        DiscordNotificationChannel channel = Channel(config);
+        DiscordNotificationClient channel = Channel(config);
         NotificationDeliveryResult excluded = await channel.SendAsync(Message() with
         {
             Key = "system.health.network.speedtest.vpn.completed"
-        });
+        }, NotificationRecipient.Everyone).SingleResultAsync();
         NotificationDeliveryResult delivered = await channel.SendAsync(Message() with
         {
             Key = "system.health.network.speedtest.vpn.degraded"
-        });
+        }, NotificationRecipient.Everyone).SingleResultAsync();
 
         await Assert.That(excluded.Skipped).IsTrue();
         // Not excluded: delivery is attempted (and fails because port 1 is closed).
@@ -335,22 +339,45 @@ public class DiscordDeliveryTests
         if (echo is null) return;
 
         await using TestDatabase db = new();
-        NotificationConfig config = DiscordConfig($"{echo.BaseUrl}/e2e-discord");
-        DiscordNotificationChannel channel = Channel(config);
+        DiscordNotificationConfig config = DiscordConfig($"{echo.BaseUrl}/e2e-discord");
+        DiscordNotificationClient channel = Channel(config);
+        NotificationSubscriptionService subscriptions = TestNotifications.Subscriptions(db);
+        ServiceCollection identityServices = new();
+        identityServices.AddSingleton<IUserDirectory>(new TestUserDirectory());
+        using ServiceProvider identities = identityServices.BuildServiceProvider();
         NotificationService service = new(
             db.Factory,
-            new MutableOptionsMonitor<NotificationConfig>(config),
+            new MutableOptionsMonitor<NotificationConfig>(new()),
             TestCatalog.Registry(),
-            TestNotifications.Subscriptions(db),
+            new NotificationAudienceResolver(identities.GetRequiredService<IServiceScopeFactory>(), subscriptions),
+            subscriptions,
             [channel],
             TimeProvider.System,
             NullLogger<NotificationService>.Instance);
 
-        Core.Models.Notification? result = await service.PublishAsync(Message());
+        Notification? result = await service.PublishAsync(Message());
 
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Delivered).IsTrue();
         await Assert.That(result.Channels).Contains("discord");
         await Assert.That(result.Error).IsNull();
+    }
+
+    sealed class TestUserDirectory : IUserDirectory
+    {
+        readonly ArrkUser _user = new() { Id = 7, Username = "test-user" };
+
+        public Task<bool> AnyAsync(CancellationToken ct = default) => Task.FromResult(true);
+        public Task<IReadOnlyList<ArrkUser>> GetAllAsync(CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ArrkUser>>([_user]);
+        public Task<ArrkUser?> GetByIdAsync(int id, CancellationToken ct = default) =>
+            Task.FromResult(id == _user.Id ? _user : null);
+        public Task<ArrkUser?> GetByUsernameAsync(string username, CancellationToken ct = default) =>
+            Task.FromResult(username == _user.Username ? _user : null);
+        public Task<IReadOnlyList<string>> GetRolesAsync(ArrkUser user) =>
+            Task.FromResult<IReadOnlyList<string>>(["User"]);
+        public Task<IReadOnlyList<ArrkUser>> GetUsersInRoleAsync(string role, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ArrkUser>>(role == "User" ? [_user] : []);
+        public Task<bool> IsInRoleAsync(ArrkUser user, string role) => Task.FromResult(role == "User");
     }
 }

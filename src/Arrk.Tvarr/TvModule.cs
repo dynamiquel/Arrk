@@ -12,7 +12,7 @@ using Arrk.Core.Configuration;
 using Arrk.Core.Lifecycle;
 using Arrk.Core.Models;
 using Arrk.Core.Modules;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Requests;
 using Arrk.Core.Services;
 using Arrk.Tvarr.Clients;

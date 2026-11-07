@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Arrk.Core;
 using Arrk.Core.Enums;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Docker;
 using Arrk.TestSupport;
 

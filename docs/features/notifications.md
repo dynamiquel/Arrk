@@ -15,12 +15,12 @@ Rules that keep them separate:
 - The store records every event, whether or not anyone wants to be notified.
 - Notifications are a subset: only enabled topics, formatted and delivered. A disabled
   notification never enters the inbox and is never sent externally.
-- Broadcasts go to everyone and can use the global channels. Public movie/series-added,
-  download and import alerts also reach followers through each user's own transports. Global
+- Public alerts target the `User` audience and can use shared channels. Movie/series-added,
+  download and import alerts also reach followers through each user's own transports. Shared
   delivery does not depend on anyone following the title or on Discord DMs being configured.
-- Subscriber-only and explicitly targeted alerts never leak into the global webhook. Personal
+- Subscriber-only and explicitly targeted alerts never leak into shared webhooks. Personal
   request decisions remain private; following a title adds delivery rather than replacing the
-  configured global alerts.
+  configured public alerts.
 - Producers write one `SystemEventRecord`. If it carries a `Notification`, `NotifyingEventStore`
   projects it into the notification pipeline. No producer talks to Discord directly.
 
@@ -33,25 +33,51 @@ producer -> SystemEventRecord { ..., Notification = NotificationMessage }
               |
               +--dispatch--> NotificationService
                                | evaluate policy
-                               | resolve audience (broadcast/users/subscribers)
+                               | resolve additive audience selectors
                                | persist one inbox row per recipient
                                v
-                    global channels or per-user channels
+                    role endpoints and per-user channels
 ```
 
 Audit persistence happens first; a notification failure is logged and the audit row is kept.
 
-`NotificationMessage.Audience` decides who receives the alert:
+`NotificationMessage.Audience` combines independent selectors; no selector takes precedence:
 
-| Audience | Inbox | Delivery |
+| Selector | Inbox | Delivery |
 |---|---|---|
-| `Broadcast` | One row visible to everyone | Every configured global channel |
-| `Users` | One row per account in `AudienceUserIds` | Only those accounts' direct channels |
-| `Subscribers` | One row per matching subscriber | Only those accounts' direct channels |
-| `BroadcastAndSubscribers` | One row visible to everyone, without duplicate follower entries | Global channels plus matching subscribers' direct channels |
+| `Roles = ["User"]` | One owned row per active, approved account, including admins | Matching public routes; **not** a DM to everyone |
+| Other roles, e.g. `Roles = ["Admin"]` | One row per active account in those named Identity roles | Matching role routes **and** those accounts' direct destinations |
+| `UserIds = [7, 8]` | One row per eligible account | Those accounts' direct destinations |
+| `FollowersOf = entity` | One row per matching eligible follower | Those accounts' direct destinations |
 
-For combined delivery, the inbox row tracks global transport delivery. Direct-message outcomes
-remain in the delivery logs and each user's transport binding, not duplicate inbox rows.
+Role names are strings, so adding a role requires no dispatcher change. User, role, and follower
+matches are unioned and deduplicated before delivery. Disabled, pending, and deleted accounts are
+excluded. An empty audience addresses nobody. Messages default to `NotificationAudience.Everyone`,
+which is simply `Roles = ["User"]`; there is no separate global flag or delivery path. Producers explicitly
+select private audiences. `PublishToUserAsync` replaces all selectors with that one user.
+
+Admins hold both `Admin` and `User` in Identity. Notification audiences use actual role membership,
+including for `User`; there is no notification-specific alias for all accounts. The broad `User`
+audience adds inbox/shared delivery, while narrower roles also select their members' direct clients.
+
+Public media/download events use `NotificationAudience.Everyone with { FollowersOf = entity }`.
+They send to matching public routes, then directly to matching followers, without duplicate inbox
+rows. New requests target Admin; decisions target the requester. Neither becomes public implicitly.
+
+Each distinct role produces a shared audience even with no current local members. A client's
+`routing` list filters both topic and source role; every matching entry sends, in list order.
+Duplicate topics and URLs are allowed. A route accepting multiple roles can send once for each
+selected source role; route entries are subscriptions, not deduplicated destination addresses.
+Personal alerts never match shared routes. Operators own Discord channel permissions and webhook
+access control: source-role filtering is delivery configuration, not an external privacy guarantee.
+
+Each inbox row aggregates successful clients and failures for the destinations relevant to its
+owner. A failed DM or route does not erase an earlier successful send, and a successful send does
+not erase a failure. A client exception is isolated so other clients and destinations still run.
+Cancellation propagates after recording already-completed client outcomes, including earlier
+routes of the interrupted client. Clients yield one outcome per endpoint rather than collapsing
+fan-out into a misleading all-or-nothing result. This is synchronous, best-effort external delivery, not a
+durable queue or exactly-once delivery system; inbox persistence precedes external sends.
 
 Entity alerts carry a `MediaEntityRef`; the subscription service matches it against
 `NotificationSubscription` rows. A subscription matches the exact item key, descendants when
@@ -61,17 +87,24 @@ episode matches a season or series follow). A topic that subscriptions never tar
 
 ## Where things live
 
-- `Arrk.Core` (`Events/`, `Notifications/`): bus and store, `NotifyingEventStore`, the
-  notification model, `NotificationEventRegistry`, policy, inbox service, entity, purge job,
-  subscriptions, per-user channel consent and `NotificationModule`.
-- `Arrk.Notifications`: the delivery module with Discord webhook/DM and generic-webhook
-  channels, plus the inbox, All Events page and notification settings UI. It depends only on Core
-  and the auth contracts.
+- `Arrk.Notifications.Abstractions`: messages, audiences, client/service contracts, inbox and
+  subscription records, styles, severity and transport-independent preferences. This small
+  assembly lets Core audit records and domain/UI producers reference contracts without depending
+  on the engine or creating a Core/UI/Notifications dependency cycle.
+- `Arrk.Core/Events`: bus, audit store and `NotifyingEventStore`. Core maps notification tables
+  in its shared database but does not register or implement the dispatcher or clients.
+- `Arrk.Notifications`: `NotificationModule`, registry, topic policy/matching, audience resolution,
+  inbox, subscriptions, per-user transport consent, retention and generic notification UI.
+- `Arrk.Notifications.Discord`: its own module, options/validation, webhook and bot REST clients,
+  embeds, account card and Events settings contribution.
+- `Arrk.Notifications.Webhook`: its own module, options/validation and routed JSON webhook client.
 - Each domain module: its own `INotificationEventProvider` (topics, defaults, emoji, colour,
   groups) and its producers.
 
 `NotificationEventRegistry` aggregates providers at startup and throws on duplicate topics, so
-the delivery module never references torrent, TV or media code.
+the engine never references torrent, TV or media code. Transport modules depend on the engine,
+never the reverse; the app composes them. A transport can be omitted without changing the inbox.
+The Events page renders `notifications.settings` UI contributions without knowing about Discord.
 
 ## Topics
 
@@ -147,8 +180,8 @@ constraint. A future phase can add a user-install handshake for users with no sh
 
 Only linked users receive DMs. Unlinking Discord or turning the toggle off stops delivery
 immediately. The transport is channel-agnostic: `UserNotificationChannel` holds the consent and
-cached destination for any future transport (Telegram, email, Web Push), and
-`INotificationChannel.SendToUserAsync` is the only contract a transport implements.
+cached destination for any future transport (Telegram, email, Web Push). Each client receives a
+resolved `NotificationRecipient` and owns its account linking, opt-in and destination handling.
 
 Bookmarking a title in a watchlist is also a follow: adding an item creates a
 `watchlist`-sourced subscription, and removing the last bookmark for that title removes it. A
@@ -172,13 +205,21 @@ notifications:
 
   discord:
     enabled: true
-    webhookUrl: "https://discord.com/api/webhooks/..."
     username: Arrk
     avatarUrl: ""
-    routing:                       # per-category webhooks; most specific wins
-      media.tv.*: "https://discord.com/api/webhooks/.../tv"
-      media.music.*: "https://discord.com/api/webhooks/.../music"
-      system.*: "https://discord.com/api/webhooks/.../system"
+    routing:                       # every matching rule sends
+      - topic: media.tv.#
+        url: "https://discord.com/api/webhooks/.../tv"
+        # fromRoles defaults to [User], accepting public events
+      - topic: media.requests.new
+        url: "https://discord.com/api/webhooks/.../requests"
+        fromRoles: [Admin]
+      - topic: media.requests.new   # same event can go to another channel too
+        url: "https://discord.com/api/webhooks/.../admin-audit"
+        fromRoles: [Admin]
+      - topic: system.#
+        url: "https://discord.com/api/webhooks/.../system"
+        fromRoles: [User, Admin]
     exclude:                       # delivery-only; still visible in-app
       - downloads.progress
     directMessages:
@@ -189,10 +230,13 @@ notifications:
 
   webhook:
     enabled: false
-    url: ""
     authHeader: ""                 # e.g. "Bearer abc123"
     routing:
-      system.#: "https://n8n.example/system"
+      - topic: system.#
+        url: "https://n8n.example/system"
+      - topic: media.requests.#
+        url: "https://n8n.example/admin-requests"
+        fromRoles: [Admin]
 
   topics:                          # hierarchical overrides
     system.health: true
@@ -200,14 +244,32 @@ notifications:
     media.tv.*: true
 ```
 
-Both channels resolve their target per notification: the most specific routing pattern wins, then
-the channel's default URL. `topics` enables or disables an event everywhere; `exclude` removes a
-topic from one transport only.
+`routing` is the only place to define shared endpoints. `topic` defaults to `#`, `fromRoles`
+defaults to `[User]`, and `url` must be an absolute HTTP(S) URL. Names match case-insensitively.
+A rule must match both the event topic and its selected source role. A public event does not
+match an Admin-only rule just because admins can see it. Individual-user and follower-only
+messages never match these rules. Empty lists or no matches skip shared delivery.
+
+Routing has no winner or implicit default URL: use a `topic: "#"` entry for a catch-all; it sends
+in addition to any more-specific matching entries. Duplicate rules remain distinct sends.
+The old URL fields, dictionary routing, and `roleRouting` are removed rather than migrated.
+`topics` enables or disables an event everywhere; `exclude` removes a topic from one transport,
+including shared routes and DMs.
+
+Transport settings are registered and validated by their owning modules at `notifications:discord`
+and `notifications:webhook`; they are not properties on the engine's `NotificationConfig`.
+All clients read monitored options on each send. Discord `enabled` controls both webhook and DM
+delivery; `directMessages.enabled` additionally controls DMs. The generic webhook supports
+matching role routes; individual user destinations are skipped.
 
 ## In-app inbox
 
 Every enabled alert is stored with its topic and group, title, body, severity, deep link, source,
-read state and delivery status. The Blazor UI consumes `INotificationService` server-side; there
+read state and delivery status. Public events create individual rows, so dismissing or reading an
+alert never marks another user's alert as read. Mark/read/count operations require an account id
+and updates check row ownership; unauthenticated UI never queries a shared inbox. Accounts created
+later do not inherit historical public alerts. Legacy ownerless rows are excluded, with no
+notification data migration. The Blazor UI consumes `INotificationService` server-side; there
 is no dedicated REST API. Queries support category prefix, key, unread-only, search, since and
 limit. `NotificationPurgeJob` trims the inbox daily.
 
@@ -227,12 +289,20 @@ webhook payload includes the resolved topic, group, domain, emoji and colour.
 Discord only fetches absolute HTTP(S) URLs, so relative proxy paths are dropped. Producers supply
 absolute art (TMDb, arr remote posters, Deezer CDN, Cover Art Archive).
 
-## Adding a channel or event
+## Adding a client or event
 
-To add a channel, implement `INotificationChannel` (`Name`, `IsConfigured`, `SendAsync`) and
-register it in DI; `NotificationService` discovers all registered channels. A channel that can
-reach one account also sets `SupportsDirectDelivery` and implements `SendToUserAsync`, reading
-the user's consent and destination from `UserNotificationChannelService`.
+Create an `Arrk.Notifications.<Transport>` module referencing `Arrk.Notifications`. Implement
+`INotificationClient` with a stable `Name` and one
+`SendAsync(NotificationMessage, NotificationRecipient, CancellationToken)` method. Register it as
+an `INotificationClient` in that module and compose the module in the app (or plugin loader).
+No dispatcher reference or switch is needed. Clients never resolve audiences or publish messages
+back through the dispatcher. `SendAsync` returns `IAsyncEnumerable<NotificationDeliveryResult>`:
+yield `Ok`/`Fail` after each endpoint completes, or `Skip` when disabled, filtered, unsupported,
+unlinked, opted out, or unmatched. Use `[EnumeratorCancellation]` on the token in async iterators,
+and propagate cancellation. Earlier yielded outcomes survive a later failure or cancellation.
+Put options, validation, protocol retries, settings UI and external
+identity resolution in the client module. Use `UserNotificationChannelService` for per-account
+consent/destination state when needed. Use distinct stable client names for delivery reporting.
 
 To add an event:
 
@@ -240,12 +310,22 @@ To add an event:
 2. Implement `INotificationEventProvider` and return definitions (topic, default, description,
    emoji, colour) and any curated groups.
 3. Register it in `ConfigureServices`.
-4. Attach a `NotificationMessage` to the `SystemEventRecord` you record. Set `Entity` and
-   `Audience = BroadcastAndSubscribers` for public title events that should reach global channels
-   and followers. Use `Subscribers` only for follower-only alerts, or `Users` with
-   `AudienceUserIds` for a private direct alert.
+4. Attach a `NotificationMessage` to the `SystemEventRecord` you record. Set
+   `Audience = NotificationAudience.Everyone with { FollowersOf = entity }` for public title events. Use
+   `new() { FollowersOf = entity }` for follower-only alerts, `new() { Roles = ["Admin"] }` for
+   role alerts, or `new() { UserIds = [userId] }` for private direct alerts.
 
 The registry picks it up and throws at startup on duplicates.
+
+## Tests
+
+`tests/Arrk.Notifications.Tests` exercises audience composition, arbitrary roles, follower
+preferences, account eligibility, public role delivery with no local accounts, private-recipient
+isolation, independent read state, client failure isolation, topic policy and retention against
+SQLite. Transport tests use local HTTP endpoints and a fake Discord REST handler for protocol
+errors, rate limits, DM identity caching, opt-outs, config reload and nested module settings.
+Producer tests in Requests, TV, Downloads and Lifecycle assert the intended selectors. Live
+Discord smoke tests remain explicitly environment-gated; ordinary tests never contact Discord.
 
 ## Import notifications
 

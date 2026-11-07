@@ -5,7 +5,7 @@ using Arrk.Core;
 using Arrk.Core.Configuration;
 using Arrk.Core.Events;
 using Arrk.Core.Models;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Speedtest;
 using Arrk.Speedtest.Jobs;
 using Arrk.Speedtest.Models;

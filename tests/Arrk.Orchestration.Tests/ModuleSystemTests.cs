@@ -7,7 +7,7 @@ using Arrk.Core;
 using Arrk.Core.Configuration;
 using Arrk.Core.Models;
 using Arrk.Core.Modules;
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 using Arrk.Core.Services;
 using Arrk.DownloadManagement;
 using Arrk.Speedtest;

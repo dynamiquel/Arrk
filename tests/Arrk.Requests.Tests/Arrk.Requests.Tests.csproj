@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Arrk.TestSupport\Arrk.TestSupport.csproj" />
     <ProjectReference Include="..\..\src\Arrk.Requests\Arrk.Requests.csproj" />
     <ProjectReference Include="..\..\src\Arrk.Core\Arrk.Core.csproj" />
+    <ProjectReference Include="..\..\src\Arrk.Notifications\Arrk.Notifications.csproj" />
     <ProjectReference Include="..\..\src\Arrk.Media.Abstractions\Arrk.Media.Abstractions.csproj" />
   </ItemGroup>
 

@@ -1,4 +1,4 @@
-using Arrk.Core.Notifications;
+using Arrk.Notifications;
 
 namespace Arrk.Music;
 

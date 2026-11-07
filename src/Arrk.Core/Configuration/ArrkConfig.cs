@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Arrk.Notifications;
 
 namespace Arrk.Core.Configuration;
 
