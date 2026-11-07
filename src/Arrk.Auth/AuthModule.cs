@@ -8,6 +8,7 @@ using Arrk.Auth.Components.Shared;
 using Arrk.Auth.Services;
 using Arrk.Core;
 using Arrk.Core.Configuration;
+using Arrk.Core.Documentation;
 using Arrk.Core.Models;
 using Arrk.Core.Modules;
 using Arrk.Ui;
@@ -31,6 +32,7 @@ public sealed class AuthModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("auth", typeof(AuthModule).Assembly);
         services.Configure<AuthConfig>(configuration.GetSection(AuthConfig.SectionName));
 
         AuthConfig auth = configuration.GetSection(AuthConfig.SectionName).Get<AuthConfig>() ?? new();

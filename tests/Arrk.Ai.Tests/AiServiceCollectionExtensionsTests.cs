@@ -52,13 +52,13 @@ public class AiServiceCollectionExtensionsTests
         {
             ["ai:enabled"] = "true",
             ["ai:provider"] = AiProviders.Ollama,
-            ["ai:models:chat"] = "llama3.1:8b"
+            ["ai:models:medium"] = "llama3.1:8b"
         });
 
         AiService service = provider.GetRequiredService<AiService>();
 
         await Assert.That(service.Enabled).IsTrue();
         await Assert.That(service.Config.Provider).IsEqualTo(AiProviders.Ollama);
-        await Assert.That(service.Config.Models.Chat).IsEqualTo("llama3.1:8b");
+        await Assert.That(service.Config.Models.Medium).IsEqualTo("llama3.1:8b");
     }
 }

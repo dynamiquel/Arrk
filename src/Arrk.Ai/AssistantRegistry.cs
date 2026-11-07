@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 
 namespace Arrk.Ai;
@@ -39,7 +40,18 @@ public sealed class AssistantRegistry(
             .OrderBy(p => p.Name, StringComparer.Ordinal)
             .ToList();
 
-    public AssistantToolSet Build(AssistantToolContext context, string userText)
+    /// <summary>All authorized tools, without chat routing or its schema cap (for MCP clients).</summary>
+    public IReadOnlyList<AIFunction> AllTools(AssistantToolContext context) =>
+        AvailablePacks(context).SelectMany(pack => CreateSafely(pack, context))
+            .OfType<AIFunction>().DistinctBy(tool => tool.Name).ToList();
+
+    static IReadOnlyList<AITool> CreateSafely(IAssistantTool pack, AssistantToolContext context)
+    {
+        try { return pack.CreateTools(context); }
+        catch { return []; }
+    }
+
+    public AssistantToolSet Build(AssistantToolContext context, string userText, bool discovery = false)
     {
         List<IAssistantTool> selected = [];
 
@@ -58,20 +70,34 @@ public sealed class AssistantRegistry(
 
         List<AITool> tools = [];
         Dictionary<string, string> labels = new(StringComparer.Ordinal);
+        if (discovery)
+        {
+            tools.Add(AIFunctionFactory.Create(
+                (string? pack = null) => AvailablePacks(context)
+                    .Where(p => string.IsNullOrWhiteSpace(pack) || p.Key.Equals(pack, StringComparison.OrdinalIgnoreCase))
+                    .Select(p => new
+                    {
+                        pack = p.Key, p.Description,
+                        tools = string.IsNullOrWhiteSpace(pack) ? null : CreateSafely(p, context)
+                            .OfType<AIFunction>().Select(f => new { f.Name, f.Description, parameters = f.JsonSchema }).ToList()
+                    }).ToList(),
+                "discover_tools", "List available tool packs; pass a pack key to read its tool names and parameter schemas when a needed tool is not offered."));
+            tools.Add(AIFunctionFactory.Create(
+                async (string name, JsonElement arguments, CancellationToken ct) =>
+                {
+                    AIFunction? function = AllTools(context).FirstOrDefault(f => f.Name == name);
+                    if (function is null)
+                        return JsonSerializer.SerializeToElement(new { error = "Tool unavailable or not permitted." });
+                    Dictionary<string, object?> values = arguments.Deserialize<Dictionary<string, object?>>() ?? [];
+                    return await function.InvokeAsync(new AIFunctionArguments(values), ct);
+                },
+                "invoke_tool", "Invoke a tool found with discover_tools using its exact name and JSON arguments. The same permissions and confirmation rules apply."));
+            labels["discover_tools"] = "Found tools";
+            labels["invoke_tool"] = "Used tool";
+        }
         foreach (IAssistantTool pack in selected)
         {
-            IReadOnlyList<AITool> packTools;
-            try
-            {
-                packTools = pack.CreateTools(context);
-            }
-            catch
-            {
-                // A broken pack must not take the whole turn down; its tools are simply absent.
-                continue;
-            }
-
-            foreach (AITool tool in packTools)
+            foreach (AITool tool in CreateSafely(pack, context))
             {
                 if (tools.Count >= MaxTools)
                     break;

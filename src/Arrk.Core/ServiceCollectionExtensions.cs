@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Arrk.Auth.Abstractions;
+using Arrk.Core.Documentation;
 using Arrk.Core.Events;
 using Arrk.Notifications;
 
@@ -16,6 +18,9 @@ public static class ServiceCollectionExtensions
         // Shared clock: modules should use TimeProvider instead of DateTime.UtcNow so
         // time-based logic is testable. Tests can override this with a fake TimeProvider.
         services.AddSingleton(TimeProvider.System);
+
+        // Documentation is available even with no providers or AI module installed.
+        services.TryAddSingleton<DocumentationCatalog>();
 
         // Durable event log. Registered as a concrete type so the notifying decorator can wrap it.
         services.AddSingleton<EfEventStore>();

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -66,6 +67,31 @@ public class AssistantRegistryTests
     }
 
     [Test]
+    public async Task Discovery_ReachesUnroutedTools_ButCannotReachAdminTools()
+    {
+        AssistantRegistry registry = new([
+            new TestPack("downloads", ["torrent"]),
+            new TestPack("admin", ["admin"], AssistantAccess.Admin)
+        ], []);
+        AssistantToolSet set = registry.Build(Context(), "resume it", discovery: true);
+        await Assert.That(set.Tools.Any(t => t.Name == "downloads_tool_0")).IsFalse();
+        AIFunction discover = (AIFunction)set.Tools.Single(t => t.Name == "discover_tools");
+        object? catalogue = await discover.InvokeAsync(new AIFunctionArguments { ["pack"] = "downloads" });
+        await Assert.That(JsonSerializer.Serialize(catalogue)).Contains("downloads_tool_0");
+        AIFunction invoke = (AIFunction)set.Tools.Single(t => t.Name == "invoke_tool");
+        object? result = await invoke.InvokeAsync(new AIFunctionArguments
+        {
+            ["name"] = "downloads_tool_0", ["arguments"] = JsonSerializer.SerializeToElement(new { })
+        });
+        await Assert.That(result?.ToString()).IsEqualTo("ok");
+        object? denied = await invoke.InvokeAsync(new AIFunctionArguments
+        {
+            ["name"] = "admin_tool_0", ["arguments"] = JsonSerializer.SerializeToElement(new { })
+        });
+        await Assert.That(JsonSerializer.Serialize(denied)).Contains("not permitted");
+    }
+
+    [Test]
     public async Task MediaSources_AreExposedOnlyWhenAvailable()
     {
         AssistantRegistry registry = new([], [new FakeSource("tv"), new FakeSource("music") { Available = false }]);
@@ -117,6 +143,7 @@ public sealed class FakeSource(string key) : IAssistantMediaSource
     public List<AssistantMediaQuery> Queries { get; } = [];
     public List<string> DetailIds { get; } = [];
     public List<string?> Usernames { get; } = [];
+    public AssistantMediaDetail? Detail { get; set; }
 
     public Task<IReadOnlyList<AssistantMediaSummary>> SearchAsync(AssistantMediaQuery query, CancellationToken ct)
     {
@@ -135,6 +162,6 @@ public sealed class FakeSource(string key) : IAssistantMediaSource
         AssistantMediaDetail detail = new(
             new AssistantMediaSummary(Key, id, AssistantMediaKind.Movie, "Detail", "Item", 2020, "In library"),
             "Overview", ["Status: downloaded"], []);
-        return Task.FromResult<AssistantMediaDetail?>(detail);
+        return Task.FromResult<AssistantMediaDetail?>(Detail ?? detail);
     }
 }

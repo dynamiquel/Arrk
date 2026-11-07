@@ -55,6 +55,7 @@
           media stack pleasant to live with: where the files go, how quality is decided, what
           routes through the VPN, who gets in, and what happens when storage fills up.
         </p>
+        <p>For everyday tasks and troubleshooting, use the <a href="product-guides.html">product guides</a>: step-by-step help for uploads, playback, downloads and more.</p>
         <div class="page-hero-meta">
           <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-clock"></use></svg> About 30–45 minutes</span>
           <span class="chip"><svg aria-hidden="true"><use href="assets/icons.svg#i-settings"></use></svg> Config editor or YAML</span>
@@ -92,7 +93,7 @@
             <a href="#people">Users &amp; requests</a>
             <a href="#notifications">Notifications</a>
             <a href="#lifecycle">Lifecycle</a>
-            <a href="#ai">Optional AI</a>
+            <a href="#ai">AI</a>
             <a href="#day-two">Day two</a>
           </nav>
         </aside>
@@ -580,12 +581,15 @@ requests:
           </section>
 
           <section class="guide-section" id="ai">
-            <h2><span class="num">13</span> Optional AI</h2>
+            <h2><span class="num">13</span> AI</h2>
             <p>
-              AI is off by default, provider-agnostic and advisory. Every feature has its own
-              toggle and falls back to the deterministic path. Bring any OpenAI-compatible
-              endpoint, including a local model.
+              Ask questions about your library, get help with Arrk and choose which tasks AI
+              helps with. In Configuration → AI, choose your provider, enter its API key if
+              needed and set a Medium model. The assistant always uses Medium; Low is for
+              lighter background tasks. Blank Low or High settings use Medium. You can use a
+              cloud provider or a local model, and the rest of Arrk works without AI.
             </p>
+            <p>Enable AI, then use <strong>Test AI</strong> on the AI Usage page to check the connection. See the <a href="product-guides.html#ai-assistant">AI guide</a> for model choices, spending limits, privacy and connecting an external assistant.</p>
             <div class="code-block">
               <div class="code-head">
                 <span class="code-title"><svg aria-hidden="true"><use href="assets/icons.svg#i-terminal"></use></svg> arrk.yaml</span>
@@ -597,12 +601,14 @@ requests:
   apiKey: ""
   baseUrl: ""                 # set for a custom OpenAI-compatible host
   models:
-    chat: gemini-3.6-flash
-    fast: gemini-3.5-flash-lite
+    low: gemini-3.5-flash-lite
+    medium: gemini-3.6-flash
+    high: ""                   # falls back to Medium
   features:
     assistant:
       enabled: true
       maxMessagesPerHour: 30
+      maxOutputTokens: 1200
     releaseRanking:
       enabled: true
       mode: shadow             # off | shadow | ambiguous | always

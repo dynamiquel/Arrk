@@ -67,8 +67,9 @@ else
                 <div class="st-info-grid">
                     <InfoGridRow Label="Status">@(Ai.Enabled ? "Enabled" : "Disabled")</InfoGridRow>
                     <InfoGridRow Label="Provider">@config.Provider</InfoGridRow>
-                    <InfoGridRow Label="Chat model">@config.ResolveChatModel()</InfoGridRow>
-                    <InfoGridRow Label="Fast model">@config.ResolveFastModel()</InfoGridRow>
+                    <InfoGridRow Label="Low model">@config.ResolveLowModel()</InfoGridRow>
+                    <InfoGridRow Label="Medium model">@config.ResolveMediumModel()</InfoGridRow>
+                    <InfoGridRow Label="High model">@config.ResolveHighModel()</InfoGridRow>
                     <InfoGridRow Label="Budget">@BudgetText</InfoGridRow>
                     <InfoGridRow Label="Estimated cost (30d)">@CostText</InfoGridRow>
                 </div>
@@ -305,7 +306,7 @@ else
             using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(30));
             string? answer = await Ai.AskAsync(
                 "Reply with the single word: OK",
-                AiModelRole.Chat,
+                AiModelRole.Medium,
                 AiFeatureKeys.Assistant,
                 "admin.test",
                 userId: null,

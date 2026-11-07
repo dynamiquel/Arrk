@@ -2389,6 +2389,17 @@ td code {
   line-height: 1.72;
 }
 
+.product-guides .guide-section > ol,
+.product-guides .guide-section > ul {
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+  padding-left: 26px;
+  color: var(--text-2);
+  font-size: .98rem;
+  line-height: 1.72;
+}
+
 .guide-section h3 {
   margin-top: 26px;
   font-size: 1.02rem;

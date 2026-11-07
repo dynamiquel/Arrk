@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Arrk.Ai;
+using Arrk.Core.Documentation;
 using Arrk.Core.Modules;
 using Arrk.Notifications;
 using Arrk.Core.Services;
@@ -21,6 +22,7 @@ public class DownloadManagementModule : IArrkModule
         IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddModuleDocumentation("downloadmanagement", typeof(DownloadManagementModule).Assembly);
         services.AddSingleton<TorrentPenaltyTracker>();
         services.AddSingleton<ITorrentPenaltyService>(sp => sp.GetRequiredService<TorrentPenaltyTracker>());
         services.AddSingleton<TorrentHealthDetector>();

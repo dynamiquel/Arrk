@@ -24,9 +24,9 @@ public sealed class AiClientFactory(ILogger<AiClientFactory> logger, HttpMessage
 {
     /// <summary>
     /// The client for the configured provider and model profile, or <c>null</c> when AI is
-    /// off/misconfigured. The two profiles share one endpoint and differ only by model id.
+    /// off/misconfigured. The tiers share one endpoint and differ only by model id.
     /// </summary>
-    public IChatClient? Create(AiConfig config, AiModelRole role = AiModelRole.Chat)
+    public IChatClient? Create(AiConfig config, AiModelRole role = AiModelRole.Medium)
     {
         if (!config.Enabled)
             return null;
@@ -39,7 +39,7 @@ public sealed class AiClientFactory(ILogger<AiClientFactory> logger, HttpMessage
             return null;
         }
 
-        string model = role == AiModelRole.Fast ? config.ResolveFastModel() : config.ResolveChatModel();
+        string model = config.ResolveModel(role);
         if (string.IsNullOrWhiteSpace(model))
         {
             logger.LogWarning("AI is enabled but no model is configured; AI features stay off");

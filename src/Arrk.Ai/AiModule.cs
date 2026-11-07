@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Routing;
 using Arrk.Core.Configuration;
 using Arrk.Core.Modules;
 using Arrk.Core.Services;
@@ -19,7 +20,7 @@ public sealed class AiModule : IArrkModule
     public string ModuleName => ModuleNameValue;
 
     public string ModuleDescription =>
-        "Optional, provider-agnostic AI: assistant, release ranking, usage accounting.";
+        "AI assistant, release ranking and usage accounting for cloud or local models.";
 
     public IReadOnlyList<Service> GetServices() => [];
 
@@ -35,6 +36,8 @@ public sealed class AiModule : IArrkModule
         services.AddSingleton<AiMaintenanceJob>();
         services.AddSingleton<INavigationProvider, AiNavigation>();
     }
+
+    public void ConfigureEndpoints(IEndpointRouteBuilder endpoints) => endpoints.MapArrkMcp();
 
     public void ConfigureJobs(IArrkJobProvider jobs, IServiceProvider services)
     {

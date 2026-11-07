@@ -42,7 +42,7 @@ public class AssistantServiceTests
         {
             Enabled = true,
             Provider = AiProviders.Ollama,
-            Models = new AiModelsConfig { Chat = "m" },
+            Models = new AiModelsConfig { Medium = "m" },
             Features = new AiFeaturesConfig
             {
                 Assistant = new AiAssistantFeature { MaxMessagesPerHour = 1 }
@@ -50,7 +50,7 @@ public class AssistantServiceTests
         };
         using AssistantTestHost host = new(config);
         await host.Usage.RecordAsync(host.Usage.CreateRecord(config, AiFeatureKeys.Assistant, "ask",
-            AiModelRole.Chat, 5, 5, 10, success: true, cacheHit: false, userId: 1,
+            AiModelRole.Medium, 5, 5, 10, success: true, cacheHit: false, userId: 1,
             error: null, promptText: null, responseText: null));
 
         ScriptedChatClient client = new ScriptedChatClient().ThenAnswer("should not be used");
@@ -119,6 +119,24 @@ public class AssistantServiceTests
 
         AssistantCompleted completed = updates.OfType<AssistantCompleted>().Single();
         await Assert.That(completed.Tools.Count).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task OversizedLookup_DoesNotHideLaterResults_AndOutputTokensAreBounded()
+    {
+        using AssistantTestHost host = new(packs: [new EchoAssistantTool()]);
+        host.Config.Features.Assistant.MaxOutputTokens = 700;
+        ScriptedChatClient client = new ScriptedChatClient()
+            .ThenToolCall("echo_lookup", new Dictionary<string, object?> { ["query"] = new string('x', 9000) })
+            .ThenToolCall("echo_lookup", new Dictionary<string, object?> { ["query"] = "later-result" })
+            .ThenAnswer("The later lookup succeeded.");
+        await Collect(host.CreateService(client).StreamAsync(AssistantTestHost.User(), "look up two items"));
+
+        string replay = client.Requests[2].Messages.Last().Text!;
+        await Assert.That(replay).Contains("found:later-result");
+        await Assert.That(replay).Contains("\"omitted\":true");
+        await Assert.That(replay).DoesNotContain(new string('x', 100));
+        await Assert.That(client.Requests.All(r => r.Options?.MaxOutputTokens == 700)).IsTrue();
     }
 
     [Test]

@@ -1,6 +1,10 @@
 using System.IO;
 using Microsoft.Extensions.Logging.Abstractions;
 using Arrk.App;
+using Arrk.Core;
+using Arrk.Core.Documentation;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 using Arrk.TestSupport;
 
@@ -70,6 +74,15 @@ public class PluginLoaderTests
 
             await Assert.That(loaded.Count).IsEqualTo(1);
             await Assert.That(loader.Modules.Select(m => m.ModuleName)).Contains("SamplePlugin");
+
+            ServiceCollection services = new();
+            services.AddArrkCore();
+            loader.ConfigureAllServices(services, new ConfigurationBuilder().Build());
+            await using ServiceProvider provider = services.BuildServiceProvider();
+            DocumentationCatalog documents = provider.GetRequiredService<DocumentationCatalog>();
+            await Assert.That(documents.Topics.Single().Id).IsEqualTo("sampleplugin/start");
+            await Assert.That(documents.GetDocument("sampleplugin/start")!.Markdown).Contains("does not require AI");
+            await Assert.That(documents.Search("sample page").Count).IsGreaterThan(0);
         }
         finally
         {

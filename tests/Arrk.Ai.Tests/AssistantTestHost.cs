@@ -17,7 +17,7 @@ public sealed class AssistantTestHost : IDisposable
         {
             Enabled = true,
             Provider = AiProviders.Ollama,
-            Models = new AiModelsConfig { Chat = "test-model" }
+            Models = new AiModelsConfig { Medium = "test-model" }
         };
 
         Monitor = new MutableOptionsMonitor<AiConfig>(Config);
