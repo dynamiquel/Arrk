@@ -1,4 +1,6 @@
+using Arrk.Core.Documentation;
 using Markdig;
+using Markdig.Renderers.Html;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 
@@ -12,9 +14,18 @@ public static class DocumentationMarkdown
         .UsePipeTables()
         .Build();
 
-    public static string Render(string markdown)
+    public static string Render(string markdown, IReadOnlyList<DocumentationSection>? sections = null)
     {
         MarkdownDocument document = Markdown.Parse(markdown, Pipeline);
+        if (sections is not null)
+        {
+            // Use catalog ids rather than a second Markdown slug algorithm.
+            foreach ((HeadingBlock heading, DocumentationSection section) in document.Descendants<HeadingBlock>()
+                .Where(h => h.Level == 2 && h.Column == 0 && markdown.AsSpan(h.Span.Start).StartsWith("## "))
+                .Zip(sections.Skip(1)))
+                heading.GetAttributes().Id = "guide-" + section.Id;
+        }
+
         foreach (LinkInline link in document.Descendants<LinkInline>())
         {
             if (!IsSafeDestination(link.Url, link.IsImage))
@@ -28,6 +39,21 @@ public static class DocumentationMarkdown
         }
 
         return document.ToHtml(Pipeline);
+    }
+
+    public static string Preview(string markdown)
+    {
+        // The result already displays the section title separately.
+        MarkdownDocument document = Markdown.Parse(markdown, Pipeline);
+        if (document.FirstOrDefault() is HeadingBlock heading)
+            markdown = markdown[(heading.Span.End + 1)..];
+
+        string text = System.Text.RegularExpressions.Regex.Replace(Markdown.ToPlainText(markdown, Pipeline), @"\s+", " ").Trim();
+        if (text.Length <= 240)
+            return text;
+
+        int end = text.LastIndexOf(' ', 239, 240);
+        return text[..(end > 0 ? end : 240)].TrimEnd() + "…";
     }
 
     static bool IsSafeDestination(string? destination, bool image)

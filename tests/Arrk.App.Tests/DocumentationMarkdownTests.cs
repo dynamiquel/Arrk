@@ -33,6 +33,19 @@ public class DocumentationMarkdownTests
     }
 
     [Test]
+    public async Task PreviewsArePlainTextAndTruncateAtWordBoundaries()
+    {
+        string shortPreview = DocumentationMarkdown.Preview("## Backups\n\nRead **this** [guide](https://example.com) and `config.yaml`.");
+        string longPreview = DocumentationMarkdown.Preview(string.Join(" ", Enumerable.Repeat("Backup settings safely.", 30)));
+
+        await Assert.That(shortPreview).IsEqualTo("Read this guide and config.yaml.");
+        await Assert.That(longPreview.Length <= 241).IsTrue();
+        await Assert.That(longPreview.EndsWith("…", StringComparison.Ordinal)).IsTrue();
+        await Assert.That(longPreview[..^1].Split(' ').Last()).IsEqualTo("safely.");
+        await Assert.That(DocumentationMarkdown.Preview(new string('x', 300))).IsEqualTo(new string('x', 240) + "…");
+    }
+
+    [Test]
     public async Task RawHtmlCannotCreateElementsOrAttributes()
     {
         string html = DocumentationMarkdown.Render("""

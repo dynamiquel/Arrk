@@ -68,6 +68,8 @@ public class HelpPageTests
         await Assert.That(html).Contains("<h1>Plugin guide</h1>");
         await Assert.That(html).Contains(longText);
         await Assert.That(html).Contains("End of the full guide.");
+        await Assert.That(html).Contains("<h2 id=\"guide-last-section\">Last section</h2>");
+        await Assert.That(html).Contains("id=\"guide-overview\"");
         await Assert.That(html).Contains("aria-current=\"page\"");
     }
 
