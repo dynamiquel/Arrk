@@ -38,12 +38,21 @@ else
                         }
                     </section>
                 }
-                <nav class="help-topics" aria-label="All installed guides">
+                <div class="help-topic-controls">
+                    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.MenuBook"
+                               EndIcon="@(_showTopics ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                               OnClick="@(() => _showTopics = !_showTopics)"
+                               aria-expanded="@(_showTopics ? "true" : "false")" aria-controls="help-all-guides">
+                        @(_showTopics ? "Hide all guides" : $"Browse all guides ({Catalog.Topics.Count})")
+                    </MudButton>
+                </div>
+                <nav id="help-all-guides" class="help-topics @(_showTopics ? "is-expanded" : "")" aria-label="All installed guides">
                     <h2>All guides <span class="help-count">@Catalog.Topics.Count</span></h2>
                     @foreach (DocumentationTopic topic in Catalog.Topics)
                     {
                         <a class="help-topic @(IsSelected(topic) ? "is-selected" : "")"
-                           href="@TopicUrl(topic.Id)" aria-current="@(IsSelected(topic) ? "page" : null)">
+                           href="@TopicUrl(topic.Id)" aria-current="@(IsSelected(topic) ? "page" : null)"
+                           @onclick="@(() => _showTopics = false)">
                             <span>@topic.Title</span>
                             <span class="help-topic-id">@topic.Id</span>
                         </a>
@@ -77,6 +86,7 @@ else
     string _html = "";
     string _query = "";
     string _searchedQuery = "";
+    bool _showTopics;
     IReadOnlyList<DocumentationMatch> _matches = [];
 
     protected override void OnParametersSet()

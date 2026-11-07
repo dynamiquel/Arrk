@@ -71,6 +71,10 @@ public class HelpPageTests
         await Assert.That(html).Contains("<h2 id=\"guide-last-section\">Last section</h2>");
         await Assert.That(html).Contains("id=\"guide-overview\"");
         await Assert.That(html).Contains("aria-current=\"page\"");
+        await Assert.That(html).Contains("Browse all guides (2)");
+        await Assert.That(html).Contains("aria-expanded=\"false\"");
+        await Assert.That(html).Contains("aria-controls=\"help-all-guides\"");
+        await Assert.That(html).Contains("id=\"help-all-guides\"");
     }
 
     [Test]
