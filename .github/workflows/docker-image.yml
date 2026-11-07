@@ -140,6 +140,5 @@ jobs:
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Attestations describe a published manifest, so they only apply when pushing.
-          provenance: ${{ inputs.push }}
-          sbom: ${{ inputs.push }}
+          provenance: true
+          sbom: true
