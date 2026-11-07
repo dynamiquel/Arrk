@@ -334,7 +334,7 @@ public partial class RadarrService : ArrService, IMovieLibrary, IMovieLibraryWri
                     Entity = entity,
                     Audience = entity is null
                         ? NotificationAudience.Broadcast
-                        : NotificationAudience.Subscribers
+                        : NotificationAudience.BroadcastAndSubscribers
                 }
             }, ct);
         }
