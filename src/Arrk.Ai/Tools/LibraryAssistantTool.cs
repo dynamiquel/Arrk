@@ -85,7 +85,7 @@ public sealed class LibraryAssistantTool(
                 "Text may be empty when only filtering, e.g. genre=Action&scope=library&sort=popularity."),
 
             AIFunctionFactory.Create(
-                async (string id, CancellationToken ct) =>
+                async (string id, int relatedOffset = 0, int relatedLimit = 8, CancellationToken ct = default) =>
                 {
                     if (string.IsNullOrWhiteSpace(id))
                         return Json(new { error = "An id from search_media is required." });
@@ -99,6 +99,8 @@ public sealed class LibraryAssistantTool(
                     try
                     {
                         AssistantMediaDetail? detail = await source.GetAsync(id, context.Username, ct);
+                        int offset = Math.Clamp(relatedOffset, 0, detail?.Related.Count ?? 0);
+                        int take = Math.Clamp(relatedLimit, 1, 10);
                         return detail is null
                             ? Json(new { error = "That item is no longer available." })
                             : Json(new
@@ -109,9 +111,11 @@ public sealed class LibraryAssistantTool(
                                 detail.Summary.Subtitle,
                                 detail.Summary.Year,
                                 detail.Summary.Status,
-                                detail.Overview,
-                                facts = detail.Facts,
-                                related = detail.Related.Select(ToWire).ToList()
+                                overview = detail.Overview.Length > 1500 ? detail.Overview[..1500] + "…" : detail.Overview,
+                                facts = detail.Facts.Take(20),
+                                related = detail.Related.Skip(offset).Take(take).Select(ToWire).ToList(),
+                                relatedCount = detail.Related.Count,
+                                nextRelatedOffset = offset < detail.Related.Count - take ? (int?)(offset + take) : null
                             });
                     }
                     catch (Exception ex)
@@ -120,7 +124,7 @@ public sealed class LibraryAssistantTool(
                     }
                 },
                 "get_media",
-                "Loads one movie, series, season, episode, artist, album or track by the id returned from search_media, including cast, facts and related items."),
+                "Read details by a search_media id. Related items are paged (default 8, max 10); use nextRelatedOffset for the next page, only if needed."),
 
             AIFunctionFactory.Create(
                 async (int limit = 10, CancellationToken ct = default) =>
@@ -180,8 +184,7 @@ public sealed class LibraryAssistantTool(
         title = item.Title,
         subtitle = item.Subtitle,
         year = item.Year,
-        status = item.Status,
-        artUrl = item.ArtUrl
+        status = item.Status
     };
 
     static AssistantMediaScope ParseScope(string? scope) => scope?.Trim().ToLowerInvariant() switch

@@ -27,16 +27,29 @@ public class AiConfigValidator : AbstractValidator<AiConfig>
         RuleFor(x => x.Limits.MaxTokensPerMonth).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Limits.CacheMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Features.Assistant.MaxToolRounds).InclusiveBetween(1, 4);
+        RuleFor(x => x.Features.Assistant.MaxOutputTokens).InclusiveBetween(128, 8192);
         RuleFor(x => x.Personas).Must(HaveValidPersonas)
             .WithMessage("Persona keys must be unique (built-ins: plain, jarvis, cortana, johnson, emilia, coconut), custom personas need a key/name/style, and the default must exist.");
+
+        When(x => x.Mcp.Enabled, () =>
+        {
+            RuleFor(x => x.Mcp.Clients).NotEmpty();
+            RuleFor(x => x.Mcp.Clients).Must(clients => clients.Select(c => c.Token).Distinct().Count() == clients.Count)
+                .WithMessage("Each MCP client must have a unique token.");
+            RuleForEach(x => x.Mcp.Clients).ChildRules(client =>
+            {
+                client.RuleFor(x => x.UserId).GreaterThan(0);
+                client.RuleFor(x => x.Token).MinimumLength(32);
+            });
+        });
 
         When(x => x.Enabled, () =>
         {
             RuleFor(x => x.Provider).Must(p => AiProviders.IsKnown(p))
                 .WithMessage($"Provider must be one of: {string.Join(", ", AiProviders.All)}");
 
-            RuleFor(x => x).Must(x => !string.IsNullOrWhiteSpace(x.ResolveChatModel()))
-                .WithMessage("A chat model is required when AI is enabled (models.chat)");
+            RuleFor(x => x).Must(x => !string.IsNullOrWhiteSpace(x.ResolveMediumModel()))
+                .WithMessage("A Medium model is required when AI is enabled (models.medium; legacy models.chat is also accepted)");
 
             RuleFor(x => x.BaseUrl).Must(BeBlankOrAbsoluteHttpUrl)
                 .WithMessage("Base URL must be an absolute http(s) URL");

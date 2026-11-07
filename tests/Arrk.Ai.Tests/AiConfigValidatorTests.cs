@@ -18,6 +18,22 @@ public class AiConfigValidatorTests
     }
 
     [Test]
+    public async Task Mcp_RequiresUniqueStrongCredentials_EvenWithoutAnAiProvider()
+    {
+        AiConfig config = new() { Mcp = new McpConfig { Enabled = true } };
+        await Assert.That(Validate(config).IsValid).IsFalse();
+        config.Mcp.Clients.Add(new McpClientConfig { UserId = 7, Token = new string('x', 32) });
+        await Assert.That(Validate(config).IsValid).IsTrue();
+        config.Mcp.Clients.Add(new McpClientConfig { UserId = 8, Token = new string('x', 32) });
+        await Assert.That(Validate(config).IsValid).IsFalse();
+        config.Mcp.Clients[1].Token = "short";
+        await Assert.That(Validate(config).IsValid).IsFalse();
+        config.Mcp.Clients[1].Token = new string('y', 32);
+        config.Mcp.Clients[1].UserId = 0;
+        await Assert.That(Validate(config).IsValid).IsFalse();
+    }
+
+    [Test]
     public async Task Enabled_GeminiWithKeyAndModel_IsValid()
     {
         AiConfig config = new()
@@ -141,5 +157,19 @@ public class AiConfigValidatorTests
     {
         await Assert.That(Validate(new AiConfig { TimeoutSeconds = 0 }).IsValid).IsFalse();
         await Assert.That(Validate(new AiConfig { TimeoutSeconds = 99999 }).IsValid).IsFalse();
+    }
+
+    [Test]
+    [Arguments(127, false)]
+    [Arguments(128, true)]
+    [Arguments(1200, true)]
+    [Arguments(8192, true)]
+    [Arguments(8193, false)]
+    public async Task AssistantOutputTokens_MustBeBounded(int tokens, bool valid)
+    {
+        AiConfig config = new();
+        config.Features.Assistant.MaxOutputTokens = tokens;
+
+        await Assert.That(Validate(config).IsValid).IsEqualTo(valid);
     }
 }

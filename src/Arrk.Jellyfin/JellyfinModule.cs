@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Arrk.Core;
 using Arrk.Auth.Abstractions;
 using Arrk.Core.Configuration;
+using Arrk.Core.Documentation;
 using Arrk.Core.Modules;
 using Arrk.Core.Playback;
 using Arrk.Core.Services;
@@ -38,6 +39,7 @@ public class JellyfinModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("jellyfin", typeof(JellyfinModule).Assembly);
         services.ConfigureConfig<JellyfinConfig>(configuration.GetSection("services:jellyfin"));
 
         services.AddSingleton<JellyfinClient>(sp =>

@@ -117,7 +117,7 @@ public sealed class MusicReleaseRanker(
         {
             answer = await ai.AskJsonAsync<MusicRankAnswer>(
                 prompt,
-                AiModelRole.Fast,
+                AiModelRole.Low,
                 DecisionFeature,
                 DecisionOperation,
                 userId: null,
@@ -203,7 +203,7 @@ public sealed class MusicReleaseRanker(
         {
             answer = await ai.AskJsonAsync<MusicRankAnswer>(
                 prompt,
-                AiModelRole.Fast,
+                AiModelRole.Low,
                 DecisionFeature,
                 TrackDecisionOperation,
                 userId: null,

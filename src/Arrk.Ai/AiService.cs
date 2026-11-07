@@ -27,6 +27,7 @@ public sealed class AiService : IDisposable
     AiConfig _config;
     IChatClient? _chat;
     IChatClient? _fast;
+    IChatClient? _high;
 
     public AiService(
         AiClientFactory factory,
@@ -62,8 +63,8 @@ public sealed class AiService : IDisposable
     /// <summary>The effective configuration (the current snapshot, updated on reload).</summary>
     public AiConfig Config => _config;
 
-    /// <summary>The conversation client, for streaming and tool calling.</summary>
-    public IChatClient? ChatClient
+    /// <summary>The balanced default client, for streaming and tool calling.</summary>
+    public IChatClient? MediumClient
     {
         get
         {
@@ -72,8 +73,11 @@ public sealed class AiService : IDisposable
         }
     }
 
-    /// <summary>The cheaper client for ranking/parsing, or the chat client when no fast model is set.</summary>
-    public IChatClient? FastClient
+    /// <summary>Compatibility accessor for the former conversation profile.</summary>
+    public IChatClient? ChatClient => MediumClient;
+
+    /// <summary>The cheaper client for ranking/parsing, or Medium when no low model is set.</summary>
+    public IChatClient? LowClient
     {
         get
         {
@@ -82,12 +86,25 @@ public sealed class AiService : IDisposable
         }
     }
 
+    /// <summary>Compatibility accessor for the former Fast profile.</summary>
+    public IChatClient? FastClient => LowClient;
+
+    /// <summary>The more capable client, or Medium when no high model is set.</summary>
+    public IChatClient? HighClient
+    {
+        get
+        {
+            lock (_gate)
+                return _high;
+        }
+    }
+
     /// <summary>
     /// Sends a single-turn prompt, prepending the configured system prompt. Returns the model's text,
     /// or <c>null</c> when AI is disabled, over budget, or the prompt is blank.
     /// </summary>
     public Task<string?> AskAsync(string prompt, CancellationToken ct = default) =>
-        AskAsync(prompt, AiModelRole.Chat, AiFeatureKeys.Core, "ask", null, ct);
+        AskAsync(prompt, AiModelRole.Medium, AiFeatureKeys.Core, "ask", null, ct);
 
     /// <summary>
     /// Sends a single-turn prompt on a specific model profile and attributes the usage to
@@ -170,39 +187,51 @@ public sealed class AiService : IDisposable
         }
     }
 
-    IChatClient? ClientFor(AiModelRole role)
+    public IChatClient? ClientFor(AiModelRole role)
     {
         lock (_gate)
-            return role == AiModelRole.Fast ? _fast ?? _chat : _chat ?? _fast;
+            return role switch
+            {
+                AiModelRole.Low => _fast ?? _chat,
+                AiModelRole.High => _high ?? _chat,
+                _ => _chat
+            };
     }
 
     void Rebuild()
     {
         IChatClient? chat;
         IChatClient? fast;
+        IChatClient? high;
         try
         {
-            chat = _factory.Create(_config, AiModelRole.Chat);
-            fast = chat is null ? null : _factory.Create(_config, AiModelRole.Fast);
+            chat = _factory.Create(_config, AiModelRole.Medium);
+            fast = chat is null || _config.ResolveLowModel() == _config.ResolveMediumModel()
+                ? chat : _factory.Create(_config, AiModelRole.Low);
+            high = chat is null || _config.ResolveHighModel() == _config.ResolveMediumModel()
+                ? chat : _config.ResolveHighModel() == _config.ResolveLowModel()
+                    ? fast : _factory.Create(_config, AiModelRole.High);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not create the AI client; AI features stay off");
             chat = null;
             fast = null;
+            high = null;
         }
 
         lock (_gate)
         {
             _chat = chat;
             _fast = fast;
+            _high = high;
         }
 
         if (chat is null)
             _logger.LogDebug("AI features are disabled");
         else
-            _logger.LogInformation("AI features enabled (provider: {Provider}, chat: {Chat}, fast: {Fast})",
-                _config.Provider, _config.ResolveChatModel(), _config.ResolveFastModel());
+            _logger.LogInformation("AI features enabled (provider: {Provider}, medium: {Medium}, low: {Low}, high: {High})",
+                _config.Provider, _config.ResolveMediumModel(), _config.ResolveLowModel(), _config.ResolveHighModel());
     }
 
     async Task<bool> CanCallAsync(string feature, string operation, AiModelRole role, int? userId, CancellationToken ct)

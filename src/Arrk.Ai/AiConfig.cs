@@ -57,23 +57,56 @@ public class AiConfig
 
     public AiPersonasConfig Personas { get; set; } = new();
 
-    /// <summary>The model used for conversation.</summary>
-    public string ResolveChatModel() => Models.Chat.Trim();
+    public McpConfig Mcp { get; set; } = new();
 
-    /// <summary>The cheaper model used for ranking/parsing. Falls back to the chat model.</summary>
-    public string ResolveFastModel() =>
-        !string.IsNullOrWhiteSpace(Models.Fast) ? Models.Fast.Trim() : ResolveChatModel();
+    /// <summary>The balanced model, accepting models.chat from older configurations.</summary>
+    public string ResolveMediumModel() =>
+        !string.IsNullOrWhiteSpace(Models.Medium) ? Models.Medium.Trim() : (Models.Chat ?? "").Trim();
+
+    /// <summary>Compatibility accessor for the former conversation profile.</summary>
+    public string ResolveChatModel() => ResolveMediumModel();
+
+    /// <summary>The cheaper model used for ranking/parsing. Falls back to Medium.</summary>
+    public string ResolveLowModel() =>
+        !string.IsNullOrWhiteSpace(Models.Low) ? Models.Low.Trim()
+        : !string.IsNullOrWhiteSpace(Models.Fast) ? Models.Fast.Trim() : ResolveMediumModel();
+
+    /// <summary>Compatibility accessor for the former Fast profile.</summary>
+    public string ResolveFastModel() => ResolveLowModel();
+
+    /// <summary>The most capable model. Falls back to Medium when unset.</summary>
+    public string ResolveHighModel() =>
+        !string.IsNullOrWhiteSpace(Models.High) ? Models.High.Trim() : ResolveMediumModel();
+
+    public string ResolveModel(AiModelRole role) => role switch
+    {
+        AiModelRole.Low => ResolveLowModel(),
+        AiModelRole.High => ResolveHighModel(),
+        _ => ResolveMediumModel()
+    };
 }
 
-/// <summary>The two model profiles: conversation and cheap background reasoning.</summary>
+/// <summary>Low, Medium and High model tiers sharing the configured provider.</summary>
 public class AiModelsConfig
 {
-    [Description("Model used for the assistant and anything user-facing. Required when AI is enabled.")]
-    [Display(Name = "Chat model")]
+    [Description("Balanced model used by default for the assistant. Required when AI is enabled unless legacy models.chat is set.")]
+    [Display(Name = "Medium model")]
+    public string Medium { get; set; } = "";
+
+    [Description("Cheaper model for ranking, parsing and summaries. Falls back to Medium when blank.")]
+    [Display(Name = "Low model")]
+    public string Low { get; set; } = "";
+
+    [Description("More capable model for demanding assistant requests. Falls back to Medium when blank.")]
+    [Display(Name = "High model")]
+    public string High { get; set; } = "";
+
+    [Description("Legacy alias for Medium. Used only when models.medium is blank; existing configurations remain valid.")]
+    [Display(Name = "Legacy conversation model")]
     public string Chat { get; set; } = "";
 
-    [Description("Cheaper model for ranking, parsing and summaries. Falls back to the chat model when blank.")]
-    [Display(Name = "Fast model")]
+    [Description("Legacy alias for Low. Used only when models.low is blank; existing configurations remain valid.")]
+    [Display(Name = "Legacy low model")]
     public string Fast { get; set; } = "";
 }
 
@@ -95,7 +128,7 @@ public class AiFeaturesConfig
 
 public class AiStyleFeature
 {
-    [Description("Let the optional AI helper generate per-account custom CSS from a plain-language brief. The user reviews and saves the result.")]
+    [Description("Let the AI helper generate per-account custom CSS from a plain-language brief. The user reviews and saves the result.")]
     public bool Enabled { get; set; } = true;
 }
 
@@ -112,6 +145,9 @@ public class AiAssistantFeature
 
     [Description("Tool rounds allowed per question (1–4). Lower costs fewer tokens; 2 is enough for a search plus an action.")]
     public int MaxToolRounds { get; set; } = 2;
+
+    [Description("Maximum output tokens per assistant model response (128–8192). Keeps answers and tool calls bounded.")]
+    public int MaxOutputTokens { get; set; } = 1200;
 }
 
 public class AiReleaseRankingFeature

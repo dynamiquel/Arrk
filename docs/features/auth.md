@@ -36,6 +36,7 @@ The feature lives in `Arrk.Auth`. Cross-module contracts (`ArrkUser`, roles, cla
   username from an email address.
 - Users manage their own profile at `/account` (username, avatar, password, connections). Admins
   manage accounts at `/users` and review pending sign-ups there and on the dashboard.
+  The edit dialog shows the read-only numeric User ID for account-bound integrations such as MCP.
 - Arrk's database is the system of record. Jellyfin and Navidrome keep their own credential
   stores and are updated through their APIs. Passwords are forwarded only when set, because
   Arrk stores hashes.

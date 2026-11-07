@@ -1,0 +1,97 @@
+@page "/help"
+@attribute [Authorize]
+@using Arrk.Core.Documentation
+@inject DocumentationCatalog Catalog
+
+<PageTitle>Arrk - Help</PageTitle>
+
+<PageHeader Icon="@Icons.Material.Filled.HelpOutline" Title="Help" Subtitle="Guides from your installed modules" />
+
+@if (Catalog.Topics.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">No guides are installed. Modules and plugins can provide their own documentation.</MudAlert>
+}
+else
+{
+    <div class="help-layout">
+        <aside class="help-index st-card" aria-label="Find a guide">
+            <SectionContainer Title="Find a guide" Icon="@Icons.Material.Filled.MenuBook">
+                <p class="help-search-label" id="help-search-label">Search installed documentation</p>
+                <div role="search" aria-labelledby="help-search-label">
+                    <SearchBox @bind-Value="_query" OnSearch="Search" Placeholder="Search guides…" Clearable="true" Margin="Margin.Dense" />
+                </div>
+                @if (!string.IsNullOrWhiteSpace(_searchedQuery))
+                {
+                    <section class="help-results" aria-label="Search results" aria-live="polite">
+                        <h2>Top matches</h2>
+                        @if (_matches.Count == 0)
+                        {
+                            <p>No matches for “@_searchedQuery”. Try another term or browse all guides below.</p>
+                        }
+                        @foreach (DocumentationMatch match in _matches)
+                        {
+                            <a class="help-result" href="@TopicUrl(match.Topic)">
+                                <strong>@match.Title</strong>
+                                <span class="help-result-section">@match.SectionTitle</span>
+                                <span class="help-excerpt">@match.Excerpt</span>
+                            </a>
+                        }
+                    </section>
+                }
+                <nav class="help-topics" aria-label="All installed guides">
+                    <h2>All guides <span class="help-count">@Catalog.Topics.Count</span></h2>
+                    @foreach (DocumentationTopic topic in Catalog.Topics)
+                    {
+                        <a class="help-topic @(IsSelected(topic) ? "is-selected" : "")"
+                           href="@TopicUrl(topic.Id)" aria-current="@(IsSelected(topic) ? "page" : null)">
+                            <span>@topic.Title</span>
+                            <span class="help-topic-id">@topic.Id</span>
+                        </a>
+                    }
+                </nav>
+            </SectionContainer>
+        </aside>
+
+        <article class="help-document st-card" aria-label="Selected guide">
+            @if (_document is null)
+            {
+                <MudAlert Severity="Severity.Warning">That guide is not installed. Choose a guide from the list.</MudAlert>
+            }
+            else
+            {
+                <div class="help-document-meta">
+                    <StChip Variant="neutral">@_document.Id</StChip>
+                    <MudLink Href="@TopicUrl(_document.Id)" Typo="Typo.body2">Link to this guide</MudLink>
+                </div>
+                <div class="help-prose" @key="_document.Id">@((MarkupString)_html)</div>
+            }
+        </article>
+    </div>
+}
+
+@code {
+    [Parameter, SupplyParameterFromQuery(Name = "topic")]
+    public string? Topic { get; set; }
+
+    DocumentationDocument? _document;
+    string _html = "";
+    string _query = "";
+    string _searchedQuery = "";
+    IReadOnlyList<DocumentationMatch> _matches = [];
+
+    protected override void OnParametersSet()
+    {
+        _document = Catalog.GetDocument(string.IsNullOrWhiteSpace(Topic) ? Catalog.Topics.FirstOrDefault()?.Id : Topic);
+        _html = _document is null ? "" : DocumentationMarkdown.Render(_document.Markdown);
+    }
+
+    void Search(string query)
+    {
+        _searchedQuery = query ?? "";
+        _matches = string.IsNullOrWhiteSpace(_searchedQuery) ? [] : Catalog.Search(_searchedQuery);
+    }
+
+    bool IsSelected(DocumentationTopic topic) => topic.Id == _document?.Id;
+
+    static string TopicUrl(string topic) => "/help?topic=" + Uri.EscapeDataString(topic);
+}

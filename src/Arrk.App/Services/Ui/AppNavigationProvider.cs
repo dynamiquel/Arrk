@@ -17,6 +17,7 @@ public sealed class AppNavigationProvider : INavigationProvider
 
         new(UiSections.System, "Logs", "/logs", Icons.Material.Filled.Article, Order: 12, AdminOnly: true),
 
+        new(UiSections.Info, "Help", "/help", Icons.Material.Filled.HelpOutline, Order: 5),
         new(UiSections.Info, "About", "/info", Icons.Material.Filled.Info, Order: 10)
     ];
 }
