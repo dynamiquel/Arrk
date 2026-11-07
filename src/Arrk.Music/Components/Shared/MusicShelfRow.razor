@@ -25,26 +25,26 @@
                 <div class="st-music-card-wrap" @key="entry.Key">
                     @if (entry.Kind == ShelfKind.Resume)
                     {
-                        <MusicCard ShowInLibraryBadge="false" Item="entry.Item"
+                        <MusicCard ShowInLibraryBadge="false" Item="entry.Item!"
                                    OnClick="ResumeQueueAsync" OnPlay="ResumeQueueAsync"
-                                   Class="st-music-card--resume" Badge="Resume" />
+                                   Class="st-music-card--resume" />
                     }
                     else if (entry.Kind == ShelfKind.Subscription)
                     {
-                        <MusicCard ShowInLibraryBadge="false" Item="entry.Item"
-                                   OnClick="@((MusicItem _) => OpenSubscriptionAsync(entry.Subscription!))"
-                                   OnPlay="@((MusicItem _) => PlaySubscriptionAsync(entry.Subscription!))"
-                                   Badge="Subscribed" />
+                        <MusicPlaylistCard Subscription="entry.Subscription!"
+                                           OnClick="() => OpenSubscriptionAsync(entry.Subscription!)"
+                                           OnPlay="() => PlaySubscriptionAsync(entry.Subscription!)" />
                     }
                     else if (entry.Kind == ShelfKind.Playlist)
                     {
-                        <MusicCard ShowInLibraryBadge="false" Item="entry.Item"
-                                   OnClick="@((MusicItem _) => OpenPlaylistAsync(entry.Playlist!))"
-                                   OnPlay="@((MusicItem _) => PlayPlaylistAsync(entry.Playlist!))" />
+                        <MusicPlaylistCard Playlist="entry.Playlist!"
+                                           Icon="@IconFor(entry.Playlist!)"
+                                           OnClick="() => OpenPlaylistAsync(entry.Playlist!)"
+                                           OnPlay="() => PlayPlaylistAsync(entry.Playlist!)" />
                     }
                     else
                     {
-                        <MusicCard ShowInLibraryBadge="false" Item="entry.Item"
+                        <MusicCard ShowInLibraryBadge="false" Item="entry.Item!"
                                    OnClick="@((MusicItem _) => PlayHistoryAsync(entry.History!))"
                                    OnPlay="@((MusicItem _) => PlayHistoryAsync(entry.History!))" />
                     }
@@ -59,7 +59,7 @@
 
     sealed record ShelfEntry(
         string Key,
-        MusicItem Item,
+        MusicItem? Item,
         ShelfKind Kind,
         SubsonicPlaylist? Playlist,
         MusicSubscription? Subscription,
@@ -95,6 +95,7 @@
     [Parameter] public EventCallback OnChanged { get; set; }
 
     readonly List<ShelfEntry> _entries = [];
+    Dictionary<string, string> _playlistIcons = new(StringComparer.OrdinalIgnoreCase);
     List<SubsonicPlaylist> _playlists = [];
     List<MusicSubscription> _subscriptions = [];
     List<MusicPlayHistory> _history = [];
@@ -115,6 +116,15 @@
             AuthenticationState state = await AuthProvider.GetAuthenticationStateAsync();
             _isAdmin = state.User.IsInRole(ArrkRoles.Admin);
             int.TryParse(state.User.FindFirst(ArrkClaims.UserIdClaim)?.Value, out _userId);
+        }
+
+        try
+        {
+            _playlistIcons = await JS.InvokeAsync<Dictionary<string, string>>("arrkPlaylists._all") ?? new(StringComparer.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            // Playlist icons are a browser-only convenience; the default glyph is fine without them.
         }
 
         if (UseProvidedData)
@@ -192,14 +202,14 @@
             foreach (MusicSubscription subscription in _subscriptions)
             {
                 entries.Add(new ShelfEntry(
-                    $"subscription:{subscription.Id}", SubscriptionItem(subscription),
+                    $"subscription:{subscription.Id}", null,
                     ShelfKind.Subscription, null, subscription, null));
             }
 
             foreach (SubsonicPlaylist playlist in _playlists)
             {
                 entries.Add(new ShelfEntry(
-                    $"playlist:{playlist.Id}", PlaylistItem(playlist),
+                    $"playlist:{playlist.Id}", null,
                     ShelfKind.Playlist, playlist, null, null));
             }
         }
@@ -231,23 +241,8 @@
         };
     }
 
-    static MusicItem PlaylistItem(SubsonicPlaylist playlist) => new()
-    {
-        EntityType = MusicEntityType.Playlist,
-        Title = playlist.Name,
-        ArtistName = $"{playlist.SongCount} song{(playlist.SongCount == 1 ? "" : "s")}",
-        TrackCount = playlist.SongCount,
-        ArtUrl = !string.IsNullOrEmpty(playlist.CoverArt) ? NavidromeService.CoverArtUrl(playlist.CoverArt) : ""
-    };
-
-    static MusicItem SubscriptionItem(MusicSubscription subscription) => new()
-    {
-        EntityType = MusicEntityType.Playlist,
-        Title = subscription.Name,
-        ArtistName = $"{subscription.MatchCount}/{subscription.TrackCount} songs",
-        TrackCount = subscription.TrackCount,
-        ArtUrl = subscription.ArtUrl
-    };
+    string IconFor(SubsonicPlaylist playlist) =>
+        _playlistIcons.TryGetValue(playlist.Id, out string? icon) && !string.IsNullOrEmpty(icon) ? icon : "♪";
 
     MusicItem HistoryItem(MusicPlayHistory history) => new()
     {

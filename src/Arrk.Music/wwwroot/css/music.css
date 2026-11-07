@@ -208,6 +208,7 @@
 
 /* Music: playlist tiles + hoverable track rows */
 .st-music-playlist-tile { position: relative; display: flex; flex-direction: column; cursor: pointer; }
+.st-music-playlist-card-art { position: relative; width: 100%; }
 .st-music-playlist-icon { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 1 / 1; font-size: 2rem;
     background: linear-gradient(135deg, rgba(232,121,160,.28), rgba(192,132,252,.28)); color: var(--st-text-primary); }
 .st-music-playlist-del {

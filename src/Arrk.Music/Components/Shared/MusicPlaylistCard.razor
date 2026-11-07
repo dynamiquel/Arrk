@@ -1,0 +1,76 @@
+@* The shared playlist tile. The Playlists grid is the reference design; the music shelves use
+   the same card so subscribed and owned playlists read the same everywhere. *@
+<div class="st-media-card st-music-card st-music-playlist-tile @Class" @onclick="HandleClick"
+     tabindex="0" role="button" aria-label="@Title">
+    @if (Subscription is not null)
+    {
+        <div class="st-media-card-badge st-music-sub-badge">Subscribed</div>
+    }
+    <div class="st-music-playlist-card-art">
+        <div class="st-music-playlist-icon" style="@ArtStyle">
+            @if (string.IsNullOrEmpty(ArtUrl))
+            {
+                <span>@Icon</span>
+            }
+        </div>
+        @if (OnPlay.HasDelegate)
+        {
+            <div class="st-music-card-play" @onclick:stopPropagation="true" @onclick="HandlePlay" role="button" title="Play" aria-label="Play">
+                <MudIcon Icon="@Icons.Material.Filled.PlayArrow" />
+            </div>
+        }
+    </div>
+    <div class="st-media-card-info">
+        <div class="st-media-card-title" title="@Title">@Title</div>
+        <div class="st-media-card-meta"><span>@Meta</span></div>
+    </div>
+    @if (OnDelete.HasDelegate)
+    {
+        <StIconButton Overlay StopPropagation Icon="@Icons.Material.Filled.Delete"
+                      Class="st-music-playlist-del" Title="@DeleteTitle" Variant="ActionVariant.Danger"
+                      OnClick="HandleDelete" />
+    }
+</div>
+
+@code {
+    [Parameter] public MusicSubscription? Subscription { get; set; }
+    [Parameter] public SubsonicPlaylist? Playlist { get; set; }
+    [Parameter] public string Icon { get; set; } = "♪";
+    [Parameter] public string DeleteTitle { get; set; } = "Delete";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public EventCallback OnPlay { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    string Title => Subscription?.Name ?? Playlist?.Name ?? "";
+
+    string Meta => Subscription is { } subscription
+        ? $"{subscription.MatchCount}/{subscription.TrackCount} songs"
+        : Playlist is { } playlist
+            ? $"{playlist.SongCount} song{(playlist.SongCount == 1 ? "" : "s")}"
+            : "";
+
+    string ArtUrl => Subscription?.ArtUrl ?? "";
+
+    string ArtStyle => string.IsNullOrEmpty(ArtUrl)
+        ? ""
+        : $"background-image:linear-gradient(135deg, rgba(15,10,24,.25), rgba(15,10,24,.25)), url('{ArtUrl}');background-size:cover;background-position:center;";
+
+    async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+            await OnClick.InvokeAsync();
+    }
+
+    async Task HandlePlay()
+    {
+        if (OnPlay.HasDelegate)
+            await OnPlay.InvokeAsync();
+    }
+
+    async Task HandleDelete()
+    {
+        if (OnDelete.HasDelegate)
+            await OnDelete.InvokeAsync();
+    }
+}
