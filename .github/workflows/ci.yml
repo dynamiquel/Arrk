@@ -51,6 +51,22 @@ jobs:
       - name: Restore, build and test
         run: ./scripts/ci.sh
 
+  docker-build:
+    name: Docker image build
+    if: ${{ github.event_name != 'schedule' && github.event_name != 'workflow_call' && (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')) }}
+    # Builds the image with the same workflow releases use, but never publishes it: push is off,
+    # so the job never logs in. The reusable workflow declares packages: write, and a caller has
+    # to grant everything the callee declares, so the grant is repeated here. Fork pull requests
+    # still run with a read-only token.
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker-image.yml
+    with:
+      version: 0.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
+      push: false
+      platforms: linux/amd64
+
   docker-tests:
     name: Docker-backed tests
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_call' && inputs.docker) }}

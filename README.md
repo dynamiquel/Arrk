@@ -204,6 +204,27 @@ in a pull request.
 
 The public website lives in [`site/`](site/) and deploys to GitHub Pages.
 
+### Development images
+
+CI builds the container image on every pull request without publishing it, so a Dockerfile
+break fails the build. Successful CI runs on `main` and `dev` also publish an image tagged with
+the branch name:
+
+```bash
+docker pull ghcr.io/dynamiquel/arrk:dev
+```
+
+Build one for any other branch — a pull request under test, for example — from the Actions tab
+or the CLI:
+
+```bash
+gh workflow run publish-dev.yml --ref <branch>
+```
+
+The image is tagged `ghcr.io/dynamiquel/arrk:<branch>` with `/` replaced by `-`, so
+`agent/fix-login` publishes as `agent-fix-login`. Each branch builds independently, and a newer
+run on the same branch replaces that branch's image.
+
 ## Contributing
 
 Issues and pull requests are welcome. Please keep reports clear and remove API keys, passwords and
