@@ -334,6 +334,7 @@ public class NotificationServiceTests
         public bool IsConfigured => true;
         public bool SupportsDirectDelivery => true;
 
+        public NotificationDeliveryResult DirectResult { get; init; } = NotificationDeliveryResult.Ok();
         public List<NotificationMessage> Broadcast { get; } = [];
         public List<(int UserId, NotificationMessage Message)> Direct { get; } = [];
 
@@ -348,12 +349,89 @@ public class NotificationServiceTests
             int userId, NotificationMessage message, CancellationToken ct = default)
         {
             Direct.Add((userId, message));
-            return Task.FromResult(NotificationDeliveryResult.Ok());
+            return Task.FromResult(DirectResult);
         }
     }
 
     static MediaEntityRef MovieEntity() => new(
         "tv", new MediaDomain("movie"), "tv:movie:tmdb:100", "The Matrix");
+
+    [Test]
+    [Arguments(false, false)]
+    [Arguments(true, false)]
+    [Arguments(true, true)]
+    public async Task Public_entity_notification_reaches_global_channels_and_only_matching_followers(
+        bool hasFollowers, bool directFails)
+    {
+        RecordingChannel channel = new()
+        {
+            DirectResult = directFails
+                ? NotificationDeliveryResult.Fail("DMs are blocked")
+                : NotificationDeliveryResult.Ok()
+        };
+        (NotificationService service, TestDatabase db) = Create(channels: [channel]);
+        await using (db)
+        {
+            NotificationSubscriptionService subscriptions = TestNotifications.Subscriptions(db);
+            if (hasFollowers)
+            {
+                await subscriptions.SubscribeAsync(7, MovieEntity(), new NotificationSubscriptionOptions());
+                await subscriptions.SubscribeAsync(8, MovieEntity(), new NotificationSubscriptionOptions
+                {
+                    NewContent = false
+                });
+                await subscriptions.SubscribeAsync(9, MovieEntity() with { ItemKey = "tv:movie:tmdb:200" },
+                    new NotificationSubscriptionOptions());
+            }
+
+            Notification? result = await service.PublishAsync(new NotificationMessage
+            {
+                Key = DownloadNotificationTopics.DownloadImported,
+                Title = "Movie imported",
+                Entity = MovieEntity(),
+                Audience = NotificationAudience.BroadcastAndSubscribers
+            });
+
+            await Assert.That(result).IsNotNull();
+            await Assert.That(result!.UserId).IsNull();
+            await Assert.That(result.Delivered).IsTrue();
+            await Assert.That(channel.Broadcast.Count).IsEqualTo(1);
+            await Assert.That(channel.Direct.Count).IsEqualTo(hasFollowers ? 1 : 0);
+            IReadOnlyList<Notification> inbox = await service.QueryAsync(new NotificationQuery());
+            await Assert.That(inbox.Count).IsEqualTo(1);
+            await Assert.That(inbox[0].Delivered).IsTrue();
+            await Assert.That(inbox[0].Error).IsNull();
+            await Assert.That(await service.UnreadCountAsync(7)).IsEqualTo(1);
+            if (hasFollowers)
+                await Assert.That(channel.Direct[0].UserId).IsEqualTo(7);
+        }
+    }
+
+    [Test]
+    public async Task Explicit_user_notification_with_entity_never_reaches_global_channels_or_other_followers()
+    {
+        RecordingChannel channel = new();
+        (NotificationService service, TestDatabase db) = Create(channels: [channel]);
+        await using (db)
+        {
+            await TestNotifications.Subscriptions(db).SubscribeAsync(
+                8, MovieEntity(), new NotificationSubscriptionOptions());
+
+            Notification? result = await service.PublishToUserAsync(7, new NotificationMessage
+            {
+                Key = DownloadNotificationTopics.DownloadImported,
+                Title = "Your movie is available",
+                Entity = MovieEntity(),
+                Audience = NotificationAudience.BroadcastAndSubscribers
+            });
+
+            await Assert.That(result!.UserId).IsEqualTo(7);
+            await Assert.That(channel.Broadcast).IsEmpty();
+            await Assert.That(channel.Direct.Count).IsEqualTo(1);
+            await Assert.That(channel.Direct[0].UserId).IsEqualTo(7);
+            await Assert.That((await service.QueryAsync(new NotificationQuery())).Count).IsEqualTo(1);
+        }
+    }
 
     [Test]
     public async Task Subscriber_notification_creates_one_user_row_and_skips_the_global_channel()

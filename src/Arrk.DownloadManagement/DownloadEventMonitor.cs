@@ -126,7 +126,7 @@ public class DownloadEventMonitor(
     }
 
     /// <summary>
-    /// Resolves media identity for download events that should be targeted at subscribers. A
+    /// Resolves media identity for download events that also notify subscribers. A
     /// torrent that no library owns stays a normal broadcast, so admin visibility is preserved.
     /// </summary>
     async Task AttachEntitiesAsync(List<SystemEventRecord> events, CancellationToken ct)
@@ -185,7 +185,7 @@ public class DownloadEventMonitor(
             SourceName = entity.Title,
             Url = entity.Url,
             Entity = entity,
-            Audience = NotificationAudience.Subscribers,
+            Audience = NotificationAudience.BroadcastAndSubscribers,
             Style = message.Style ?? new NotificationStyle
             {
                 ThumbnailUrl = entity.PosterUrl,
@@ -533,4 +533,3 @@ internal static class NotificationTitles
         _ => "Download event"
     };
 }
-

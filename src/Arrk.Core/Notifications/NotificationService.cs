@@ -15,7 +15,7 @@ namespace Arrk.Core.Notifications;
 /// <see cref="INotificationChannel"/> contract. Delivery transports are contributed by modules.
 /// Broadcast alerts use the global channels; subscriber/user alerts create one inbox row per
 /// recipient and use each channel's direct-delivery path, so they never leak into the global
-/// webhook.
+/// webhook. Public entity alerts explicitly combine a broadcast with subscriber delivery.
 /// </remarks>
 public sealed class NotificationService(
     IDbContextFactory<ArrkDbContext> dbContextFactory,
@@ -46,6 +46,14 @@ public sealed class NotificationService(
         Notification? first = null;
         foreach (int? userId in targets)
         {
+            // The broadcast is already visible to followers in-app. Send their direct alerts
+            // without creating duplicate inbox entries or overwriting global delivery status.
+            if (message.Audience == NotificationAudience.BroadcastAndSubscribers && first is { UserId: null })
+            {
+                await DeliverAsync(null, userId, message, ct);
+                continue;
+            }
+
             Notification notification = await PersistAsync(userId, message, ct);
             first ??= notification;
             await DeliverAsync(notification, userId, message, ct);
@@ -78,17 +86,22 @@ public sealed class NotificationService(
                 return (message.AudienceUserIds.Distinct().Select(id => (int?)id).ToList(), []);
 
             case NotificationAudience.Subscribers:
+            case NotificationAudience.BroadcastAndSubscribers:
+                bool broadcast = message.Audience == NotificationAudience.BroadcastAndSubscribers;
                 if (message.Entity is null)
                 {
                     logger.LogWarning(
-                        "Notification {Topic} asked for subscribers but carried no entity; dropping it",
+                        "Notification {Topic} asked for subscribers but carried no entity; skipping subscriber delivery",
                         message.Key);
-                    return ([], []);
+                    return (broadcast ? [null] : [], []);
                 }
 
                 NotificationSubscriptionAudience audience = await subscriptions.ResolveAudienceAsync(
                     message.Entity, message.Key, ct);
-                return (audience.UserIds.Select(id => (int?)id).ToList(), audience.SubscriptionIds);
+                List<int?> targets = audience.UserIds.Select(id => (int?)id).ToList();
+                if (broadcast)
+                    targets.Insert(0, null);
+                return (targets, audience.SubscriptionIds);
 
             default:
                 return ([null], []);
@@ -124,7 +137,7 @@ public sealed class NotificationService(
     }
 
     async Task DeliverAsync(
-        Notification entity,
+        Notification? entity,
         int? userId,
         NotificationMessage message,
         CancellationToken ct)
@@ -170,6 +183,17 @@ public sealed class NotificationService(
             }
         }
 
+        logger.LogInformation(
+            "Notification {Topic} recorded for {Audience} (delivered: {Delivered}; channels: {Channels}; errors: {Errors})",
+            message.Key,
+            userId is null ? "everyone" : $"user {userId}",
+            delivered.Count > 0,
+            delivered.Count > 0 ? string.Join(",", delivered) : "none",
+            errors.Count > 0 ? string.Join("; ", errors) : "none");
+
+        if (entity is null)
+            return;
+
         entity.Delivered = delivered.Count > 0;
         entity.Channels = delivered.Count > 0 ? string.Join(",", delivered) : null;
         entity.Error = errors.Count > 0 ? string.Join("; ", errors) : null;
@@ -179,13 +203,6 @@ public sealed class NotificationService(
             db.Notifications.Update(entity);
             await db.SaveChangesAsync(ct);
         }
-
-        logger.LogInformation(
-            "Notification {Topic} recorded for {Audience} (delivered: {Delivered}; channels: {Channels})",
-            message.Key,
-            userId is null ? "everyone" : $"user {userId}",
-            entity.Delivered,
-            entity.Channels ?? "none");
     }
 
     public async Task<IReadOnlyList<Notification>> QueryAsync(NotificationQuery query, CancellationToken ct = default)

@@ -121,7 +121,7 @@ public class NotificationEmissionTests
     }
 
     [Test]
-    public async Task ResolvedTorrent_TargetsSubscribersInsteadOfBroadcasting()
+    public async Task ResolvedTorrent_TargetsGlobalChannelsAndSubscribers()
     {
         MediaEntityRef entity = new(
             "tv", new MediaDomain("movie"), "tv:movie:tmdb:603", "The Matrix");
@@ -132,12 +132,19 @@ public class NotificationEmissionTests
         await monitor.PollAsync();
 
         NotificationMessage notification = store.Notifications.Single();
-        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.Subscribers);
+        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
         await Assert.That(notification.Entity).IsNotNull();
         await Assert.That(notification.Entity!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
         await Assert.That(notification.Title).IsEqualTo("Download started");
         await Assert.That(notification.Body).Contains("The Matrix");
         await Assert.That(notification.SourceName).IsEqualTo("The Matrix");
+
+        torrents.TorrentsByFilter["all"] = [T("h1", state: TorrentState.Seeding, progress: 1.0, downloadSpeed: 0)];
+        await monitor.PollAsync();
+
+        NotificationMessage completed = store.Notifications.Single(n => n.Key == DownloadNotificationTopics.DownloadCompleted);
+        await Assert.That(completed.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
+        await Assert.That(completed.Entity!.ItemKey).IsEqualTo("tv:movie:tmdb:603");
     }
 
     [Test]

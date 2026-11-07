@@ -108,7 +108,7 @@ public class MediaImportMonitorTests
         await Assert.That(notification.Body).Contains("Batman Knightfall");
         await Assert.That(notification.Body).Contains("now available in your library");
         await Assert.That(notification.Style!.ThumbnailUrl).IsEqualTo("https://img/poster.jpg");
-        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.Subscribers);
+        await Assert.That(notification.Audience).IsEqualTo(NotificationAudience.BroadcastAndSubscribers);
         await Assert.That(notification.Entity).IsNotNull();
         await Assert.That(notification.Entity!.ItemKey).IsEqualTo("tv:movie:tmdb:100");
 

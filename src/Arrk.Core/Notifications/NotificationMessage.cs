@@ -52,7 +52,8 @@ public sealed record NotificationMessage
 
     /// <summary>
     /// The media entity this event belongs to. Required for
-    /// <see cref="NotificationAudience.Subscribers"/> and used to match per-user subscriptions.
+    /// <see cref="NotificationAudience.Subscribers"/> and
+    /// <see cref="NotificationAudience.BroadcastAndSubscribers"/> to match per-user subscriptions.
     /// </summary>
     public MediaEntityRef? Entity { get; init; }
 

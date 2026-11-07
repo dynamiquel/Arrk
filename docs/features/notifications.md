@@ -15,10 +15,12 @@ Rules that keep them separate:
 - The store records every event, whether or not anyone wants to be notified.
 - Notifications are a subset: only enabled topics, formatted and delivered. A disabled
   notification never enters the inbox and is never sent externally.
-- Broadcasts go to everyone and can use the global channels. Entity alerts go only to users who
-  subscribed to that title, and are delivered through each user's own transports.
-- Targeted alerts never leak into the global webhook. That separation is what lets the global
-  channel stay useful while personal notifications remain quiet.
+- Broadcasts go to everyone and can use the global channels. Public movie/series-added,
+  download and import alerts also reach followers through each user's own transports. Global
+  delivery does not depend on anyone following the title or on Discord DMs being configured.
+- Subscriber-only and explicitly targeted alerts never leak into the global webhook. Personal
+  request decisions remain private; following a title adds delivery rather than replacing the
+  configured global alerts.
 - Producers write one `SystemEventRecord`. If it carries a `Notification`, `NotifyingEventStore`
   projects it into the notification pipeline. No producer talks to Discord directly.
 
@@ -46,6 +48,10 @@ Audit persistence happens first; a notification failure is logged and the audit 
 | `Broadcast` | One row visible to everyone | Every configured global channel |
 | `Users` | One row per account in `AudienceUserIds` | Only those accounts' direct channels |
 | `Subscribers` | One row per matching subscriber | Only those accounts' direct channels |
+| `BroadcastAndSubscribers` | One row visible to everyone, without duplicate follower entries | Global channels plus matching subscribers' direct channels |
+
+For combined delivery, the inbox row tracks global transport delivery. Direct-message outcomes
+remain in the delivery logs and each user's transport binding, not duplicate inbox rows.
 
 Entity alerts carry a `MediaEntityRef`; the subscription service matches it against
 `NotificationSubscription` rows. A subscription matches the exact item key, descendants when
@@ -235,8 +241,9 @@ To add an event:
    emoji, colour) and any curated groups.
 3. Register it in `ConfigureServices`.
 4. Attach a `NotificationMessage` to the `SystemEventRecord` you record. Set `Entity` and
-   `Audience = Subscribers` when the event belongs to one title; use `AudienceUserIds` for a
-   direct alert.
+   `Audience = BroadcastAndSubscribers` for public title events that should reach global channels
+   and followers. Use `Subscribers` only for follower-only alerts, or `Users` with
+   `AudienceUserIds` for a private direct alert.
 
 The registry picks it up and throws at startup on duplicates.
 

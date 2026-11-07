@@ -10,5 +10,8 @@ public enum NotificationAudience
     Subscribers = 1,
 
     /// <summary>Exactly the accounts in <see cref="NotificationMessage.AudienceUserIds"/>.</summary>
-    Users = 2
+    Users = 2,
+
+    /// <summary>Global channels plus users subscribed to the notification's entity.</summary>
+    BroadcastAndSubscribers = 3
 }
