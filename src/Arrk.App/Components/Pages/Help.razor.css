@@ -13,6 +13,10 @@
     padding: 0;
 }
 
+.help-topic-controls {
+    display: none;
+}
+
 .help-search-label, .help-topic-id, .help-result-section, .help-excerpt {
     display: block;
     color: var(--st-text-secondary);
@@ -115,5 +119,9 @@
 
 @media (max-width: 900px) {
     .help-layout { grid-template-columns: minmax(0, 1fr); }
-    .help-topics { max-height: 18rem; overflow-y: auto; }
+    .help-topic-controls { display: block; margin-top: var(--st-space-sm); }
+    .help-topic-controls ::deep button { min-height: 44px; width: 100%; }
+    .help-topics { display: none; max-height: 18rem; overflow-y: auto; }
+    .help-topics.is-expanded { display: block; }
+    .help-topic { min-height: 44px; }
 }

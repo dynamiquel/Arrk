@@ -49,6 +49,9 @@ dropping text. Plugin docs rendered only in the app can use standard Markdown.
   to the matching section using catalog section ids, with space below the app header.
   Human previews render section text without Markdown syntax, capped at 240 characters
   plus an ellipsis when shortened, without changing the AI search payload or ranking.
+  At widths up to 900px, the guide list starts collapsed behind a keyboard-accessible
+  Browse all guides button and closes when a guide is selected. Search stays visible;
+  wider layouts always show the guide list.
 - `Arrk.Ai` supplies only a search/read tool adapter over the Core catalog. It owns the
   instructions for its own AI feature, not the other modules' documentation.
 - MCP offers the same catalog as resources. Client apps choose which resources to include
