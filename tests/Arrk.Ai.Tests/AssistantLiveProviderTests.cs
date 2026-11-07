@@ -23,7 +23,7 @@ public class AssistantLiveProviderTests
             ApiKey = key,
             Models = new AiModelsConfig
             {
-                Chat = Environment.GetEnvironmentVariable("ARRK_LIVE_AI_MODEL") ?? "gemini-3.6-flash"
+                Medium = Environment.GetEnvironmentVariable("ARRK_LIVE_AI_MODEL") ?? "gemini-3.6-flash"
             },
             TimeoutSeconds = 60,
             Features = new AiFeaturesConfig
@@ -41,7 +41,7 @@ public class AssistantLiveProviderTests
             return;
 
         IChatClient client = new AiClientFactory(NullLogger<AiClientFactory>.Instance)
-            .Create(config, AiModelRole.Chat)!;
+            .Create(config, AiModelRole.Medium)!;
 
         List<string> chunks = [];
         await foreach (ChatResponseUpdate update in client.GetStreamingResponseAsync(
@@ -62,7 +62,7 @@ public class AssistantLiveProviderTests
             return;
 
         IChatClient client = new AiClientFactory(NullLogger<AiClientFactory>.Instance)
-            .Create(config, AiModelRole.Chat)!;
+            .Create(config, AiModelRole.Medium)!;
         AIFunction tool = AIFunctionFactory.Create(
             (string query) => $"found:{query}", "echo_lookup", "Looks up a test value.");
 

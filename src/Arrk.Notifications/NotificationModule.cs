@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Arrk.Core.Documentation;
 using Arrk.Core.Modules;
 using Arrk.Core.Services;
 using Arrk.Ui;
@@ -19,6 +20,7 @@ public class NotificationModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("notifications", typeof(NotificationModule).Assembly);
         services.Configure<NotificationConfig>(configuration.GetSection("notifications"));
         services.AddSingleton<NotificationEventRegistry>();
         services.AddSingleton<NotificationSubscriptionService>();

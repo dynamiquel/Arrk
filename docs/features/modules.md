@@ -50,6 +50,15 @@ public sealed class MyModule : IArrkModule
 [`samples/Arrk.SamplePlugin`](../../samples/Arrk.SamplePlugin) is a complete,
 compile-checked example with a module, navigation entry, Razor page and stylesheet.
 
+## User documentation
+
+Modules and plugins can contribute their own end-user Markdown through
+`services.AddModuleDocumentation("my-plugin", typeof(MyModule).Assembly)`. Help discovers it
+without AI, and AI/MCP can consume the same source when installed. See
+[documentation.md](documentation.md) for embedding, identifiers, authoring and retrieval.
+The sample plugin includes a working contribution. Do not put general product documentation
+in the AI module or require plugin instructions to be uploaded to the public website.
+
 ## Module contract
 
 Implement `IArrkModule` (`Arrk.Core.Modules`). Only `ModuleName` and `GetServices()` are

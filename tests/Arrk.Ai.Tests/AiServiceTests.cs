@@ -23,7 +23,7 @@ public class AiServiceTests
         AiService service = Build(new AiConfig { Enabled = false });
 
         await Assert.That(service.Enabled).IsFalse();
-        await Assert.That(service.ChatClient).IsNull();
+        await Assert.That(service.MediumClient).IsNull();
         await Assert.That(await service.AskAsync("anything")).IsNull();
     }
 
@@ -40,14 +40,14 @@ public class AiServiceTests
         {
             Enabled = true,
             Provider = AiProviders.Ollama,
-            Models = new AiModelsConfig { Chat = "llama3.1:8b" },
+            Models = new AiModelsConfig { Medium = "llama3.1:8b" },
             SystemPrompt = "SYSTEM-MARKER"
         };
 
         AiService service = Build(config, transport);
 
         await Assert.That(service.Enabled).IsTrue();
-        await Assert.That(service.ChatClient).IsNotNull();
+        await Assert.That(service.MediumClient).IsNotNull();
 
         string? answer = await service.AskAsync("USER-MARKER");
 
@@ -72,11 +72,11 @@ public class AiServiceTests
         {
             Enabled = true,
             Provider = AiProviders.Ollama,
-            Models = new AiModelsConfig { Chat = "llama3.1:8b" }
+            Models = new AiModelsConfig { Medium = "llama3.1:8b" }
         });
 
         await Assert.That(service.Enabled).IsTrue();
-        await Assert.That(service.Config.ResolveChatModel()).IsEqualTo("llama3.1:8b");
+        await Assert.That(service.Config.ResolveMediumModel()).IsEqualTo("llama3.1:8b");
     }
 
     [Test]
@@ -95,7 +95,7 @@ public class AiServiceTests
         {
             Enabled = true,
             Provider = AiProviders.Ollama,
-            Models = new AiModelsConfig { Chat = "m" }
+            Models = new AiModelsConfig { Medium = "m" }
         };
 
         AiService service = new(
@@ -104,7 +104,7 @@ public class AiServiceTests
             NullLogger<AiService>.Instance,
             usage);
 
-        await service.AskAsync("hello", AiModelRole.Chat, "assistant", "chat");
+        await service.AskAsync("hello", AiModelRole.Medium, "assistant", "chat");
 
         AiUsageSummary summary = await usage.GetSummaryAsync(DateTime.UtcNow.AddHours(-1));
         await Assert.That(summary.Calls).IsEqualTo(1);
@@ -116,7 +116,7 @@ public class AiServiceTests
     public async Task Ask_BlankPrompt_DoesNotCallTheProvider()
     {
         FakeHttpMessageHandler transport = new();
-        AiService service = Build(new AiConfig { Enabled = true, Provider = AiProviders.Ollama, Models = new AiModelsConfig { Chat = "m" } }, transport);
+        AiService service = Build(new AiConfig { Enabled = true, Provider = AiProviders.Ollama, Models = new AiModelsConfig { Medium = "m" } }, transport);
 
         await Assert.That(await service.AskAsync("   ")).IsNull();
         await Assert.That(transport.Requests).IsEmpty();

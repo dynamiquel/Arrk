@@ -151,7 +151,7 @@ public sealed class AiUsageService(
             Timestamp = time.GetUtcNow().UtcDateTime,
             Feature = feature,
             Operation = operation,
-            Model = role == AiModelRole.Fast ? config.ResolveFastModel() : config.ResolveChatModel(),
+            Model = config.ResolveModel(role),
             Provider = config.Provider,
             PromptTokens = promptTokens,
             CompletionTokens = completionTokens,

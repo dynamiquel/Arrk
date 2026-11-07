@@ -13,7 +13,7 @@ public class AiUsageTests
     {
         Enabled = true,
         Provider = AiProviders.Ollama,
-        Models = new AiModelsConfig { Chat = "m" },
+        Models = new AiModelsConfig { Medium = "m" },
         Privacy = new AiPrivacyConfig { StorePromptText = storePrompt }
     };
 
@@ -24,11 +24,11 @@ public class AiUsageTests
         AiUsageService usage = new(db, TimeProvider.System);
         AiConfig config = Config();
 
-        await usage.RecordAsync(usage.CreateRecord(config, "releaseRanking", "music.releaseRank", AiModelRole.Fast,
+        await usage.RecordAsync(usage.CreateRecord(config, "releaseRanking", "music.releaseRank", AiModelRole.Low,
             100, 20, 300, success: true, cacheHit: false, userId: null, error: null, "p", "r"));
-        await usage.RecordAsync(usage.CreateRecord(config, "releaseRanking", "music.releaseRank", AiModelRole.Fast,
+        await usage.RecordAsync(usage.CreateRecord(config, "releaseRanking", "music.releaseRank", AiModelRole.Low,
             80, 10, 200, success: false, cacheHit: false, userId: null, error: "boom", "p", null));
-        await usage.RecordAsync(usage.CreateRecord(config, AiFeatureKeys.Assistant, "chat", AiModelRole.Chat,
+        await usage.RecordAsync(usage.CreateRecord(config, AiFeatureKeys.Assistant, "chat", AiModelRole.Medium,
             300, 60, 900, success: true, cacheHit: false, userId: 7, error: null, "p", "r"));
 
         AiUsageSummary summary = await usage.GetSummaryAsync(DateTime.UtcNow.AddHours(-1));
@@ -50,14 +50,14 @@ public class AiUsageTests
         AiUsageService usage = new(db, TimeProvider.System);
 
         await usage.RecordAsync(usage.CreateRecord(Config(storePrompt: false), "assistant", "chat",
-            AiModelRole.Chat, 1, 1, 1, true, false, 1, null, "SECRET-PROMPT", "ANSWER"));
+            AiModelRole.Medium, 1, 1, 1, true, false, 1, null, "SECRET-PROMPT", "ANSWER"));
 
         IReadOnlyList<AiUsageRecord> recent = await usage.GetRecentAsync();
         await Assert.That(recent[0].PromptText).IsNull();
         await Assert.That(recent[0].ResponseText).IsNull();
 
         await usage.RecordAsync(usage.CreateRecord(Config(storePrompt: true), "assistant", "chat",
-            AiModelRole.Chat, 1, 1, 1, true, false, 1, null, "SECRET-PROMPT", "ANSWER"));
+            AiModelRole.Medium, 1, 1, 1, true, false, 1, null, "SECRET-PROMPT", "ANSWER"));
 
         recent = await usage.GetRecentAsync();
         await Assert.That(recent[0].PromptText).IsEqualTo("SECRET-PROMPT");
@@ -73,9 +73,9 @@ public class AiUsageTests
         config.Limits.MaxTokensPerMonth = 0;
         AiBudget budget = new(usage, TimeProvider.System);
 
-        await usage.RecordAsync(usage.CreateRecord(config, "assistant", "chat", AiModelRole.Chat,
+        await usage.RecordAsync(usage.CreateRecord(config, "assistant", "chat", AiModelRole.Medium,
             1, 1, 1, true, false, 1, null, null, null));
-        await usage.RecordAsync(usage.CreateRecord(config, "assistant", "chat", AiModelRole.Chat,
+        await usage.RecordAsync(usage.CreateRecord(config, "assistant", "chat", AiModelRole.Medium,
             1, 1, 1, true, false, 1, null, null, null));
 
         await Assert.That(await budget.CanCallAsync(config)).IsFalse();

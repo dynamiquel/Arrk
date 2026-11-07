@@ -3,9 +3,12 @@ namespace Arrk.Ai;
 /// <summary>Which configured model profile a request should use.</summary>
 public enum AiModelRole
 {
-    /// <summary>Conversation, explanations and anything user-facing.</summary>
-    Chat,
+    /// <summary>Balanced conversation and user-facing work.</summary>
+    Medium = 0,
 
     /// <summary>Cheap ranking, parsing and summaries.</summary>
-    Fast
+    Low = 1,
+
+    /// <summary>More capable reasoning for demanding user requests.</summary>
+    High = 2
 }

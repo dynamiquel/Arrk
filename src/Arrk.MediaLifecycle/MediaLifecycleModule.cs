@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Arrk.Core;
+using Arrk.Core.Documentation;
 using Arrk.Core.Lifecycle;
 using Arrk.Core.Models;
 using Arrk.Core.Modules;
@@ -27,6 +28,7 @@ public class MediaLifecycleModule : IArrkModule
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDocumentation("medialifecycle", typeof(MediaLifecycleModule).Assembly);
         services.AddSingleton<IModuleEntityConfiguration, LifecycleItemStateConfiguration>();
         services.AddSingleton<MediaLifecycleService>();
         services.AddSingleton<IStaleMediaProvider>(sp => sp.GetRequiredService<MediaLifecycleService>());

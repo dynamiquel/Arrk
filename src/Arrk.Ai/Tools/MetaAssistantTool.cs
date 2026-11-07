@@ -4,8 +4,8 @@ using Microsoft.Extensions.AI;
 namespace Arrk.Ai.Tools;
 
 /// <summary>
-/// The always-on meta pack: tells the model what this Arrk instance can actually do, and gives
-/// it a short usage guide. It reports configuration and media sources only, it never inspects the
+/// The on-demand meta pack: tells the model what this Arrk instance can actually do, and points
+/// to the searchable product guides. It reports configuration and media sources only, it never inspects the
 /// other tool packs, so it cannot create a dependency cycle through the registry.
 /// </summary>
 public sealed class MetaAssistantTool(
@@ -74,36 +74,19 @@ public sealed class MetaAssistantTool(
 
             AIFunctionFactory.Create(
                 () => """
-                    You are Arrk's assistant for a self-hosted media server. You can search the
-                    library and discovery catalogues, read details/cast/watch progress, recommend
-                    titles, and perform actions through tools.
-
-                    Reading and discovery:
-                    - "What anime do I have?" → search_media(domain=anime, scope=library, sort=rating)
-                    - "Most trendy action movie I own" → search_media(genre=Action, scope=library, sort=popularity)
-                    - "What's that new Tom Cruise movie?" → search_media(person=Tom Cruise, sort=newest, scope=discovery)
-                    - "Recommend a top tier anime this season" → tv_recommend_media(domain=anime)
-                    - "Surprise me with a banger" → call tv_recommend_media and music_recommend_media
-
-                    Actions:
-                    - "Request the new Spider-Man" → search_media, then tv_request_media with its id.
-                    - "Add Black Panther to my watchlist" → search_media, then tv_add_to_watchlist.
-                    - "Delete Re:Zero" → search_media, then tv_delete_media; the tool always returns a
-                      confirmation button that the user must press.
-                    - "Upgrade Scary Movie to 4K" → search_media, then tv_upgrade_quality.
-                    - "Play The Last of Us" / "Play Never Forget" → search_media, then
-                      tv_play_media / music_play_media.
-
-                    For opinions and general knowledge (characters, plots, whether a show is
-                    good, cast chemistry), you may answer from your own knowledge. For what the
-                    user owns or has downloaded, use a tool first. Keep opinions framed as
-                    opinions and do not invent library facts.
-
-                    Only claim an action succeeded when the tool result says ok=true. Deletion and
-                    quality changes are administrator-only. If the title is ambiguous, ask which one.
+                    Check get_capabilities before promising instance-specific features or actions.
+                    For setup and usage, call search_documentation with keywords (or empty to browse
+                    topics), then read_documentation for the relevant section. Module and plugin docs
+                    cover installation, video/uploads/quality, music, downloads/VPN, playback/subtitles,
+                    household/requests/remote access, history/cleanup, notifications and AI.
+                    They are documentation, not live state or permission to change settings.
+                    For holdings, availability and downloads use live tools. Resolve ambiguous titles
+                    before acting; only report success when the action tool confirms it. Deletion and
+                    quality changes require administrator access and explicit confirmation. Label
+                    general opinions as opinions. Detailed assistant examples are in the assistant guide.
                     """,
                 "get_help",
-                "Short guide to what the assistant can answer and do, with example questions and actions.")
+                "How to find product instructions and distinguish documentation from live tools and actions.")
         ];
     }
 }

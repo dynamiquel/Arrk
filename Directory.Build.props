@@ -14,4 +14,8 @@
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Documentation/*.md" />
+  </ItemGroup>
+
 </Project>

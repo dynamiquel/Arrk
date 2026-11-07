@@ -58,7 +58,7 @@ advanced work. Arrk simply makes the whole thing feel like one product.
 | **A library that ages well** | Per-user watch history, watchlists, stale-media warnings, pins and opt-in automatic cleanup. |
 | **People and requests** | Invite-only accounts, roles, OIDC for players, Discord and MyAnimeList sign-in, and a moderated request flow. |
 | **Fewer surprises** | Centralised notifications through Discord and webhooks, routed per topic, plus an in-app inbox and event feed. |
-| **Optional AI** | Off by default and opt-in per feature. It ranks, suggests and assists; deterministic behaviour is always the fallback. |
+| **AI** | Ask about your library, get help with Arrk and choose which tasks AI helps with. Works with cloud or local models; the rest of Arrk works without it. |
 | **Built to extend** | Every service is a module. Drop-in plugins use the same contracts for pages, navigation, jobs and dashboard tiles. |
 
 See the [feature tour](https://dynamiquel.github.io/Arrk/features.html) for the full picture.
